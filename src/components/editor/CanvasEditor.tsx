@@ -125,7 +125,6 @@ export function CanvasEditor() {
         style={{ left: box.w / 2 + view.ox - w / 2, top: box.h / 2 + view.oy - h / 2, width: w, height: h, visibility: fitW ? 'visible' : 'hidden' }}
       />
       {!item && <p className="empty-hint">Add a game to the queue to start editing.</p>}
-      <p className="hint">Drag to move · scroll to zoom · double-click to reset</p>
       {(view.k !== 1 || view.ox !== 0 || view.oy !== 0) && (
         <button className="fit-button" onClick={() => setView(FIT)} onPointerDown={(e) => e.stopPropagation()} onDoubleClick={(e) => e.stopPropagation()}>
           Fit · {Math.round(view.k * 100)}%

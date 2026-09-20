@@ -3,6 +3,7 @@ import type { Region, TemplateKind } from '../types/template';
 import type { StyleOverlay } from '../types/editor';
 import { isLocalRef } from '../storage/localImages';
 import type { AppState } from './AppContext';
+import { buildAssetUrls } from '../api/steam';
 import { serializeSession } from './session';
 import { buildTemplate, defaultVariantId, isTemplateKind, variantsFor } from '../templates';
 
@@ -56,8 +57,24 @@ export interface ShareLink {
   tooLong: boolean;
 }
 
+/**
+ * A readable link (`?template=dvd&variant=…&app=1091500`) when it says everything: only untouched Steam games,
+ * default panel settings and no overrides. Anything else needs the packed form. Null when it doesn't fit.
+ */
+export function plainShareUrl(state: AppState, base: string): string | null {
+  const untouched = (i: MediaItem) => /^steam-\d+$/.test(i.id) && !i.panels && !i.spineOverride && i.assets.cover === buildAssetUrls(Number(i.sourceId)).cover;
+  if (!state.items.every(untouched) || Object.keys(state.shared.panels).length > 0 || Object.keys(state.shared.spine).some((k) => k !== 'fontFamily' && k !== 'color')) return null;
+  // The last app id is the one selected when the link opens.
+  const ids = [...state.items].sort((a, b) => Number(a.id === state.selectedItemId) - Number(b.id === state.selectedItemId)).map((i) => i.sourceId);
+  const q = new URLSearchParams({ template: state.templateKind, variant: state.variantId, region: state.region, style: state.styleOverlay, view: state.view });
+  if (ids.length) q.set('app', ids.join(','));
+  return `${base.split(/[?#]/)[0]}?${q.toString().replace(/%2C/g, ',')}`;
+}
+
 /** A link that reopens this exact configuration: the queue, template, options and every panel setting. */
 export async function buildShareLink(state: AppState, base: string): Promise<ShareLink> {
+  const plain = plainShareUrl(state, base);
+  if (plain) return { url: plain, droppedImages: 0, tooLong: plain.length > MAX_SHARE_URL };
   const session = serializeSession(state);
   let droppedImages = 0;
   session.items = session.items.map((i) => {

@@ -92,3 +92,19 @@ describe('loadState', () => {
     expect(reducer(initialState, { type: 'loadState', state: other }).templateKind).toBe('cassette');
   });
 });
+
+describe('readable share link', () => {
+  const steam = (id: number, title: string): MediaItem => ({ id: `steam-${id}`, type: 'game', title, sourceId: String(id), assets: { cover: `https://shared.steamstatic.com/store_item_assets/steam/apps/${id}/library_600x900_2x.jpg`, hero: null, logo: null, screenshots: [] } });
+  const base = reducer(reducer(reducer(initialState, { type: 'addItem', item: steam(570, 'Dota 2') }), { type: 'addItem', item: steam(1091500, 'Cyberpunk') }), { type: 'setTemplate', kind: 'cd' });
+
+  it('uses plain parameters for untouched Steam games, with the selected game last', async () => {
+    const { url } = await buildShareLink(reducer(base, { type: 'selectItem', id: 'steam-570' }), 'https://x.dev/');
+    expect(url).toBe('https://x.dev/?template=cd&variant=jewel&region=US&style=clean&view=3d&app=1091500,570');
+    expect(parseParams(new URL(url).search).apps).toEqual([1091500, 570]);
+  });
+
+  it('falls back to the packed link once anything is customised', async () => {
+    const edited = reducer(base, { type: 'updatePanel', id: null, panel: 'front', patch: { backgroundColor: '#ff0000' } });
+    expect((await buildShareLink(edited, 'https://x.dev/')).url).toContain('?c=');
+  });
+});

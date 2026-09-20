@@ -3,20 +3,22 @@ import { PROVIDERS, getProvider, type ProviderId, type SearchResult } from '../.
 import { useAppDispatch } from '../../context/AppContext';
 import { CustomEntry } from './CustomEntry';
 import { SearchResults } from './SearchResults';
+import type { MediaType } from '../../types/media';
 import { QueueList } from './QueueList';
 
-type Tab = ProviderId | 'custom';
+type Tab = ProviderId | 'custom' | 'all';
 
 export function SearchPanel() {
   const dispatch = useAppDispatch();
-  const [tab, setTab] = useState<Tab>('steam');
+  const [tab, setTab] = useState<Tab>('all');
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<SearchResult[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [adding, setAdding] = useState<string | null>(null);
 
-  const provider = tab === 'custom' ? null : getProvider(tab);
+  const provider = tab === 'custom' || tab === 'all' ? null : getProvider(tab);
+  const filter: MediaType | 'all' = tab === 'all' ? 'all' : tab === 'custom' ? 'custom' : getProvider(tab).mediaType;
   const searchable = provider?.available && query.trim().length > 0;
 
   useEffect(() => {
@@ -60,8 +62,11 @@ export function SearchPanel() {
 
   return (
     <aside className="sidebar left">
-      <h2>Add media</h2>
-      <div className="provider-tabs" role="tablist" aria-label="Media source">
+      <h2>Media</h2>
+      <div className="provider-tabs" role="tablist" aria-label="Media type">
+        <button role="tab" aria-selected={tab === 'all'} className={tab === 'all' ? 'active' : ''} onClick={() => switchTab('all')}>
+          All
+        </button>
         {PROVIDERS.map((p) => (
           <button key={p.id} role="tab" aria-selected={tab === p.id} className={tab === p.id ? 'active' : ''} onClick={() => switchTab(p.id)} title={p.available ? undefined : p.unavailableReason}>
             {p.label}
@@ -76,17 +81,17 @@ export function SearchPanel() {
         <CustomEntry />
       ) : provider && !provider.available ? (
         <p className="muted">{provider.unavailableReason}</p>
-      ) : (
+      ) : provider ? (
         <>
           <div className="search-input">
-            <input type="search" value={query} placeholder={provider!.placeholder} onChange={(e) => setQuery(e.target.value)} aria-label={`Search ${provider!.label}`} />
+            <input type="search" value={query} placeholder={provider.placeholder} onChange={(e) => setQuery(e.target.value)} aria-label={`Search ${provider.label}`} />
             {loading && <span className="spinner" role="status" aria-label="Loading" />}
           </div>
           {error && <p className="error">{error}</p>}
           <SearchResults results={searchable ? results : []} addingId={adding} onAdd={add} />
         </>
-      )}
-      <QueueList />
+      ) : null}
+      <QueueList filter={filter} />
     </aside>
   );
 }

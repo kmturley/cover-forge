@@ -3,6 +3,7 @@ import type { MediaItem } from '../types/media';
 import type { PanelId, Region, TemplateConfig, TemplateKind } from '../types/template';
 import type { PanelSettings, SharedSettings, SpineSettings, StyleOverlay } from '../types/editor';
 import { DEFAULT_KIND, buildTemplate, defaultVariantId, regionsOf, variantsFor } from '../templates';
+import { sortItems } from './items';
 import { loadSession, restoreSession, saveSession } from './session';
 import { applyParams, type Startup } from './share';
 
@@ -33,7 +34,6 @@ export interface AppState {
 export type Action =
   | { type: 'addItem'; item: MediaItem }
   | { type: 'removeItem'; id: string }
-  | { type: 'reorderItems'; from: number; to: number }
   /** Adds an image (e.g. an upload) to an item's library; it becomes `screenshot:<index>`. */
   | { type: 'addAsset'; id: string; url: string }
   | { type: 'selectItem'; id: string | null }
@@ -102,19 +102,12 @@ export function reducer(state: AppState, action: Action): AppState {
       if (state.items.some((i) => i.id === action.item.id)) {
         return { ...state, selectedItemId: action.item.id };
       }
-      return { ...state, items: [...state.items, action.item], selectedItemId: action.item.id };
+      return { ...state, items: sortItems([...state.items, action.item]), selectedItemId: action.item.id };
     }
     case 'removeItem': {
       const items = state.items.filter((i) => i.id !== action.id);
       const selectedItemId = state.selectedItemId === action.id ? (items[0]?.id ?? null) : state.selectedItemId;
       return { ...state, items, selectedItemId, editMode: items.length ? state.editMode : 'shared' };
-    }
-    case 'reorderItems': {
-      const items = [...state.items];
-      const [moved] = items.splice(action.from, 1);
-      if (!moved) return state;
-      items.splice(action.to, 0, moved);
-      return { ...state, items };
     }
     case 'addAsset':
       return updateItem(state, action.id, (i) => ({ ...i, assets: { ...i.assets, screenshots: [...i.assets.screenshots, action.url] } }));

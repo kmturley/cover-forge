@@ -3,6 +3,7 @@ import type { Region } from '../types/template';
 import type { PanelSettings, SharedSettings, StyleOverlay } from '../types/editor';
 import type { PanelId, TemplateKind } from '../types/template';
 import { DEFAULT_KIND, buildTemplate, defaultVariantId, isTemplateKind, variantsFor } from '../templates';
+import { migrateItem, sortItems } from './items';
 import type { AppState, ViewMode } from './AppContext';
 
 /**
@@ -74,7 +75,7 @@ function restoreShared(raw: unknown, defaults: SharedSettings): SharedSettings {
 export function restoreSession(raw: unknown, defaults: AppState): AppState {
   if (!isObj(raw) || raw.app !== 'coverforge' || (raw.version !== 1 && raw.version !== 2)) return defaults;
   const o = isObj(raw.options) ? raw.options : {};
-  const items = Array.isArray(raw.items) ? raw.items.filter(isItem) : [];
+  const items = Array.isArray(raw.items) ? sortItems(raw.items.filter(isItem).map(migrateItem)) : [];
 
   const region: Region = o.region === 'US' || o.region === 'EU' ? o.region : defaults.region;
   // Saves from before other templates existed have no kind and were Blu-ray; an unrecognised kind gets today's default.

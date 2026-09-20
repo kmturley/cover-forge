@@ -66,8 +66,27 @@ export async function createGameItem(result: SteamSearchResult): Promise<MediaIt
     title: result.name,
     subtitle,
     year,
-    assets: buildAssetUrls(result.appId, screenshots),
+    assets: await withWorkingHero(buildAssetUrls(result.appId, screenshots), result.appId),
   };
+}
+
+/** Whether an image URL loads (browser only; assumed to load elsewhere). */
+function loads(url: string): Promise<boolean> {
+  if (typeof Image === 'undefined') return Promise.resolve(true);
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.onload = () => resolve(true);
+    img.onerror = () => resolve(false);
+    img.src = url;
+  });
+}
+
+/** Some games have no `library_hero_2x.jpg` (Steam answers 404); fall back to the 1x hero, or none. */
+async function withWorkingHero(assets: AssetSlots, appId: number): Promise<AssetSlots> {
+  if (!assets.hero || (await loads(assets.hero))) return assets;
+  const smaller = `${CDN}/${appId}/library_hero.jpg`;
+  return { ...assets, hero: (await loads(smaller)) ? smaller : null };
 }
 
 /** Looks a game up by its Steam app id (for links like `?app=1091500`); null if Steam doesn't know it. */

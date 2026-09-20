@@ -1,6 +1,7 @@
 import { useAppDispatch, useAppState } from '../../context/AppContext';
 import { itemHasOverrides } from '../../engine/resolve';
 import { srcOf } from '../../storage/localImages';
+import type { MediaType } from '../../types/media';
 
 function OverrideIcon() {
   return (
@@ -12,9 +13,11 @@ function OverrideIcon() {
   );
 }
 
-export function QueueList() {
+/** The queued items of one media type (all of them when `filter` is 'all'), in alphabetical order. */
+export function QueueList({ filter }: { filter: MediaType | 'all' }) {
   const { items, selectedItemId } = useAppState();
   const dispatch = useAppDispatch();
+  const shown = filter === 'all' ? items : items.filter((i) => i.type === filter);
 
   function resetOverrides(id: string, title: string) {
     if (window.confirm(`Remove all overrides for “${title}” and use the shared settings?`)) {
@@ -24,10 +27,9 @@ export function QueueList() {
 
   return (
     <section className="queue">
-      <h2>Queue ({items.length})</h2>
-      {!items.length && <p className="muted">Search for a game and click it to add it here.</p>}
+      {!shown.length && <p className="muted">{filter === 'all' ? 'Pick a tab above, search, and click a result to add it here.' : 'Nothing here yet. Search above and click a result to add it.'}</p>}
       <ul>
-        {items.map((item, i) => (
+        {shown.map((item) => (
           <li key={item.id} className={item.id === selectedItemId ? 'selected' : ''}>
             <button className="item" onClick={() => dispatch({ type: 'selectItem', id: item.id })}>
               {item.assets.cover && <img src={srcOf(item.assets.cover)} alt="" loading="lazy" crossOrigin="anonymous" />}
@@ -47,12 +49,6 @@ export function QueueList() {
                   <OverrideIcon />
                 </button>
               )}
-              <button aria-label={`Move ${item.title} up`} disabled={i === 0} onClick={() => dispatch({ type: 'reorderItems', from: i, to: i - 1 })}>
-                ↑
-              </button>
-              <button aria-label={`Move ${item.title} down`} disabled={i === items.length - 1} onClick={() => dispatch({ type: 'reorderItems', from: i, to: i + 1 })}>
-                ↓
-              </button>
               <button aria-label={`Remove ${item.title}`} onClick={() => dispatch({ type: 'removeItem', id: item.id })}>
                 ✕
               </button>

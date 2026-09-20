@@ -1,7 +1,7 @@
 import type { PanelId } from './template';
 import type { PanelSettings, SpineSettings } from './editor';
 
-export type MediaType = 'game' | 'movie' | 'music' | 'custom';
+export type MediaType = 'game' | 'movie' | 'tv' | 'music' | 'custom';
 
 export interface AssetSlots {
   cover: string | null;

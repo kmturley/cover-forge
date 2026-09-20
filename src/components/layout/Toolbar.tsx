@@ -6,7 +6,7 @@ import type { StyleOverlay } from "../../types/editor";
 import { ConfigButtons } from "./ConfigButtons";
 
 export function Toolbar({ onExport }: { onExport: () => void }) {
-  const { templateKind, region, variantId, showGuides, view, styleOverlay } =
+  const { templateKind, region, variantId, styleOverlay } =
     useAppState();
   const regions = regionsOf(templateKind);
   const variants = variantsFor(templateKind, region);
@@ -16,6 +16,12 @@ export function Toolbar({ onExport }: { onExport: () => void }) {
       <div className="toolbar-row">
         <strong className="brand">CoverForge</strong>
         <TemplateTabs />
+        <div className="toolbar-actions">
+          <ConfigButtons />
+          <button className="primary" onClick={onExport}>
+            Export…
+          </button>
+        </div>
       </div>
       <div className="toolbar-row">
         {regions.length > 1 && (
@@ -71,34 +77,6 @@ export function Toolbar({ onExport }: { onExport: () => void }) {
             <option value="retro">Scanned / Retro wear</option>
           </select>
         </label>
-        <label className="check">
-          <input
-            type="checkbox"
-            checked={showGuides}
-            onChange={(e) =>
-              dispatch({ type: "setShowGuides", show: e.target.checked })
-            }
-          />
-          Guides
-        </label>
-        <div className="seg" role="group" aria-label="View">
-          <button
-            className={view === "2d" ? "active" : ""}
-            onClick={() => dispatch({ type: "setView", view: "2d" })}
-          >
-            2D
-          </button>
-          <button
-            className={view === "3d" ? "active" : ""}
-            onClick={() => dispatch({ type: "setView", view: "3d" })}
-          >
-            3D
-          </button>
-        </div>
-        <ConfigButtons />
-        <button className="primary" onClick={onExport}>
-          Export…
-        </button>
       </div>
     </header>
   );

@@ -5,6 +5,7 @@ import { CanvasEditor } from '../editor/CanvasEditor';
 import { PanelControls } from '../editor/PanelControls';
 import { ExportModal } from '../export/ExportModal';
 import { Toolbar } from './Toolbar';
+import { ViewerControls } from './ViewerControls';
 import { StatusBar } from './StatusBar';
 
 // three.js is heavy; only load it when the 3D view is first opened.
@@ -26,6 +27,7 @@ export function AppShell() {
             <ThreeDPreview />
           </Suspense>
         )}
+        <ViewerControls />
       </main>
       <aside className="sidebar right">
         <PanelControls />

@@ -24,9 +24,9 @@ const original = (i: TvImage) => https(i.resolutions.original.url);
 
 export const tvProvider: Provider = {
   id: 'tv',
-  label: 'TV',
+  label: 'TV Shows',
   placeholder: 'Search TV shows…',
-  mediaType: 'movie',
+  mediaType: 'tv',
   available: true,
 
   async search(query, signal): Promise<SearchResult[]> {
@@ -58,7 +58,7 @@ export const tvProvider: Provider = {
     if (!cover) throw new Error('No artwork found for this show.');
     return {
       id: `tv-${result.id}`,
-      type: 'movie',
+      type: 'tv',
       title: result.title,
       subtitle: result.subtitle || undefined,
       year: result.year,

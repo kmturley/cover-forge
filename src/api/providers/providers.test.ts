@@ -126,7 +126,7 @@ describe('TV provider (TVMaze)', () => {
   it('builds an item with poster, backdrop, title logo and alternate posters', async () => {
     mockFetch([['shows/169/images', images]]);
     const item = await tvProvider.createItem({ id: '169', title: 'Breaking Bad', subtitle: 'AMC', year: '2008', payload: { poster: 'https://s/o.jpg' } });
-    expect(item).toMatchObject({ id: 'tv-169', type: 'movie', sourceId: '169' });
+    expect(item).toMatchObject({ id: 'tv-169', type: 'tv', sourceId: '169' });
     expect(item.assets).toEqual({ cover: 'https://s/p-main.jpg', hero: 'https://s/bg.jpg', logo: 'https://s/logo.png', screenshots: ['https://s/p1.jpg', 'https://s/p2.jpg'] });
   });
 

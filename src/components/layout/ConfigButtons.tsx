@@ -66,10 +66,10 @@ export function ConfigButtons() {
           Save
         </button>
         <button
-          title="Open a saved configuration"
+          title="Load a saved configuration"
           onClick={() => input.current?.click()}
         >
-          Open
+          Load
         </button>
         <button
           title="Copy a link that reopens this configuration"
