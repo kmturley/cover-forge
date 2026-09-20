@@ -13,10 +13,10 @@ function markStale(t: Texture): void {
 }
 
 export function ThreeDPreview() {
-  const { template, shared } = useAppState();
+  const { template, shared, showGuides } = useAppState();
   const item = useSelectedItem();
 
-  // A dedicated offscreen render (guides off) so editor guide lines never appear on the 3D case.
+  // A dedicated offscreen render, so the 3D texture resolution is independent of the 2D editor canvas.
   const canvas = useMemo(() => {
     const c = document.createElement('canvas');
     c.width = Math.round(template.totalWidthMm * PREVIEW_PX_PER_MM);
@@ -40,7 +40,7 @@ export function ThreeDPreview() {
     const paint = () => {
       const ctx = canvas.getContext('2d');
       if (!ctx || cancelled) return;
-      renderCover(ctx, { template, item, shared, showGuides: false }, PREVIEW_PX_PER_MM);
+      renderCover(ctx, { template, item, shared, showGuides }, PREVIEW_PX_PER_MM);
       markStale(texture);
     };
     paint();
@@ -48,7 +48,7 @@ export function ThreeDPreview() {
     return () => {
       cancelled = true;
     };
-  }, [canvas, texture, template, item, shared]);
+  }, [canvas, texture, template, item, shared, showGuides]);
 
   return (
     <div className="three-wrap">

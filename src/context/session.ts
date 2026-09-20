@@ -19,7 +19,6 @@ export interface SessionV2 {
     region: Region;
     spineMm: number;
     styleOverlay: StyleOverlay;
-    showGuides: boolean;
     view: ViewMode;
   };
   /** Applies to every item; items may override any field via their own `panels` / `spineOverride`. */
@@ -38,7 +37,6 @@ export function serializeSession(s: AppState): SessionV2 {
       region: s.region,
       spineMm: s.template.spineMm,
       styleOverlay: s.styleOverlay,
-      showGuides: s.showGuides,
       view: s.view,
     },
     shared: s.shared,
@@ -99,7 +97,6 @@ export function restoreSession(raw: unknown, defaults: AppState): AppState {
     region,
     template: createBlurayTemplate(region, spineMm),
     styleOverlay: o.styleOverlay === 'clean' || o.styleOverlay === 'digital' || o.styleOverlay === 'retro' ? o.styleOverlay : defaults.styleOverlay,
-    showGuides: typeof o.showGuides === 'boolean' ? o.showGuides : defaults.showGuides,
     view: o.view === '2d' || o.view === '3d' ? o.view : defaults.view,
     shared,
   };

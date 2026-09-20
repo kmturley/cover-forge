@@ -1,11 +1,14 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useAppDispatch, useAppState, useSelectedItem, type EditMode } from '../../context/AppContext';
 import { DEFAULT_TRANSFORM, MAX_SCALE, MIN_SCALE, type ImageRef, type PanelSettings, type PanelTransform } from '../../types/editor';
 import type { PanelId } from '../../types/template';
 import { libraryImages, type LibraryImage } from '../../engine/imageLibrary';
+import { getCachedImage, loadImage } from '../../engine/imageCache';
+import { computePlacement } from '../../engine/placement';
 import { BASE_BACKGROUND, panelHasOverride, resolvePanel } from '../../engine/resolve';
 import { NumberSlider } from './NumberSlider';
 import { SpineTextControls } from './SpineEditor';
+import { LogoControls } from './LogoControls';
 
 const TABS: { id: PanelId; label: string }[] = [
   { id: 'front', label: 'Front' },
@@ -13,8 +16,21 @@ const TABS: { id: PanelId; label: string }[] = [
   { id: 'back', label: 'Back' },
 ];
 
-/** Position range in mm; generous so an image can be moved fully off-panel if wanted. */
-const POS_RANGE = 200;
+/** Natural pixel size of an image once loaded (needed to show its centred position in mm). */
+function useImageSize(url: string | null) {
+  const [size, setSize] = useState<{ url: string; w: number; h: number } | null>(null);
+  useEffect(() => {
+    if (!url) return;
+    let live = true;
+    void loadImage(url).then((img) => live && img && setSize({ url, w: img.naturalWidth, h: img.naturalHeight }));
+    return () => {
+      live = false;
+    };
+  }, [url]);
+  const cached = getCachedImage(url);
+  if (size && size.url === url) return size;
+  return cached ? { url: url!, w: cached.naturalWidth, h: cached.naturalHeight } : null;
+}
 
 function Thumb({ image, selected, onPick }: { image: LibraryImage; selected: boolean; onPick: () => void }) {
   const [failed, setFailed] = useState(false);
@@ -79,7 +95,7 @@ export function PanelControls() {
 }
 
 function PanelBody({ panel }: { panel: PanelId }) {
-  const { shared, editMode } = useAppState();
+  const { shared, editMode, template } = useAppState();
   const item = useSelectedItem()!;
   const dispatch = useAppDispatch();
 
@@ -87,6 +103,10 @@ function PanelBody({ panel }: { panel: PanelId }) {
   const target = isOverride ? item.id : null; // null = shared layer
   const r = resolvePanel(shared, item, panel);
   const t = r.transform;
+  const size = useImageSize(r.imageUrl);
+  const rect = template.panels.find((p) => p.id === panel)!;
+  const pl = size ? computePlacement(template, rect, size.w, size.h, t) : null;
+  const area = pl?.area ?? rect;
 
   const patch = (p: Partial<PanelSettings>) => dispatch({ type: 'updatePanel', id: target, panel, patch: p });
   const setTransform = (change: Partial<PanelTransform>) => patch({ transform: change });
@@ -118,24 +138,28 @@ function PanelBody({ panel }: { panel: PanelId }) {
         ))}
       </div>
 
-      {r.imageRef !== null ? (
+      {r.imageRef !== null && !pl ? (
+        <p className="muted">Loading image…</p>
+      ) : r.imageRef !== null && pl ? (
         <>
-          <NumberSlider label="Position X" unit="mm" min={-POS_RANGE} max={POS_RANGE} step={0.1} decimals={1} value={t.panXMm} onChange={(panXMm) => setTransform({ panXMm })} />
-          <NumberSlider label="Position Y" unit="mm" min={-POS_RANGE} max={POS_RANGE} step={0.1} decimals={1} value={t.panYMm} onChange={(panYMm) => setTransform({ panYMm })} />
+          <p className="muted">Position is the image's top-left corner from the panel's top-left (bleed included). 0, 0 aligns to the corner. Default: centred.</p>
+          <NumberSlider label="Position X" unit="mm" min={Math.floor(-pl.widthMm)} max={Math.ceil(area.widthMm)} step={0.1} decimals={1} value={pl.xMm} onChange={(xMm) => setTransform({ xMm })} />
+          <NumberSlider label="Position Y" unit="mm" min={Math.floor(-pl.heightMm)} max={Math.ceil(area.heightMm)} step={0.1} decimals={1} value={pl.yMm} onChange={(yMm) => setTransform({ yMm })} />
           <NumberSlider label="Size (zoom)" unit="×" min={MIN_SCALE} max={MAX_SCALE} step={0.01} value={t.scale} onChange={(scale) => setTransform({ scale })} />
           <NumberSlider label="Rotation" unit="°" min={-180} max={180} step={0.1} decimals={1} value={t.rotationDeg} onChange={(rotationDeg) => setTransform({ rotationDeg })} />
           <NumberSlider label="Opacity" unit="%" min={0} max={100} step={1} decimals={0} value={Math.round(t.opacity * 100)} onChange={(v) => setTransform({ opacity: v / 100 })} />
           <button
-            // Shared: drop the shared placement. Override: pin this item to cover-all regardless of shared.
+            // Shared: drop the shared placement. Override: pin this item to centred cover-all regardless of shared.
             onClick={() => patch({ transform: isOverride ? DEFAULT_TRANSFORM : undefined })}
           >
-            Reset image (cover all)
+            Reset image (centred, cover all)
           </button>
-          <p className="muted">Drag on the canvas to pan, scroll to zoom.</p>
         </>
       ) : (
         <p className="muted">Choose an image above to position it.</p>
       )}
+
+      <LogoControls panel={panel} target={target} logo={r.logo} />
 
       {panel === 'spine' && <SpineTextControls target={target} />}
 

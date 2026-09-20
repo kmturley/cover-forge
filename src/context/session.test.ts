@@ -16,9 +16,17 @@ describe('session', () => {
     s = reducer(s, { type: 'setRegion', region: 'EU' });
     s = reducer(s, { type: 'updatePanel', id: null, panel: 'front', patch: { backgroundColor: '#123456', transform: { scale: 1.2 } } });
     s = reducer(s, { type: 'updateSpine', id: null, patch: { textHeightMm: 5 } });
-    s = reducer(s, { type: 'updatePanel', id: 'steam-1', panel: 'spine', patch: { backgroundColor: '#ff0000', image: 'logo', transform: { panXMm: 1, opacity: 0.5 } } });
+    s = reducer(s, { type: 'updatePanel', id: 'steam-1', panel: 'spine', patch: { backgroundColor: '#ff0000', image: 'logo', transform: { xMm: 1, opacity: 0.5 } } });
     const back = restoreSession(JSON.parse(JSON.stringify(serializeSession(s))), initialState);
     expect(back).toEqual(s);
+  });
+
+  it('does not persist guides: they start off every visit', () => {
+    const s = reducer(initialState, { type: 'setShowGuides', show: true });
+    expect(serializeSession(s).options).not.toHaveProperty('showGuides');
+    const saved = { ...serializeSession(s), options: { ...serializeSession(s).options, showGuides: true } }; // older saves
+    expect(restoreSession(saved, initialState).showGuides).toBe(false);
+    expect(initialState.showGuides).toBe(false);
   });
 
   it('falls back to defaults for garbage or unknown versions', () => {

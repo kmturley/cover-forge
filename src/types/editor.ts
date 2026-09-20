@@ -2,17 +2,20 @@ import type { PanelId } from './template';
 
 export type StyleOverlay = 'clean' | 'digital' | 'retro';
 
-/** Placement of an image inside its panel. Pan is in mm relative to the centred cover-fit position (scale 1 = covers the panel). */
+/**
+ * Placement of an image inside its panel. Scale 1 = covers the panel. `xMm`/`yMm` are the image's top-left
+ * corner in mm from the panel's top-left; `null` means centred (the default), whatever the image or scale.
+ */
 export interface PanelTransform {
-  panXMm: number;
-  panYMm: number;
+  xMm: number | null;
+  yMm: number | null;
   scale: number;
   rotationDeg: number;
   /** 0 (transparent) to 1 (opaque). */
   opacity: number;
 }
 
-export const DEFAULT_TRANSFORM: PanelTransform = { panXMm: 0, panYMm: 0, scale: 1, rotationDeg: 0, opacity: 1 };
+export const DEFAULT_TRANSFORM: PanelTransform = { xMm: null, yMm: null, scale: 1, rotationDeg: 0, opacity: 1 };
 
 /** A slot in an item's image library: a named asset, or `screenshot:<index>`. */
 export type ImageRef = 'cover' | 'hero' | 'logo' | `screenshot:${number}`;
@@ -24,7 +27,26 @@ export interface PanelSettings {
   image?: ImageRef | null;
   /** Field-level, so an item can override just its opacity and still follow the shared position and size. */
   transform?: Partial<PanelTransform>;
+  /** Brand logo layer, drawn above the image and (for the spine) the text. */
+  logo?: Partial<LogoSettings>;
 }
+
+/** A store / console brand mark drawn on top of a panel's image and text. Every field is layered like the rest (default → shared → item). */
+export interface LogoSettings {
+  /** Brand id (see src/brands); `null` = no logo. */
+  brand: string | null;
+  /** Fill colour. */
+  color: string;
+  /** Logo width in mm; `null` = automatic (sized for the panel). */
+  widthMm: number | null;
+  /** Top-left from the panel's top-left (bleed included), like images; `null` = default (centred, near the bottom). */
+  xMm: number | null;
+  yMm: number | null;
+  rotationDeg: number;
+  opacity: number;
+}
+
+export const DEFAULT_LOGO: LogoSettings = { brand: null, color: '#ffffff', widthMm: null, xMm: null, yMm: null, rotationDeg: 0, opacity: 1 };
 
 export const MIN_SCALE = 0.2;
 export const MAX_SCALE = 5;

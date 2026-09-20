@@ -2,6 +2,8 @@
 
 Client-side cover art generator for physical media. v1 covers Blu-ray keepcase wraps for games (Steam), with a 2D canvas editor, 3D WebGL preview, and print-ready export. No server, accounts or API keys.
 
+<img src="./screenshot.png" alt="CoverForge screenshot" />
+
 ## Develop
 
 ```sh
@@ -28,6 +30,10 @@ The build uses relative asset paths (`base: './'`), so it works under `https://<
 - **Editor:** `src/engine/CanvasRenderer.ts` exposes a pure `renderCover()` used by the editor, the 3D texture and export. Drag an image to pan, scroll to zoom.
 - **3D:** `src/three/` maps the flat wrap onto a box sized from the template (trim area only, bleed excluded).
 - **Export:** 300 DPI PNG/JPEG sheets, PDF at exact mm with vector cut/fold guides, and a ZIP with raw assets, flat renders and sheets.
+
+## Brand logos
+
+Each of Front, Spine and Back can carry a store or console logo (Steam, Epic, GOG, PlayStation, …) drawn above the image and text, with colour, size, position, rotation and opacity, shared across items or overridden per item. The marks come from [Simple Icons](https://simpleicons.org) (CC0 artwork; the brands remain trademarks of their owners) and are baked into `src/brands/brands.generated.ts` by `npm run gen:brands`. See [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md). Xbox and Nintendo marks aren't available from that source and aren't included.
 
 ## Scope (v1)
 

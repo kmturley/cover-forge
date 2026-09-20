@@ -50,8 +50,8 @@ describe('shared and override settings', () => {
 
   it('merges transform fields and clears with undefined', () => {
     let s = reducer(initialState, { type: 'updatePanel', id: null, panel: 'back', patch: { transform: { scale: 2 } } });
-    s = reducer(s, { type: 'updatePanel', id: null, panel: 'back', patch: { transform: { panXMm: 5 } } });
-    expect(s.shared.panels.back?.transform).toEqual({ scale: 2, panXMm: 5 });
+    s = reducer(s, { type: 'updatePanel', id: null, panel: 'back', patch: { transform: { xMm: 5 } } });
+    expect(s.shared.panels.back?.transform).toEqual({ scale: 2, xMm: 5 });
     s = reducer(s, { type: 'updatePanel', id: null, panel: 'back', patch: { transform: undefined } });
     expect(s.shared.panels.back).toEqual({});
   });
@@ -81,6 +81,21 @@ describe('shared and override settings', () => {
     s = reducer(s, { type: 'updateSpine', id: 'b', patch: { text: 'Custom' } });
     expect(resolveSpine(s.shared, s.items[1])).toMatchObject({ textHeightMm: 5, text: 'Custom' });
     expect(resolveSpine(s.shared, s.items[0]).text).toBeUndefined();
+  });
+
+  it('merges logo fields, applies them per scope, and clears a field with undefined', () => {
+    let s = two();
+    s = reducer(s, { type: 'updatePanel', id: null, panel: 'front', patch: { logo: { brand: 'steam', widthMm: 20 } } });
+    s = reducer(s, { type: 'updatePanel', id: null, panel: 'front', patch: { logo: { color: '#000000' } } });
+    expect(s.shared.panels.front?.logo).toEqual({ brand: 'steam', widthMm: 20, color: '#000000' });
+    s = reducer(s, { type: 'updatePanel', id: 'a', panel: 'front', patch: { logo: { brand: null } } });
+    const brandOf = (id: string) => resolvePanel(s.shared, s.items.find((i) => i.id === id)!, 'front').logo.brand;
+    expect(brandOf('a')).toBeNull();
+    expect(brandOf('b')).toBe('steam');
+    s = reducer(s, { type: 'updatePanel', id: null, panel: 'front', patch: { logo: { widthMm: undefined } } });
+    expect(s.shared.panels.front?.logo).toEqual({ brand: 'steam', color: '#000000' });
+    s = reducer(s, { type: 'clearOverrides', id: 'a', panel: 'front' });
+    expect(brandOf('a')).toBe('steam'); // follows shared again
   });
 
   it('defaults the spine text height to 4 mm', () => {

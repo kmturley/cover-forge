@@ -19,6 +19,7 @@ export interface AppState {
   region: Region;
   template: TemplateConfig;
   styleOverlay: StyleOverlay;
+  /** UI-only (not persisted): guides are a preview aid, so they start off on every visit. */
   showGuides: boolean;
   view: ViewMode;
   shared: SharedSettings;
@@ -52,7 +53,7 @@ export const initialState: AppState = {
   region: 'US',
   template: createBlurayTemplate('US'),
   styleOverlay: 'clean',
-  showGuides: true,
+  showGuides: false,
   view: '2d',
   shared: {
     panels: {},
@@ -65,10 +66,12 @@ function compact<T extends object>(o: T): T {
   return Object.fromEntries(Object.entries(o).filter(([, v]) => v !== undefined)) as T;
 }
 
-/** Merges a panel patch. `transform` merges field by field; `transform: undefined` clears it. */
+/** Merges a panel patch. `transform` and `logo` merge field by field; setting one to undefined clears it. */
 function mergePanel(existing: PanelSettings | undefined, patch: Partial<PanelSettings>): PanelSettings {
   const next: PanelSettings = { ...existing, ...patch };
-  if (patch.transform) next.transform = { ...existing?.transform, ...patch.transform };
+  // Nested layers merge field by field; a field set to undefined is cleared so it inherits again.
+  if (patch.transform) next.transform = compact({ ...existing?.transform, ...patch.transform });
+  if (patch.logo) next.logo = compact({ ...existing?.logo, ...patch.logo });
   return compact(next);
 }
 

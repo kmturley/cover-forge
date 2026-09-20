@@ -38,3 +38,20 @@ describe('resolvePanel', () => {
     expect(resolvePanel(s, item(), 'spine').imageUrl).toBeNull(); // spine default is no image
   });
 });
+
+describe('resolvePanel logo layering', () => {
+  it('has no logo by default and inherits the shared brand field by field', () => {
+    expect(resolvePanel(shared(), item(), 'front').logo.brand).toBeNull();
+    const s = shared({ front: { logo: { brand: 'steam', color: '#ff0000' } } });
+    const o = item({ panels: { front: { logo: { color: '#00ff00', opacity: 0.5 } } } });
+    expect(resolvePanel(s, item(), 'front').logo).toMatchObject({ brand: 'steam', color: '#ff0000', opacity: 1 });
+    expect(resolvePanel(s, o, 'front').logo).toMatchObject({ brand: 'steam', color: '#00ff00', opacity: 0.5 });
+  });
+
+  it('lets an item hide a shared logo with brand: null, and other panels are unaffected', () => {
+    const s = shared({ front: { logo: { brand: 'steam' } }, back: { logo: { brand: 'steam' } } });
+    const o = item({ panels: { front: { logo: { brand: null } } } });
+    expect(resolvePanel(s, o, 'front').logo.brand).toBeNull();
+    expect(resolvePanel(s, o, 'back').logo.brand).toBe('steam');
+  });
+});

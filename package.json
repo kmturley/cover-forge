@@ -9,7 +9,8 @@
     "preview": "vite preview",
     "type-check": "tsc -b --noEmit",
     "lint": "eslint .",
-    "test": "vitest run"
+    "test": "vitest run",
+    "gen:brands": "node scripts/gen-brands.mjs"
   },
   "dependencies": {
     "@react-three/drei": "^9.122.0",
@@ -31,6 +32,8 @@
     "eslint": "^10.11.0",
     "eslint-plugin-react-hooks": "^7.1.1",
     "globals": "^17.12.0",
+    "simple-icons": "^16.32.0",
+    "svg-path-bbox": "^2.1.0",
     "typescript": "^6.0.3",
     "typescript-eslint": "^8.70.0",
     "vite": "^6.4.3",
