@@ -61,6 +61,8 @@ function restoreShared(raw: unknown, defaults: SharedSettings): SharedSettings {
     for (const id of PANEL_IDS) if (isObj(raw.panels[id])) panels[id] = raw.panels[id] as PanelSettings;
   }
   const spine = isObj(raw.spine) ? { ...defaults.spine, ...(raw.spine as Partial<SharedSettings['spine']>) } : defaults.spine;
+  // Every earlier save stored the old fixed default of 4 mm; that now means "automatic", which fits the template.
+  if (spine.textHeightMm === 4) delete spine.textHeightMm;
   return { panels, spine };
 }
 

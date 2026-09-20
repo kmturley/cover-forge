@@ -4,7 +4,7 @@ import type { PaperSize } from '../../export/imposition';
 import type { ExportSettings } from '../../export/rasterExport';
 import { exportCurrent, exportSheetsPdf, exportZip } from '../../export/zipExport';
 import { PrintSheetPreview } from './PrintSheetPreview';
-import { getLabelSheet, labelSheetsFor } from '../../export/sheets';
+import { fitsLabelSheet, getLabelSheet, labelSheetsFor } from '../../export/sheets';
 
 export function ExportModal({ onClose }: { onClose: () => void }) {
   const { items, template, shared, styleOverlay } = useAppState();
@@ -19,8 +19,8 @@ export function ExportModal({ onClose }: { onClose: () => void }) {
 
   const base = { template, shared, style: styleOverlay };
   // A die-cut sheet only applies to the templates it was made for; otherwise fall back to plain paper.
-  const labelSheets = labelSheetsFor(template.kind);
-  const labelSheet = getLabelSheet(chosenSheet)?.kinds.includes(template.kind) ? chosenSheet : undefined;
+  const labelSheets = labelSheetsFor(template.kind).filter((s) => fitsLabelSheet(s, template));
+  const labelSheet = fitsLabelSheet(getLabelSheet(chosenSheet), template) ? chosenSheet : undefined;
   const chosen = getLabelSheet(labelSheet);
   const settings: ExportSettings = { paper: chosen?.paper ?? paper, labelSheet, format, guides: guides && !chosen, jpegQuality: 0.92 };
 

@@ -93,7 +93,8 @@ export interface SpineSettings {
   text?: string;
   fontFamily: string;
   /** Cap height of the spine text in mm; the text still shrinks if it's too long for the spine. */
-  textHeightMm: number;
+  /** Cap height. Unset = automatic: as large as still lets a typical long title fit on one line (see SpineTypography). */
+  textHeightMm?: number;
   color: string;
 }
 

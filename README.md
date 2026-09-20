@@ -7,12 +7,13 @@ Client-side cover art generator for physical media collectors: build a queue of 
 ## Features
 
 - **Media sources:** Steam games, TV (TVMaze), music (MusicBrainz + Cover Art Archive), movies (TMDB, needs a relay you deploy, see below) and **custom** entries with your own images. Each item gets a normalised image library (cover, hero/back, logo, extra images) you can assign to any panel.
-- **Templates:** Blu-ray, DVD, CD and cassette cases; VHS and NFC boxes; 3.5" floppy label and NFC card. Each has its real panel layout, bleed, and fold and cut lines, and every item in the queue follows the chosen template. Boxes are printable nets: the strip folds into a tube with one glue tab (double-sided tape works), and the lid and bottom each have a tuck flap that slots in, so the ends close without glue. The cassette's Back design is a flap that wraps round the spine onto the back of the case, as a partial back image.
-- **Editor:** per-panel background, image, position (from the panel's top-left, centred by default), size, rotation and opacity; brand logos for stores and consoles; QR codes and EAN-13 / UPC-A / Code 128 barcodes; spine text. Everything can be **Shared** across the queue or **Override**n for one item.
-- **Styles:** *Clean*, *Digital / Official* (template-appropriate header banners and spine caps) and *Scanned / Retro wear* (procedural plastic glare, creases, scuffs and grain).
+- **Templates:** Blu-ray, DVD, CD and cassette cases; VHS box; NFC box (slim card box, small box, or a spineless card wallet with a slip cover); 3.5" floppy label; NFC card (front only, or front + back) and round NFC stickers (25, 30 or 35 mm). Templates are one-click tabs with an icon each. Each has its real panel layout, bleed, and fold and cut lines, and every item in the queue follows the chosen template. Boxes are printable nets: the strip folds into a tube with one glue tab (double-sided tape works), the lid and bottom each have a tuck flap that slots in, so the ends close without glue, and dust flaps on the sides close the corners. The cassette's Back design is a flap that wraps round the spine onto the back of the case, as a partial back image.
+- **Editor:** per-panel background, image, position (from the panel's top-left, centred by default), size, rotation and opacity; brand logos for stores and consoles; QR codes and EAN-13 / UPC-A / Code 128 barcodes; spine text (sized automatically so a long title of about 40 characters fits on one line; override it with the Text height slider). Everything can be **Shared** across the queue or **Override**n for one item.
+- **Styles:** *Clean*, *Digital / Official* (header banners and spine caps that name only the medium: BLU-RAY, DVD, VHS, COMPACT DISC, TAPE, FLOPPY, NFC, so they suit any content) and *Scanned / Retro wear* (procedural plastic glare, creases, scuffs and grain).
 - **3D preview:** rotate and zoom a model of the case, box, card or disk with your artwork mapped on.
 - **Export:** 300 DPI PNG/JPEG, PDF or SVG at exact millimetres with vector cut/fold guides, multi-up sheets on A4/Letter, die-cut **Avery** label sheets, and a "Download all" ZIP with each item's flat render, original images and print sheets.
 - **Session:** your queue and settings are saved in the browser and restored on return (`localStorage`, as a versioned JSON document).
+- **Save, open and share:** *Save* downloads the whole configuration as a `.coverforge.json` file (uploaded images are embedded, so it works on another machine) and *Open* loads one. *Share* copies a link that reopens the same configuration. Uploaded images can't travel in a link, so those slots come back empty; use *Save* for them. Links can also be written by hand: `?template=dvd&variant=slim-9&region=EU&style=retro&view=3d&app=1091500` opens that template and adds Steam game 1091500 to the queue (several ids may be comma-separated).
 
 ## Develop
 
@@ -56,7 +57,9 @@ Then set both variables above to `https://coverforge-relay.<you>.workers.dev`. W
 - **Sheets:** `src/export/imposition.ts` packs items on plain paper; `src/export/sheets.ts` places them on die-cut Avery sheets, centred on each label and cropped to it.
 - **Codes:** QR codes are drawn from the module matrix and barcodes from standard encoders, so they scan (verified by decoding rendered output). A code that doesn't fit inside its panel's safe area is omitted. The QR default is `steam://run/{appId}`, which launches the game in the Steam app. Barcodes print real EAN-13/UPC-A digits if you type them (the check digit is verified); without digits a number from the reserved in-store range is generated, because there is no free title-to-barcode lookup.
 - **Dimensions:** Blu-ray panels are 128 × 148 mm (spine 11 / 12.5 / 14 mm), DVD 129.5 × 183 mm (spine 14 mm, or 9 mm slim), VHS box 105 × 190 × 25 mm (portrait, spine on the long side), cassette J-card 65.1 + 12.7 + 25.4 × 101.6 mm, CD booklet 120 × 120 mm with a 137 mm tray card. These follow the figures published by cover-template suppliers ([printdvdcover.com](https://www.printdvdcover.com/blu-ray-elite-case-cover-layout.php), [CoverStitch](https://coverstitch.io/dimensions.html), a duplicator's [Blu-ray trapsheet spec](https://www.duplication.com/printspecs/blu-ray.php)); suppliers differ by 1–2 mm, so measure your own insert if it has to be exact. Bleed is 3 mm for cases and 1 mm for labels and cards.
+- **3D:** cards, stickers and disks are extruded from their real outline (CR80 corners are 3.18 mm; a sticker is a circle; a floppy has the cut corner, shutter with window and drive hub), with the artwork following that outline.
 - **Uploads:** custom images are stored untouched in the browser's IndexedDB (a browser can't keep a path to your file), so nothing is scaled. They live in that browser only and aren't part of a saved session's JSON.
+- **Links:** `src/context/share.ts` packs the session JSON with deflate and URL-safe base64 into `?c=…` (about 1.4 KB for one game). The address bar is cleaned after it is read, so later edits and reloads aren't overridden. Over about 6,000 characters the app suggests *Save* instead.
 - **Sources:** `src/api/providers/` gives every catalogue the same `search()` / `createItem()` shape.
 
 ### Sheet geometry: what is verified
@@ -69,4 +72,4 @@ Store and console marks come from [Simple Icons](https://simpleicons.org) (CC0 a
 
 ## Not built yet
 
-Per-item template overrides, a duplex (front + back) NFC card layout, saving/loading a session as a file, and non-Steam game catalogues.
+Non-Steam game catalogues.

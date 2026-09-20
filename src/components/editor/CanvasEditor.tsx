@@ -106,7 +106,7 @@ export function CanvasEditor() {
     const xMm = ((e.clientX - r.left) / r.width) * template.totalWidthMm;
     const yMm = ((e.clientY - r.top) / r.height) * template.totalHeightMm;
     const panel = template.panels.find((p) => xMm >= p.xMm && xMm < p.xMm + p.widthMm && yMm >= p.yMm && yMm < p.yMm + p.heightMm);
-    if (panel) dispatch({ type: 'selectPanel', panel: panel.id });
+    if (panel) dispatch({ type: 'selectPanel', panel: panel.follows ?? panel.id });
   }
 
   return (

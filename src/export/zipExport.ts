@@ -5,7 +5,7 @@ import { libraryImages } from '../engine/imageLibrary';
 import { loadImage } from '../engine/imageCache';
 import { srcOf } from '../storage/localImages';
 import { paginate } from './imposition';
-import { computeLayout, getLabelSheet } from './sheets';
+import { computeLayout, fitsLabelSheet, getLabelSheet } from './sheets';
 import { buildItemPdf, buildSheetsPdf } from './pdfExport';
 import { buildItemSvg, buildSheetSvg } from './svgExport';
 import {
@@ -75,7 +75,7 @@ function renderItems(base: SceneBase, items: MediaItem[], s: ExportSettings, gui
 
 /** Die-cut label sheets are already cut to shape, so they never carry cut/fold guides. */
 const sheetGuides = (s: ExportSettings, base: SceneBase) => s.guides && !usesLabelSheet(s, base);
-const usesLabelSheet = (s: ExportSettings, base: SceneBase) => !!getLabelSheet(s.labelSheet)?.kinds.includes(base.template.kind);
+const usesLabelSheet = (s: ExportSettings, base: SceneBase) => fitsLabelSheet(getLabelSheet(s.labelSheet), base.template);
 
 /** Single game: flat image, or a one-page PDF/SVG at the wrap's exact size. */
 export async function exportCurrent(base: SceneBase, item: MediaItem, s: ExportSettings): Promise<void> {

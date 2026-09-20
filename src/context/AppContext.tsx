@@ -3,7 +3,8 @@ import type { MediaItem } from '../types/media';
 import type { PanelId, Region, TemplateConfig, TemplateKind } from '../types/template';
 import type { PanelSettings, SharedSettings, SpineSettings, StyleOverlay } from '../types/editor';
 import { DEFAULT_KIND, buildTemplate, defaultVariantId, regionsOf, variantsFor } from '../templates';
-import { loadSession, saveSession } from './session';
+import { loadSession, restoreSession, saveSession } from './session';
+import { applyParams, type Startup } from './share';
 
 export type ViewMode = '2d' | '3d';
 /** Whether panel edits go to the shared settings (all items) or to the selected item's overrides. */
@@ -36,6 +37,8 @@ export type Action =
   /** Adds an image (e.g. an upload) to an item's library; it becomes `screenshot:<index>`. */
   | { type: 'addAsset'; id: string; url: string }
   | { type: 'selectItem'; id: string | null }
+  /** Replaces the whole working session (e.g. a loaded config file). */
+  | { type: 'loadState'; state: AppState }
   | { type: 'selectPanel'; panel: PanelId }
   | { type: 'setEditMode'; mode: EditMode }
   | { type: 'setTemplate'; kind: TemplateKind }
@@ -49,8 +52,6 @@ export type Action =
   /** Removes an item's overrides for one panel (or all of them), so it follows the shared settings again. */
   | { type: 'clearOverrides'; id: string; panel?: PanelId };
 
-export const DEFAULT_SPINE_TEXT_HEIGHT_MM = 4;
-
 export const initialState: AppState = {
   items: [],
   selectedItemId: null,
@@ -62,10 +63,10 @@ export const initialState: AppState = {
   template: buildTemplate(DEFAULT_KIND, defaultVariantId(DEFAULT_KIND)),
   styleOverlay: 'clean',
   showGuides: false,
-  view: '2d',
+  view: '3d',
   shared: {
     panels: {},
-    spine: { fontFamily: 'Helvetica, Arial, sans-serif', textHeightMm: DEFAULT_SPINE_TEXT_HEIGHT_MM, color: '#ffffff' },
+    spine: { fontFamily: 'Helvetica, Arial, sans-serif', color: '#ffffff' },
   },
 };
 
@@ -117,6 +118,8 @@ export function reducer(state: AppState, action: Action): AppState {
     }
     case 'addAsset':
       return updateItem(state, action.id, (i) => ({ ...i, assets: { ...i.assets, screenshots: [...i.assets.screenshots, action.url] } }));
+    case 'loadState':
+      return action.state;
     case 'selectItem':
       return { ...state, selectedItemId: action.id };
     case 'selectPanel':
@@ -153,7 +156,8 @@ export function reducer(state: AppState, action: Action): AppState {
       if (action.id === null) {
         const { text: _ignored, ...style } = action.patch; // the text is always per item
         void _ignored;
-        return { ...state, shared: { ...state.shared, spine: { ...state.shared.spine, ...compact(style) } } };
+        // A field set to undefined is cleared (e.g. text height back to automatic).
+        return { ...state, shared: { ...state.shared, spine: compact({ ...state.shared.spine, ...style }) } };
       }
       return updateItem(state, action.id, (i) => ({ ...i, spineOverride: compact({ ...i.spineOverride, ...action.patch }) }));
     }
@@ -178,8 +182,14 @@ const StateContext = createContext<AppState | null>(null);
 const StorageContext = createContext(true);
 const DispatchContext = createContext<Dispatch<Action> | null>(null);
 
-export function AppProvider({ children }: { children: ReactNode }) {
-  const [state, dispatch] = useReducer(reducer, initialState, loadSession);
+/** The starting state: the link's config if it has one, otherwise the saved session, then any plain link parameters on top. */
+function startState(defaults: AppState, startup?: Startup): AppState {
+  const base = startup?.session ? restoreSession(startup.session, defaults) : loadSession(defaults);
+  return startup ? applyParams(base, startup.params) : base;
+}
+
+export function AppProvider({ children, startup }: { children: ReactNode; startup?: Startup }) {
+  const [state, dispatch] = useReducer(reducer, initialState, (d) => startState(d, startup));
   const [storageOk, setStorageOk] = useState(true);
 
   // Debounced so drags, sliders and typing don't hammer localStorage.

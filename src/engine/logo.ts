@@ -5,8 +5,10 @@ import { paintRect } from './placement';
 
 /** Default logo width for big panels; spine-like panels use a share of their short side, narrow panels a share of their width. */
 const DEFAULT_WIDTH_MM = 24;
-const SPINE_SHARE = 0.7;
-const SMALL_PANEL_SHARE = 0.35;
+const SPINE_SHARE = 0.6;
+const MAX_SPINE_LOGO_MM = 10;
+/** Share of a small panel's short side, so a mark on a card or cassette isn't as large as on a keepcase. */
+const SMALL_PANEL_SHARE = 0.3;
 const BOTTOM_MARGIN_MM = 8;
 const SPINE_MARGIN_MM = 6;
 
@@ -27,7 +29,7 @@ export interface LogoPlacement {
 export function computeLogoPlacement(t: TemplateConfig, panel: PanelRect, aspect: number, logo: LogoSettings): LogoPlacement {
   const area = paintRect(t, panel);
   const shortSide = Math.min(panel.widthMm, panel.heightMm);
-  const defaultWidthMm = panel.text ? shortSide * SPINE_SHARE : Math.min(DEFAULT_WIDTH_MM, panel.widthMm * SMALL_PANEL_SHARE);
+  const defaultWidthMm = panel.text ? Math.min(MAX_SPINE_LOGO_MM, shortSide * SPINE_SHARE) : Math.min(DEFAULT_WIDTH_MM, shortSide * SMALL_PANEL_SHARE);
   const widthMm = logo.widthMm ?? defaultWidthMm;
   const heightMm = widthMm / aspect;
   let centeredX = panel.xMm + (panel.widthMm - widthMm) / 2 - area.xMm;

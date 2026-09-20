@@ -1,4 +1,4 @@
-import { PlaneGeometry, type BufferAttribute } from 'three';
+import { ExtrudeGeometry, PlaneGeometry, Shape, ShapeGeometry, type BufferAttribute } from 'three';
 import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js';
 import type { BoxFace, PanelId, PreviewSpec, TemplateConfig } from '../types/template';
 
@@ -66,7 +66,7 @@ export function createBodyGeometry(t: TemplateConfig, spec: PreviewSpec): Rounde
 /** Which faces carry artwork directly on the body. */
 export function printedFaces(spec: PreviewSpec): Partial<Record<BoxFace, PanelId>> {
   if (spec.kind === 'box') return spec.faces;
-  return spec.fullFace ? { '+z': spec.panel } : {};
+  return spec.fullFace ? { '+z': spec.panel, ...(spec.backPanel && { '-z': spec.backPanel }) } : {};
 }
 
 /** A flat label (e.g. a floppy label) whose UVs cover exactly the panel's trim area. */
@@ -114,4 +114,53 @@ export function labelWrap(bodyHeightMm: number, bodyDepthMm: number, labelH: num
   if (labelH <= room) return { frontMm: labelH, edgeMm: 0, backMm: 0 };
   const edgeMm = Math.min(bodyDepthMm, labelH - room);
   return { frontMm: room, edgeMm, backMm: Math.max(0, labelH - room - edgeMm) };
+}
+
+type Slab = Extract<PreviewSpec, { kind: 'slab' }>;
+
+/** The slab's face outline, centred on the origin: rounded corners (a full circle when the radius is half the size), and an optional cut corner at the top right. */
+export function slabOutline(spec: Slab): Shape {
+  const w = spec.bodyWidthMm;
+  const h = spec.bodyHeightMm;
+  const r = Math.min(spec.radiusMm, w / 2, h / 2);
+  const c = spec.chamferMm ?? 0;
+  const [x0, x1, y0, y1] = [-w / 2, w / 2, -h / 2, h / 2];
+  const s = new Shape();
+  s.moveTo(x0 + r, y0);
+  s.lineTo(x1 - r, y0);
+  s.absarc(x1 - r, y0 + r, r, -Math.PI / 2, 0, false);
+  if (c > 0) {
+    s.lineTo(x1, y1 - c);
+    s.lineTo(x1 - c, y1);
+  } else {
+    s.lineTo(x1, y1 - r);
+    s.absarc(x1 - r, y1 - r, r, 0, Math.PI / 2, false);
+  }
+  s.lineTo(x0 + r, y1);
+  s.absarc(x0 + r, y1 - r, r, Math.PI / 2, Math.PI, false);
+  s.lineTo(x0, y0 + r);
+  s.absarc(x0 + r, y0 + r, r, Math.PI, (3 * Math.PI) / 2, false);
+  return s;
+}
+
+/** A card or disk's body: its outline extruded to the body's thickness, centred on the origin. */
+export function createSlabBodyGeometry(spec: Slab): ExtrudeGeometry {
+  const geo = new ExtrudeGeometry(slabOutline(spec), { depth: spec.bodyDepthMm, bevelEnabled: false, curveSegments: 12 });
+  geo.translate(0, 0, -spec.bodyDepthMm / 2);
+  return geo;
+}
+
+/** A printed face for a slab: the same outline as the body (so rounded corners stay rounded) with the panel's artwork on it. */
+export function createSlabFaceGeometry(t: TemplateConfig, spec: Slab, id: PanelId): ShapeGeometry {
+  const range = panelUvRange(t, id);
+  const geo = new ShapeGeometry(slabOutline(spec), 12);
+  const uv = geo.getAttribute('uv') as BufferAttribute;
+  const pos = geo.getAttribute('position') as BufferAttribute;
+  for (let i = 0; i < uv.count; i++) {
+    const u = (pos.getX(i) + spec.bodyWidthMm / 2) / spec.bodyWidthMm;
+    const v = (pos.getY(i) + spec.bodyHeightMm / 2) / spec.bodyHeightMm;
+    uv.setXY(i, range.u0 + u * (range.u1 - range.u0), range.v0 + v * (range.v1 - range.v0));
+  }
+  uv.needsUpdate = true;
+  return geo;
 }

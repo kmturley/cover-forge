@@ -85,11 +85,10 @@ function drawBarcode(ctx: CanvasRenderingContext2D, kind: 'ean13' | 'upca' | 'co
   const total = bars.modules.length + ql + qr;
   const m = w / total;
   const withDigits = kind !== 'code128';
-  // Vertical layout: a little top padding, the bars, then (EAN/UPC only) a strip for the digits.
-  const top = h * 0.06;
-  const textH = withDigits ? h * 0.2 : 0;
-  const barH = h - top - textH - h * 0.04;
-  const guardExtra = withDigits ? textH * 0.55 : 0; // guard bars reach down into the digit strip
+  // GS1 proportions at 100% (X = 0.33 mm, symbol 25.93 mm tall): bars 22.85 mm, guard bars 5 modules longer, digits below.
+  const barH = h * (22.85 / 25.93);
+  const guardExtra = withDigits ? h * (1.65 / 25.93) : 0;
+  const top = 0;
 
   // Group consecutive dark modules into single bars.
   const isGuard = (i: number) => withDigits && (i < 3 || (i >= 45 && i < 50) || i >= bars.modules.length - 3);
@@ -108,22 +107,31 @@ function drawBarcode(ctx: CanvasRenderingContext2D, kind: 'ean13' | 'upca' | 'co
 
   if (withDigits) {
     const digits = bars.text;
-    // A digit is about 7 modules wide, so the six-digit groups fit exactly between the guard bars (no extra spacing).
-    ctx.font = `${m * 11 * px}px "OCR B", "Courier New", monospace`;
+    // Each digit sits centred in its own 7-module slot (six per half, exactly between the guard bars), so the
+    // spacing is even; the glyphs are stretched to fill the slot rather than looking narrow.
+    const fontModules = 13;
+    const glyph = 0.6 * fontModules; // a monospace glyph's advance, in modules
+    ctx.font = `${m * fontModules * px}px "OCR B", "Courier New", monospace`;
     ctx.textBaseline = 'alphabetic';
-    const baseline = (top + barH + textH * 0.8) * px;
-    const at = (module: number) => (ql + module) * m * px;
-    ctx.textAlign = 'right';
-    ctx.fillText(digits[0], (ql - 1) * m * px, baseline);
     ctx.textAlign = 'center';
+    const baseline = h * 0.985 * px;
+    const digit = (ch: string, centreModule: number) => {
+      ctx.save();
+      ctx.translate((ql + centreModule) * m * px, baseline);
+      ctx.scale(6.4 / glyph, 1);
+      ctx.fillText(ch, 0, 0);
+      ctx.restore();
+    };
+    const group = (chars: string, startModule: number) => [...chars].forEach((ch, i) => digit(ch, startModule + 3.5 + 7 * i));
     if (kind === 'ean13') {
-      ctx.fillText(digits.slice(1, 7), (at(3) + at(45)) / 2, baseline);
-      ctx.fillText(digits.slice(7), (at(50) + at(92)) / 2, baseline);
+      digit(digits[0], -5.5);
+      group(digits.slice(1, 7), 3);
+      group(digits.slice(7), 50);
     } else {
-      ctx.fillText(digits.slice(1, 6), (at(10) + at(45)) / 2, baseline);
-      ctx.fillText(digits.slice(6, 11), (at(50) + at(85)) / 2, baseline);
-      ctx.textAlign = 'left';
-      ctx.fillText(digits[11], (ql + bars.modules.length + 1) * m * px, baseline);
+      digit(digits[0], -5.5);
+      group(digits.slice(1, 6), 10);
+      group(digits.slice(6, 11), 50);
+      digit(digits[11], bars.modules.length + 5.5);
     }
   }
 }

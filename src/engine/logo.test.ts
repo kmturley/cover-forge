@@ -20,7 +20,7 @@ describe('computeLogoPlacement', () => {
 
   it('sizes the spine logo from the spine width so it fits', () => {
     const pl = computeLogoPlacement(t, panel('spine'), 1, DEFAULT_LOGO);
-    expect(pl.widthMm).toBeCloseTo(11 * 0.7);
+    expect(pl.widthMm).toBeCloseTo(11 * 0.6);
     expect(pl.widthMm).toBeLessThan(panel('spine').widthMm);
   });
 
@@ -36,5 +36,15 @@ describe('computeLogoPlacement', () => {
     const moved = computeLogoPlacement(t, panel('front'), 2, { ...DEFAULT_LOGO, xMm: 5 });
     expect(moved.xMm).toBe(5);
     expect(moved.yMm).toBe(base.yMm);
+  });
+});
+
+describe('default logo size on small templates', () => {
+  it('caps a spine mark at 10 mm and keeps marks on small panels modest', () => {
+    const vhs = buildTemplate('vhs', 'std-25');
+    const spine = computeLogoPlacement(vhs, vhs.panels.find((p) => p.id === 'spine')!, 1, DEFAULT_LOGO);
+    expect(spine.widthMm).toBeLessThanOrEqual(10);
+    const card = buildTemplate('nfc-card', 'cr80');
+    expect(computeLogoPlacement(card, card.panels[0], 1, DEFAULT_LOGO).widthMm).toBeLessThan(24);
   });
 });

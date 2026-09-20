@@ -9,6 +9,7 @@ interface Spec {
   w: number;
   h: number;
   text?: SpineOrientation;
+  follows?: PanelId;
 }
 
 /** Panels laid out edge to edge: a row (left→right, folds are vertical) or a column (top→bottom). */
@@ -50,12 +51,12 @@ function assemble(b: Build): TemplateConfig {
     for (const s of piece.specs) {
       if (piece.dir === 'free') {
         const f = s as FreePiece['specs'][number];
-        panels.push({ id: f.id, label: f.label, xMm: cursorX + f.x, yMm: y + f.y, widthMm: f.w, heightMm: f.h, text: f.text });
+        panels.push({ id: f.id, label: f.label, xMm: cursorX + f.x, yMm: y + f.y, widthMm: f.w, heightMm: f.h, text: f.text, follows: f.follows });
         width = Math.max(width, f.x + f.w);
         height = Math.max(height, f.y + f.h);
         continue;
       }
-      panels.push({ id: s.id, label: s.label, xMm: x, yMm: y, widthMm: s.w, heightMm: s.h, text: s.text });
+      panels.push({ id: s.id, label: s.label, xMm: x, yMm: y, widthMm: s.w, heightMm: s.h, text: s.text, follows: s.follows });
       if (piece.dir === 'row') {
         x += s.w;
         width += s.w;
@@ -137,11 +138,13 @@ const DVD: Record<string, { label: string; spine: number }> = {
   'slim-9': { label: 'Slim', spine: 9 },
 };
 
+/** Boxes that hold an NFC item: a slim one for a CR80 card (54 × 85.6 × 0.8 mm plus room to slide) and a small keepsake box. */
 const NFC_BOX: Record<string, { label: string; w: number; h: number; d: number }> = {
-  card: { label: 'Card box', w: 58, h: 90, d: 16 },
+  card: { label: 'Slim card box', w: 58, h: 90, d: 6 },
   small: { label: 'Small box', w: 60, h: 60, d: 25 },
-  cube: { label: 'Cube', w: 50, h: 50, d: 50 },
 };
+const NFC_WALLET = { w: 58, h: 90 };
+const NFC_STICKER_MM: Record<string, number> = { '25': 25, '30': 30, '35': 35 };
 
 const variantLabel = (label: string, mm: number) => `${label} (${mm} mm)`;
 
@@ -166,8 +169,12 @@ interface TuckBox {
 function tuckBox(b: TuckBox): TemplateConfig {
   const { w, h, d } = b;
   const glue = 10;
-  const tuck = Math.round(d * 0.85 * 10) / 10;
+  const tuck = Math.max(12, Math.round(d * 0.85 * 10) / 10); // long enough to hold, even on a slim box
   const stripY = tuck + d;
+  // Dust flaps fold in from the side panels' ends to close the corner gaps. They stop a millimetre short of the lid
+  // and bottom so those edges stay cut lines (panels that touch would read as folds), and are as long as the sides are deep.
+  const gap = 0.8;
+  const dust = d - 1;
   return assemble({
     kind: b.kind,
     name: b.name,
@@ -186,6 +193,10 @@ function tuckBox(b: TuckBox): TemplateConfig {
           { id: 'top', label: 'Top (lid)', w, h: d, x: w + d, y: tuck },
           { id: 'bottom', label: 'Bottom', w, h: d, x: w + d, y: stripY + h },
           { id: 'bottomTuck', label: 'Bottom tuck flap', w, h: tuck, x: w + d, y: stripY + h + d },
+          { id: 'dustTopLeft', label: 'Dust flap', w: d - gap, h: dust, x: w, y: stripY - dust, follows: 'spine' },
+          { id: 'dustBottomLeft', label: 'Dust flap', w: d - gap, h: dust, x: w, y: stripY + h, follows: 'spine' },
+          { id: 'dustTopRight', label: 'Dust flap', w: d - gap, h: dust, x: 2 * w + d + gap, y: stripY - dust, follows: 'spineRight' },
+          { id: 'dustBottomRight', label: 'Dust flap', w: d - gap, h: dust, x: 2 * w + d + gap, y: stripY + h, follows: 'spineRight' },
         ],
       },
     ],
@@ -203,20 +214,41 @@ function tuckBox(b: TuckBox): TemplateConfig {
   });
 }
 
-export const TEMPLATE_DEFS: TemplateDef[] = [
-  {
-    kind: 'bluray',
-    name: 'Blu-ray',
-    group: 'Cases',
-    variants: Object.entries(BLURAY).map(([id, v]) => ({ id, label: variantLabel(v.label, v.spine), region: v.region })),
-    build: (id) => {
-      const v = BLURAY[id] ?? BLURAY['us-11'];
-      const w = 128;
-      const h = 148;
-      return wrap('bluray', `Blu-ray, ${v.region} ${variantLabel(v.label, v.spine)}`, BLURAY[id] ? id : 'us-11', v.region, w, h, v.spine,
-        wrapPreview(w, h, v.spine, { color: '#0a4da2', transmission: 0.8, roughness: 0.2 }, true, 2.5));
+/**
+ * A slip-cover wallet with no spine: one strip [ front | back | glue tab ] folded once between front and back. The
+ * tab is stuck inside the far edge, leaving a flat pocket open at the top for the card.
+ */
+function wallet(name: string, w: number, h: number, marks: (panels: PanelRect[]) => TemplateMark[]): TemplateConfig {
+  return assemble({
+    kind: 'nfc-box',
+    name,
+    variantId: 'wallet',
+    bleedMm: 3,
+    pieces: [
+      {
+        dir: 'row',
+        specs: [
+          { id: 'front', label: 'Front', w, h },
+          { id: 'back', label: 'Back', w, h },
+          { id: 'glue', label: 'Glue tab', w: 8, h },
+        ],
+      },
+    ],
+    marks,
+    preview: {
+      kind: 'box',
+      widthMm: w,
+      heightMm: h,
+      depthMm: 2,
+      faces: { '+z': 'front', '-z': 'back' },
+      casing: { color: '#e9e4d8', roughness: 0.85 },
+      glossy: false,
+      radiusMm: 0.8,
     },
-  },
+  });
+}
+
+export const TEMPLATE_DEFS: TemplateDef[] = [
   {
     kind: 'dvd',
     name: 'DVD',
@@ -228,6 +260,19 @@ export const TEMPLATE_DEFS: TemplateDef[] = [
       const h = 183;
       return wrap('dvd', `DVD, ${variantLabel(v.label, v.spine)}`, DVD[id] ? id : 'std-14', undefined, w, h, v.spine,
         wrapPreview(w, h, v.spine, { color: '#16191f', roughness: 0.35 }, true, 2.5));
+    },
+  },
+  {
+    kind: 'bluray',
+    name: 'Blu-ray',
+    group: 'Cases',
+    variants: Object.entries(BLURAY).map(([id, v]) => ({ id, label: variantLabel(v.label, v.spine), region: v.region })),
+    build: (id) => {
+      const v = BLURAY[id] ?? BLURAY['us-11'];
+      const w = 128;
+      const h = 148;
+      return wrap('bluray', `Blu-ray, ${v.region} ${variantLabel(v.label, v.spine)}`, BLURAY[id] ? id : 'us-11', v.region, w, h, v.spine,
+        wrapPreview(w, h, v.spine, { color: '#0a4da2', transmission: 0.8, roughness: 0.2 }, true, 2.5));
     },
   },
   {
@@ -332,8 +377,10 @@ export const TEMPLATE_DEFS: TemplateDef[] = [
           fullFace: false,
           // Real labels start below the metal shutter and wrap round the bottom edge onto the back.
           labelTopMm: 42,
-          shutter: { widthMm: 24, heightMm: 23, xMm: 6 },
-          radiusMm: 1.5,
+          shutter: { widthMm: 24, heightMm: 23, xMm: -4 },
+          hub: { radiusMm: 11, yMm: -4 },
+          chamferMm: 6,
+          radiusMm: 2,
         },
       }),
   },
@@ -341,14 +388,22 @@ export const TEMPLATE_DEFS: TemplateDef[] = [
     kind: 'nfc-card',
     name: 'NFC card',
     group: 'Labels & cards',
-    variants: [{ id: 'cr80', label: 'CR80 (54 × 85.6 mm, portrait)' }],
-    build: () =>
-      assemble({
+    variants: [
+      { id: 'cr80', label: 'CR80 (54 × 85.6 mm, portrait), front only' },
+      { id: 'cr80-duplex', label: 'CR80 (54 × 85.6 mm, portrait), front + back' },
+    ],
+    build: (id) => {
+      const duplex = id === 'cr80-duplex';
+      return assemble({
         kind: 'nfc-card',
         name: 'NFC card',
-        variantId: 'cr80',
+        variantId: duplex ? 'cr80-duplex' : 'cr80',
         bleedMm: 1,
-        pieces: [{ dir: 'row', specs: [{ id: 'front', label: 'Card face', w: 54, h: 85.6 }] }],
+        // Two separate cards side by side (not folded), so each gets its own bleed.
+        pieces: [
+          { dir: 'row', specs: [{ id: 'front', label: 'Card face', w: 54, h: 85.6 }] },
+          ...(duplex ? [{ dir: 'row' as const, specs: [{ id: 'back' as const, label: 'Card back', w: 54, h: 85.6 }] }] : []),
+        ],
         preview: {
           kind: 'slab',
           bodyWidthMm: 54,
@@ -356,26 +411,60 @@ export const TEMPLATE_DEFS: TemplateDef[] = [
           bodyDepthMm: 0.76,
           body: { color: '#f4f4f2', roughness: 0.4 },
           panel: 'front',
+          backPanel: duplex ? 'back' : undefined,
           fullFace: true,
           radiusMm: 3.18,
         },
-      }),
+      });
+    },
+  },
+  {
+    kind: 'nfc-sticker',
+    name: 'NFC sticker',
+    group: 'Labels & cards',
+    variants: Object.keys(NFC_STICKER_MM).map((id) => ({ id, label: `Round sticker (${id} mm)` })),
+    build: (id) => {
+      const dia = NFC_STICKER_MM[id] ?? 25;
+      return assemble({
+        kind: 'nfc-sticker',
+        name: 'NFC sticker',
+        variantId: NFC_STICKER_MM[id] ? id : '25',
+        bleedMm: 1,
+        pieces: [{ dir: 'row', specs: [{ id: 'front', label: 'Sticker', w: dia, h: dia }] }],
+        // The panel is square; the sticker is the circle inside it.
+        marks: (panels) => [{ label: 'Cut', xMm: panels[0].xMm + dia / 2, yMm: panels[0].yMm + dia / 2, diameterMm: dia }],
+        preview: {
+          kind: 'slab',
+          bodyWidthMm: dia,
+          bodyHeightMm: dia,
+          bodyDepthMm: 0.4,
+          body: { color: '#f4f4f2', roughness: 0.5 },
+          panel: 'front',
+          fullFace: true,
+          radiusMm: dia / 2,
+        },
+      });
+    },
   },
   {
     kind: 'nfc-box',
     name: 'NFC box',
     group: 'Boxes',
-    variants: Object.entries(NFC_BOX).map(([id, v]) => ({ id, label: `${v.label} (${v.w} × ${v.h} × ${v.d} mm)` })),
+    variants: [
+      ...Object.entries(NFC_BOX).map(([id, v]) => ({ id, label: `${v.label} (${v.w} × ${v.h} × ${v.d} mm)` })),
+      { id: 'wallet', label: `Card wallet, slip cover (${NFC_WALLET.w} × ${NFC_WALLET.h} mm, no spine)` },
+    ],
     build: (id) => {
-      const v = NFC_BOX[id] ?? NFC_BOX.card;
-      const variantId = NFC_BOX[id] ? id : 'card';
-      // The tag sits inside the box, behind the front: mark its spot on the front panel for placement.
-      const marks = (panels: PanelRect[]): TemplateMark[] => {
+      // The tag sits inside, behind the front: mark its spot on the front panel for placement.
+      const marksFor = (w: number, h: number) => (panels: PanelRect[]): TemplateMark[] => {
         const front = panels.find((p) => p.id === 'front')!;
-        const dia = Math.min(25, v.w * 0.6, v.h * 0.6);
+        const dia = Math.min(25, w * 0.6, h * 0.6);
         return [{ label: 'NFC tag (inside)', xMm: front.xMm + front.widthMm / 2, yMm: front.yMm + front.heightMm / 2, diameterMm: dia }];
       };
-      return tuckBox({ kind: 'nfc-box', name: `NFC box, ${v.label}`, variantId, ...v, casing: { color: '#e9e4d8', roughness: 0.85 }, radiusMm: 0.8, marks });
+      if (id === 'wallet') return wallet('NFC card wallet', NFC_WALLET.w, NFC_WALLET.h, marksFor(NFC_WALLET.w, NFC_WALLET.h));
+      const v = NFC_BOX[id] ?? NFC_BOX.card;
+      const variantId = NFC_BOX[id] ? id : 'card';
+      return tuckBox({ kind: 'nfc-box', name: `NFC box, ${v.label}`, variantId, ...v, casing: { color: '#e9e4d8', roughness: 0.85 }, radiusMm: 0.8, marks: marksFor(v.w, v.h) });
     },
   },
 ];

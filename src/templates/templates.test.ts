@@ -132,16 +132,18 @@ describe('NFC box net', () => {
   const t = buildTemplate('nfc-box', 'card');
   const p = (id: string) => t.panels.find((q) => q.id === id)!;
 
-  it('lays a tuck-end net around the front panel with the right sizes (58 × 90 × 16 card box)', () => {
-    expect(t.panels.map((q) => q.id).sort()).toEqual(['back', 'bottom', 'bottomTuck', 'front', 'glue', 'spine', 'spineRight', 'top', 'tuck']);
+  it('lays a tuck-end net around the front panel with the right sizes (58 × 90 × 6 slim card box)', () => {
+    expect(t.panels.map((q) => q.id).sort()).toEqual([
+      'back', 'bottom', 'bottomTuck', 'dustBottomLeft', 'dustBottomRight', 'dustTopLeft', 'dustTopRight', 'front', 'glue', 'spine', 'spineRight', 'top', 'tuck',
+    ]);
     expect([p('front').widthMm, p('front').heightMm]).toEqual([58, 90]);
-    expect([p('spine').widthMm, p('spine').heightMm]).toEqual([16, 90]); // side panels are depth × height
-    expect([p('top').widthMm, p('top').heightMm]).toEqual([58, 16]); // lid and bottom are width × depth
-    expect([p('bottom').widthMm, p('bottom').heightMm]).toEqual([58, 16]);
-    expect(p('bottomTuck').heightMm).toBeCloseTo(13.6);
-    expect(p('tuck').heightMm).toBeCloseTo(13.6); // 85% of the depth
-    expect(t.totalWidthMm).toBe(58 * 2 + 16 * 2 + 10 + 6); // back, sides, front, glue + bleed
-    expect(t.totalHeightMm).toBeCloseTo(13.6 + 16 + 90 + 16 + 13.6 + 6); // tuck, lid, front, bottom, tuck + bleed
+    expect([p('spine').widthMm, p('spine').heightMm]).toEqual([6, 90]); // side panels are depth × height
+    expect([p('top').widthMm, p('top').heightMm]).toEqual([58, 6]); // lid and bottom are width × depth
+    expect([p('bottom').widthMm, p('bottom').heightMm]).toEqual([58, 6]);
+    expect(p('bottomTuck').heightMm).toBe(12);
+    expect(p('tuck').heightMm).toBe(12); // 85% of the depth, but never under 12 mm so it still holds
+    expect(t.totalWidthMm).toBe(58 * 2 + 6 * 2 + 10 + 6); // back, sides, front, glue + bleed
+    expect(t.totalHeightMm).toBeCloseTo(12 + 6 + 90 + 6 + 12 + 6); // tuck, lid, front, bottom, tuck + bleed
   });
 
   it('folds where panels touch: around the front, between the lid and tuck, and at the glue flap', () => {
@@ -155,8 +157,22 @@ describe('NFC box net', () => {
     expect(neighbour(t.panels, p('top'), 'top')?.id).toBe('tuck');
     expect(neighbour(t.panels, p('bottom'), 'bottom')?.id).toBe('bottomTuck');
     expect(neighbour(t.panels, p('glue'), 'right')).toBeUndefined(); // the glue tab's outer edge is a cut
-    // 4 folds across the strip (incl. the glue tab) + lid, top tuck, bottom, bottom tuck round the front
-    expect(edgeSegments(t).filter((s) => s.kind === 'fold')).toHaveLength(8);
+    // 4 folds across the strip (incl. the glue tab) + lid, top tuck, bottom, bottom tuck round the front + 4 dust flaps
+    expect(edgeSegments(t).filter((s) => s.kind === 'fold')).toHaveLength(12);
+  });
+
+  it('dust flaps hang off the end of each side panel, fold to it only, and take its colour', () => {
+    const flaps = t.panels.filter((q) => q.id.startsWith('dust'));
+    expect(flaps).toHaveLength(4);
+    for (const f of flaps) {
+      const host = p(f.follows!);
+      expect(['spine', 'spineRight']).toContain(f.follows);
+      expect(f.xMm).toBeGreaterThanOrEqual(host.xMm - 1e-9);
+      expect(f.xMm + f.widthMm).toBeLessThanOrEqual(host.xMm + host.widthMm + 1e-9);
+      // The only neighbour is the side panel: the lid and bottom stay a cut line away.
+      const sides = (['top', 'right', 'bottom', 'left'] as const).map((sd) => neighbour(t.panels, f, sd)?.id).filter(Boolean);
+      expect(sides).toEqual([f.follows]);
+    }
   });
 
   it('only the flaps and lids bleed on their free edges; the front does not bleed at all (fully surrounded)', () => {
@@ -175,12 +191,46 @@ describe('NFC box net', () => {
     expect(m.label).toMatch(/NFC/);
   });
 
-  it('has three sizes and each fits its own net inside the canvas', () => {
-    for (const v of ['card', 'small', 'cube']) {
+  it('has a slim card box, a small box and a wallet, each with its own layout', () => {
+    for (const v of ['card', 'small', 'wallet']) {
       const box = buildTemplate('nfc-box', v);
       expect(box.variantId).toBe(v);
       expect(box.preview.kind).toBe('box');
     }
-    expect(buildTemplate('nfc-box', 'cube').panels.find((q) => q.id === 'top')!.heightMm).toBe(50);
+    expect(buildTemplate('nfc-box', 'small').panels.find((q) => q.id === 'top')!.heightMm).toBe(25);
+    expect(buildTemplate('nfc-box', 'nonsense').variantId).toBe('card');
+  });
+
+  it('the wallet is a spineless slip cover: front | back | glue tab, folded between front and back', () => {
+    const w = buildTemplate('nfc-box', 'wallet');
+    expect(w.panels.map((q) => q.id)).toEqual(['front', 'back', 'glue']);
+    expect(w.panels.some((q) => q.text)).toBe(false);
+    expect(neighbour(w.panels, w.panels[0], 'right')?.id).toBe('back');
+    expect(edgeSegments(w).filter((s) => s.kind === 'fold')).toHaveLength(2);
+    expect(w.preview).toMatchObject({ kind: 'box', faces: { '+z': 'front', '-z': 'back' } });
+    expect(w.marks).toHaveLength(1);
+  });
+});
+
+describe('NFC sticker', () => {
+  it('is a round sticker in three sizes with the cut circle marked', () => {
+    for (const [id, d] of [['25', 25], ['30', 30], ['35', 35]] as const) {
+      const t = buildTemplate('nfc-sticker', id);
+      expect([t.panels[0].widthMm, t.panels[0].heightMm]).toEqual([d, d]);
+      expect(t.marks![0].diameterMm).toBe(d);
+      expect(t.preview).toMatchObject({ kind: 'slab', radiusMm: d / 2, fullFace: true });
+    }
+    expect(buildTemplate('nfc-sticker', 'x').variantId).toBe('25');
+  });
+});
+
+describe('NFC card back', () => {
+  it('front only has one panel; front + back adds a second, separate card', () => {
+    expect(buildTemplate('nfc-card', 'cr80').panels).toHaveLength(1);
+    const t = buildTemplate('nfc-card', 'cr80-duplex');
+    expect(t.panels.map((q) => q.id)).toEqual(['front', 'back']);
+    expect(t.totalWidthMm).toBeGreaterThan(54 * 2 + 2);
+    expect(neighbour(t.panels, t.panels[0], 'right')).toBeUndefined(); // two cards, not a fold
+    expect(t.preview).toMatchObject({ kind: 'slab', panel: 'front', backPanel: 'back' });
   });
 });

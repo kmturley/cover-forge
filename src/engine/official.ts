@@ -20,12 +20,13 @@ export interface HeaderSpec {
 
 export const OFFICIAL_HEADERS: Record<TemplateKind, HeaderSpec> = {
   bluray: { text: 'Blu-ray Disc', short: 'BD', bg: '#0a4da2', fg: '#ffffff', heightMm: 11, capMm: 15 },
-  dvd: { text: 'DVD VIDEO', short: 'DVD', bg: '#141414', fg: '#ffffff', heightMm: 10, capMm: 15 },
-  vhs: { text: 'HI-FI STEREO', short: 'VHS', bg: '#141414', fg: '#ffd200', heightMm: 11, capMm: 16 },
-  cd: { text: 'COMPACT DISC · DIGITAL AUDIO', short: 'CD', bg: '#141414', fg: '#ffffff', heightMm: 8, capMm: 12 },
-  cassette: { text: 'STEREO', short: 'TAPE', bg: '#141414', fg: '#ffd200', heightMm: 8, capMm: 16 },
-  floppy: { text: '3.5" HD · 1.44 MB', short: 'HD', bg: '#22252b', fg: '#ffffff', heightMm: 6, capMm: 0 },
+  dvd: { text: 'DVD', short: 'DVD', bg: '#141414', fg: '#ffffff', heightMm: 10, capMm: 15 },
+  vhs: { text: 'VHS', short: 'VHS', bg: '#141414', fg: '#ffd200', heightMm: 11, capMm: 16 },
+  cd: { text: 'COMPACT DISC', short: 'CD', bg: '#141414', fg: '#ffffff', heightMm: 8, capMm: 12 },
+  cassette: { text: 'TAPE', short: 'TAPE', bg: '#141414', fg: '#ffd200', heightMm: 8, capMm: 16 },
+  floppy: { text: 'FLOPPY', short: 'FLOPPY', bg: '#22252b', fg: '#ffffff', heightMm: 6, capMm: 0 },
   'nfc-card': { text: 'NFC', short: 'NFC', bg: '#1a73e8', fg: '#ffffff', heightMm: 7, capMm: 0 },
+  'nfc-sticker': { text: 'NFC', short: 'NFC', bg: '#1a73e8', fg: '#ffffff', heightMm: 5, capMm: 0 },
   'nfc-box': { text: 'NFC', short: 'NFC', bg: '#1a73e8', fg: '#ffffff', heightMm: 7, capMm: 12 },
 };
 

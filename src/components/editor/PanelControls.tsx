@@ -73,7 +73,7 @@ export function PanelControls() {
       </p>
 
       <div className="seg wide" role="tablist" aria-label="Panel to edit">
-        {template.panels.map((tab) => (
+        {template.panels.filter((tab) => !tab.follows).map((tab) => (
           <button
             key={tab.id}
             role="tab"

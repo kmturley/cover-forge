@@ -1,9 +1,9 @@
 import { useEffect, useMemo, useRef, type ElementRef } from 'react';
 import { Canvas } from '@react-three/fiber';
 import { ContactShadows, Environment, OrbitControls } from '@react-three/drei';
-import { MeshStandardMaterial, type PlaneGeometry, type Texture } from 'three';
+import { MeshStandardMaterial, type BufferGeometry, type Texture } from 'three';
 import type { TemplateConfig } from '../types/template';
-import { FACE_ORDER, createBodyGeometry, createLabelGeometry, createLabelSliceGeometry, labelWrap, modelSizeMm, previewScale, printedFaces } from './PreviewGeometry';
+import { FACE_ORDER, createBodyGeometry, createLabelGeometry, createLabelSliceGeometry, createSlabBodyGeometry, createSlabFaceGeometry, labelWrap, modelSizeMm, previewScale, printedFaces } from './PreviewGeometry';
 import { createBodyMaterial, createSleeveMaterial } from './PreviewMaterials';
 
 /** Three-quarter view showing the left edge (-X), top edge (+Y) and front (+Z). Tune via the console log. */
@@ -14,11 +14,11 @@ const fmt = (v: { x: number; y: number; z: number }) => `[${v.x.toFixed(2)}, ${v
 /** The 3D model of the current template: a case/box, or a card/disk with an optional separate label. */
 function Model({ texture, template }: { texture: Texture; template: TemplateConfig }) {
   const spec = template.preview;
-  const geometry = useMemo(() => createBodyGeometry(template, spec), [template, spec]);
+  const geometry = useMemo(() => (spec.kind === 'slab' ? createSlabBodyGeometry(spec) : createBodyGeometry(template, spec)), [template, spec]);
 
   // Everything printed that isn't a face of the body: partial-face decals, or a disk label (possibly wrapping round).
   const pieces = useMemo(() => {
-    const out: { geometry: PlaneGeometry; position: [number, number, number]; rotation: [number, number, number] }[] = [];
+    const out: { geometry: BufferGeometry; position: [number, number, number]; rotation: [number, number, number] }[] = [];
     if (spec.kind === 'box') {
       for (const d of spec.decals ?? []) {
         const panel = template.panels.find((p) => p.id === d.panel);
@@ -27,7 +27,12 @@ function Model({ texture, template }: { texture: Texture; template: TemplateConf
         // On the back face, seen from behind: the plane is turned to face -z, and sits a hair off the surface (no z-fighting).
         out.push({ geometry: createLabelGeometry(template, d.panel), position: [x, 0, -spec.depthMm / 2 - 0.05], rotation: [0, Math.PI, 0] });
       }
-    } else if (!spec.fullFace) {
+    } else if (spec.fullFace) {
+      // A card or sticker: the artwork follows the body's own outline, so rounded corners show. Just proud of the surface.
+      const off = spec.bodyDepthMm / 2 + 0.03;
+      out.push({ geometry: createSlabFaceGeometry(template, spec, spec.panel), position: [0, 0, off], rotation: [0, 0, 0] });
+      if (spec.backPanel) out.push({ geometry: createSlabFaceGeometry(template, spec, spec.backPanel), position: [0, 0, -off], rotation: [0, Math.PI, 0] });
+    } else {
       const panel = template.panels.find((p) => p.id === spec.panel);
       if (panel && spec.labelTopMm !== undefined) {
         const H = spec.bodyHeightMm;
@@ -54,14 +59,17 @@ function Model({ texture, template }: { texture: Texture; template: TemplateConf
   );
   // One material per face: the printed sleeve where a panel is mapped, otherwise the body.
   const materials = useMemo(() => {
+    if (spec.kind === 'slab') return body; // slabs are one solid body; their printed faces are separate pieces
     const printed = printedFaces(spec);
     return FACE_ORDER.map((f) => (printed[f] ? sleeve : body));
   }, [spec, sleeve, body]);
   const metal = useMemo(() => new MeshStandardMaterial({ color: '#b9bcc2', metalness: 0.9, roughness: 0.35 }), []);
+  const dark = useMemo(() => new MeshStandardMaterial({ color: '#0b0c0f', roughness: 0.9 }), []);
 
   useEffect(() => () => geometry.dispose(), [geometry]);
   useEffect(() => () => pieces.forEach((p) => p.geometry.dispose()), [pieces]);
   useEffect(() => () => metal.dispose(), [metal]);
+  useEffect(() => () => dark.dispose(), [dark]);
   useEffect(
     () => () => {
       sleeve.dispose();
@@ -72,6 +80,7 @@ function Model({ texture, template }: { texture: Texture; template: TemplateConf
 
   const [, height, depth] = modelSizeMm(spec);
   const shutter = spec.kind === 'slab' ? spec.shutter : undefined;
+  const hub = spec.kind === 'slab' ? spec.hub : undefined;
   return (
     <group scale={previewScale(spec)}>
       <mesh geometry={geometry} material={materials} />
@@ -79,10 +88,26 @@ function Model({ texture, template }: { texture: Texture; template: TemplateConf
         <mesh key={i} geometry={p.geometry} material={sleeve} position={p.position} rotation={p.rotation} />
       ))}
       {shutter && (
-        // Slides over the top edge, so it shows on both faces and is a little thicker than the body.
-        <mesh material={metal} position={[shutter.xMm, height / 2 - shutter.heightMm / 2, 0]}>
-          <boxGeometry args={[shutter.widthMm, shutter.heightMm, depth + 0.5]} />
-        </mesh>
+        // Slides over the top edge, so it shows on both faces and is a little thicker than the body. The window is dark.
+        <>
+          <mesh material={metal} position={[shutter.xMm, height / 2 - shutter.heightMm / 2, 0]}>
+            <boxGeometry args={[shutter.widthMm, shutter.heightMm, depth + 0.5]} />
+          </mesh>
+          <mesh material={dark} position={[shutter.xMm + shutter.widthMm * 0.18, height / 2 - shutter.heightMm * 0.55, 0]}>
+            <boxGeometry args={[shutter.widthMm * 0.26, shutter.heightMm * 0.58, depth + 0.56]} />
+          </mesh>
+        </>
+      )}
+      {hub && (
+        // The drive hub on the back: a metal disc with the square spindle hole.
+        <>
+          <mesh material={metal} position={[0, hub.yMm, -depth / 2 - 0.12]} rotation={[Math.PI / 2, 0, 0]}>
+            <cylinderGeometry args={[hub.radiusMm, hub.radiusMm, 0.3, 40]} />
+          </mesh>
+          <mesh material={dark} position={[0, hub.yMm, -depth / 2 - 0.3]}>
+            <boxGeometry args={[hub.radiusMm * 0.34, hub.radiusMm * 0.34, 0.2]} />
+          </mesh>
+        </>
       )}
     </group>
   );

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { TEMPLATE_DEFS, buildTemplate } from '../templates';
-import { FACE_ORDER, TARGET_SIZE_UNITS, createBodyGeometry, createLabelGeometry, createLabelSliceGeometry, labelWrap, modelSizeMm, panelUvRange, previewScale, printedFaces } from './PreviewGeometry';
+import { FACE_ORDER, TARGET_SIZE_UNITS, createBodyGeometry, createLabelGeometry, createLabelSliceGeometry, createSlabBodyGeometry, createSlabFaceGeometry, labelWrap, modelSizeMm, panelUvRange, previewScale, printedFaces, slabOutline } from './PreviewGeometry';
 
 describe('panelUvRange', () => {
   it('excludes bleed and splits the texture back | spine | front', () => {
@@ -96,5 +96,47 @@ describe('label wrap (floppy)', () => {
     expect(b0).toBeCloseTo(uv(65.3, 69.85)[1]);
     expect(a1).toBeCloseTo(panelUvRange(t, 'front').v1);
     expect(c0).toBeCloseTo(panelUvRange(t, 'front').v0);
+  });
+});
+
+describe('slab bodies (cards, disks, stickers)', () => {
+  const slab = (kind: 'nfc-card' | 'floppy' | 'nfc-sticker', id: string) => {
+    const t = buildTemplate(kind, id);
+    return { t, spec: t.preview as Extract<typeof t.preview, { kind: 'slab' }> };
+  };
+
+  it('a card keeps its real 3.18 mm corners (the outline has arcs, not a thin box edge)', () => {
+    const { spec } = slab('nfc-card', 'cr80');
+    const pts = slabOutline(spec).getPoints(12);
+    expect(pts.length).toBeGreaterThan(30);
+    // The corner sits 3.18 mm in from the corner point: nothing lies at the sharp corner itself.
+    expect(pts.some((p) => Math.abs(p.x - 27) < 1e-6 && Math.abs(p.y - 42.8) < 1e-6)).toBe(false);
+    expect(Math.max(...pts.map((p) => p.x))).toBeCloseTo(27);
+  });
+
+  it('a sticker is a circle', () => {
+    const { spec } = slab('nfc-sticker', '25');
+    const pts = slabOutline(spec).getPoints(24);
+    for (const p of pts) expect(Math.hypot(p.x, p.y)).toBeCloseTo(12.5, 1);
+  });
+
+  it('a floppy has a cut top-right corner', () => {
+    const { spec } = slab('floppy', 'face');
+    const pts = slabOutline(spec).getPoints(12);
+    expect(pts.some((p) => Math.abs(p.x - 45) < 1e-6 && Math.abs(p.y - 47) < 1e-6)).toBe(false);
+    expect(pts.some((p) => Math.abs(p.x - 45) < 1e-6 && Math.abs(p.y - (47 - 6)) < 1e-6)).toBe(true);
+  });
+
+  it('body thickness and printed-face UVs follow the template', () => {
+    const { t, spec } = slab('nfc-card', 'cr80-duplex');
+    const body = createSlabBodyGeometry(spec);
+    body.computeBoundingBox();
+    expect(body.boundingBox!.max.z - body.boundingBox!.min.z).toBeCloseTo(0.76);
+    const back = createSlabFaceGeometry(t, spec, 'back');
+    const uv = back.getAttribute('uv');
+    const us = Array.from({ length: uv.count }, (_, i) => uv.getX(i));
+    const r = panelUvRange(t, 'back');
+    expect(Math.min(...us)).toBeCloseTo(r.u0);
+    expect(Math.max(...us)).toBeCloseTo(r.u1);
   });
 });

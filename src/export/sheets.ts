@@ -85,6 +85,9 @@ export const LABEL_SHEETS: LabelSheet[] = [
 
 export const labelSheetsFor = (kind: TemplateKind): LabelSheet[] => LABEL_SHEETS.filter((s) => s.kinds.includes(kind));
 
+/** A die-cut sheet takes a template only when it is one printed piece (a card with a back is printed on plain paper). */
+export const fitsLabelSheet = (s: LabelSheet | undefined, t: TemplateConfig): boolean => !!s && s.kinds.includes(t.kind) && t.panels.length === 1;
+
 export const getLabelSheet = (id: string | undefined): LabelSheet | undefined => LABEL_SHEETS.find((s) => s.id === id);
 
 /**
@@ -145,6 +148,6 @@ export function imposeOnLabels(sheet: LabelSheet, t: TemplateConfig): Imposition
 /** The layout for the chosen output: a die-cut label sheet if one is selected, otherwise automatic multi-up on plain paper. */
 export function computeLayout(t: TemplateConfig, paper: PaperSize, labelSheetId?: string): Imposition {
   const sheet = getLabelSheet(labelSheetId);
-  if (sheet && sheet.kinds.includes(t.kind)) return imposeOnLabels(sheet, t);
+  if (sheet && fitsLabelSheet(sheet, t)) return imposeOnLabels(sheet, t);
   return impose(t.totalWidthMm, t.totalHeightMm, paper);
 }

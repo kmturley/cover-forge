@@ -36,7 +36,7 @@ export async function searchGames(query: string, signal?: AbortSignal): Promise<
 interface AppDetailsResponse {
   [appId: string]: {
     success: boolean;
-    data?: { screenshots?: { path_full: string }[]; developers?: string[]; release_date?: { date?: string } };
+    data?: { name?: string; screenshots?: { path_full: string }[]; developers?: string[]; release_date?: { date?: string } };
   };
 }
 
@@ -68,4 +68,17 @@ export async function createGameItem(result: SteamSearchResult): Promise<MediaIt
     year,
     assets: buildAssetUrls(result.appId, screenshots),
   };
+}
+
+/** Looks a game up by its Steam app id (for links like `?app=1091500`); null if Steam doesn't know it. */
+export async function fetchGameById(appId: number): Promise<MediaItem | null> {
+  try {
+    const res = await fetch(proxied(`https://store.steampowered.com/api/appdetails?appids=${appId}`));
+    if (!res.ok) return null;
+    const entry = ((await res.json()) as AppDetailsResponse)[appId];
+    if (!entry?.success || !entry.data?.name) return null;
+    return await createGameItem({ appId, name: entry.data.name, thumbnail: '' });
+  } catch {
+    return null;
+  }
 }

@@ -99,8 +99,8 @@ describe('shared and override settings', () => {
     expect(brandOf('a')).toBe('steam'); // follows shared again
   });
 
-  it('defaults the spine text height to 4 mm', () => {
-    expect(initialState.shared.spine.textHeightMm).toBe(4);
+  it('defaults the spine text height to automatic', () => {
+    expect(initialState.shared.spine.textHeightMm).toBeUndefined();
   });
 });
 

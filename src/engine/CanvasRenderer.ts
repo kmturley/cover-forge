@@ -43,11 +43,12 @@ export function renderCover(
 
   for (const panel of t.panels) {
     const area = paintRect(t, panel);
-    const r = resolvePanel(shared, item, panel.id);
+    const r = resolvePanel(shared, item, panel.follows ?? panel.id);
     if (r.backgroundColor) {
       ctx.fillStyle = r.backgroundColor;
       ctx.fillRect(area.xMm * px, area.yMm * px, area.widthMm * px, area.heightMm * px);
     }
+    if (panel.follows) continue; // a dust flap is plain: no image, logo or code
 
     const img = getImage(r.imageUrl);
     if (!img) continue;
@@ -80,14 +81,14 @@ export function renderCover(
   }
 
   // Brand logos sit above every image and the spine text.
-  for (const panel of t.panels) {
+  for (const panel of t.panels.filter((q) => !q.follows)) {
     const { logo } = resolvePanel(shared, item, panel.id);
     const brand = getBrand(logo.brand);
     if (brand && item) drawLogo(ctx, t, panel, brand, logo, px);
   }
 
   // QR codes and barcodes go on top of logos.
-  for (const panel of t.panels) {
+  for (const panel of t.panels.filter((q) => !q.follows)) {
     const { code } = resolvePanel(shared, item, panel.id);
     if (item && code.kind !== 'none') drawCode(ctx, t, panel, code, item, px);
   }

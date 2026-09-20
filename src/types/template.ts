@@ -2,7 +2,7 @@
  * Every artwork region a template can have. Settings (shared and per item) are keyed by this id, so the same
  * "front" styling carries across templates; a template just uses the subset it needs.
  */
-export type PanelId = 'front' | 'back' | 'spine' | 'spineRight' | 'flap' | 'top' | 'bottom' | 'glue' | 'tuck' | 'bottomTuck';
+export type PanelId = 'front' | 'back' | 'spine' | 'spineRight' | 'flap' | 'top' | 'bottom' | 'glue' | 'tuck' | 'bottomTuck' | 'dustTopLeft' | 'dustTopRight' | 'dustBottomLeft' | 'dustBottomRight';
 
 export type SpineOrientation = 'vertical' | 'horizontal';
 
@@ -16,11 +16,13 @@ export interface PanelRect {
   heightMm: number;
   /** Set on spine-like panels: the panel also carries the item's title, running this way. */
   text?: SpineOrientation;
+  /** A plain panel with no controls of its own (a dust flap): it takes its colour from this panel. */
+  follows?: PanelId;
 }
 
 export type Region = 'US' | 'EU';
 
-export type TemplateKind = 'bluray' | 'dvd' | 'vhs' | 'cd' | 'cassette' | 'floppy' | 'nfc-card' | 'nfc-box';
+export type TemplateKind = 'bluray' | 'dvd' | 'vhs' | 'cd' | 'cassette' | 'floppy' | 'nfc-card' | 'nfc-sticker' | 'nfc-box';
 
 /** Which 3D face a panel is mapped onto (BoxGeometry face order). */
 export type BoxFace = '+x' | '-x' | '+y' | '-y' | '+z' | '-z';
@@ -58,6 +60,8 @@ export type PreviewSpec =
       bodyDepthMm: number;
       body: PreviewMaterial;
       panel: PanelId;
+      /** Printed on the other face (a card's back). */
+      backPanel?: PanelId;
       /** true: the panel fills the whole face (a card). false: it's a separate label sitting on the body (a disk). */
       fullFace: boolean;
       /**
@@ -67,6 +71,10 @@ export type PreviewSpec =
       labelTopMm?: number;
       /** A metal shutter on the front top edge (a 3.5" diskette). xMm is its centre's offset from the body centre. */
       shutter?: { widthMm: number; heightMm: number; xMm: number };
+      /** A metal hub on the back face, centred `yMm` from the body's centre (a diskette's drive hub). */
+      hub?: { radiusMm: number; yMm: number };
+      /** Size of the cut corner at the top right (a diskette's), replacing that rounded corner. */
+      chamferMm?: number;
       radiusMm: number;
     };
 

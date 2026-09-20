@@ -81,7 +81,7 @@ describe('session', () => {
     const s = restoreSession(v1, initialState);
     expect(s.variantId).toBe('us-12.5');
     expect(s.templateKind).toBe('bluray');
-    expect(s.shared.spine).toEqual({ fontFamily: 'Georgia, serif', textHeightMm: 4, color: '#ff0' });
+    expect(s.shared.spine).toEqual({ fontFamily: 'Georgia, serif', color: '#ff0' });
     expect(s.items[0].panels?.back?.transform).toEqual({ scale: 2 });
   });
 });

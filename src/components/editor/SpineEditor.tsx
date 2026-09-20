@@ -1,5 +1,6 @@
 import { useAppDispatch, useAppState, useSelectedItem } from '../../context/AppContext';
 import { resolveSpine } from '../../engine/resolve';
+import { defaultCapHeightMm } from '../../engine/SpineTypography';
 import type { SpineSettings } from '../../types/editor';
 import { NumberSlider } from './NumberSlider';
 
@@ -12,11 +13,13 @@ const FONTS = [
 
 /** Spine text controls. Font, colour and height follow the edit mode; the text itself is always per item. */
 export function SpineTextControls({ target }: { target: string | null }) {
-  const { shared, editMode } = useAppState();
+  const { shared, editMode, template } = useAppState();
   const item = useSelectedItem();
   const dispatch = useAppDispatch();
   if (!item) return null;
   const eff = resolveSpine(shared, item);
+  const spine = template.panels.find((q) => q.text);
+  const auto = spine ? defaultCapHeightMm(spine, spine.text) : 4;
   const patch = (p: Partial<SpineSettings>) =>
     dispatch({ type: 'updateSpine', id: target, patch: p });
 
@@ -38,9 +41,12 @@ export function SpineTextControls({ target }: { target: string | null }) {
         max={12}
         step={0.5}
         decimals={1}
-        value={eff.textHeightMm}
+        value={eff.textHeightMm ?? auto}
         onChange={(textHeightMm) => patch({ textHeightMm })}
       />
+      {eff.textHeightMm !== undefined && (
+        <button onClick={() => patch({ textHeightMm: undefined })}>Automatic size ({auto} mm for this template)</button>
+      )}
       <label className="field">
         <span>Font</span>
         <select value={eff.fontFamily} onChange={(e) => patch({ fontFamily: e.target.value })}>
