@@ -11,8 +11,16 @@ npm run type-check
 npm run lint
 npm test             # Vitest unit tests (imposition, UV mapping, Steam URLs, reducer)
 npm run build
-npm run deploy       # publish dist/ to GitHub Pages via gh-pages
 ```
+
+## Deploy (GitHub Pages)
+
+`.github/workflows/deploy.yml` type-checks, lints, tests and builds on every push to `main`, then publishes `dist/` to GitHub Pages. One-time setup:
+
+1. **Settings → Pages → Source: GitHub Actions.**
+2. *(Optional)* **Settings → Secrets and variables → Actions → Variables:** set `VITE_STEAM_PROXY_URL` to override the search relay. It defaults to the public `https://corx.venipa.workers.dev`, a third-party Cloudflare Worker that works today but comes with no guarantees and sees your users' search terms. For anything you depend on, deploy `worker/steam-proxy.js` to your own Cloudflare account and point the variable at it. A URL ending in `/` is used as a cors-anywhere-style prefix instead (`<prefix><target-url>`).
+
+The build uses relative asset paths (`base: './'`), so it works under `https://<user>.github.io/<repo>/`.
 
 ## How it works
 
