@@ -46,8 +46,6 @@ input[type='color'] { width: 40px; height: 26px; padding: 0; border: 1px solid v
 @keyframes spin { to { transform: rotate(360deg); } }
 .results, .queue ul { list-style: none; margin: 8px 0 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
 .results button { display: flex; align-items: center; gap: 8px; width: 100%; text-align: left; }
-.results img { width: 60px; height: 28px; object-fit: cover; border-radius: 3px; }
-.results span:nth-child(2) { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .queue li { display: flex; align-items: center; gap: 4px; border: 1px solid transparent; border-radius: 8px; }
 .queue li.selected { border-color: var(--accent); background: var(--panel-2); }
 .queue .item { flex: 1; display: flex; align-items: center; gap: 8px; text-align: left; background: none; border: none; min-width: 0; }
@@ -116,3 +114,19 @@ input[type='color'] { width: 40px; height: 26px; padding: 0; border: 1px solid v
 .button-row { display: flex; flex-wrap: wrap; gap: 6px; }
 .muted.small { font-size: 11px; margin-top: 10px; }
 .muted a { color: var(--accent); }
+.sheet-preview .warn { display: block; margin-top: 4px; color: #f59e0b; }
+
+.code-preview { margin: 4px 0 8px; font-size: 11px; color: var(--muted); overflow-wrap: anywhere; }
+.warn.small, .error.small { font-size: 12px; margin: 4px 0 8px; }
+.warn { color: #f59e0b; }
+
+.provider-tabs { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 10px; }
+.provider-tabs button { flex: 1; padding: 4px 6px; font-size: 12px; }
+.provider-tabs .active { background: var(--accent); border-color: var(--accent); color: #fff; }
+.result-thumb { width: 36px; height: 36px; object-fit: cover; border-radius: 3px; flex: none; background: var(--panel); }
+.result-text { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.result-title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.result-text small { color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.custom-entry { display: flex; flex-direction: column; }
+.custom-entry input[type='file'] { font-size: 12px; width: 100%; }
+.two-col { display: grid; grid-template-columns: 1fr 70px; gap: 8px; }

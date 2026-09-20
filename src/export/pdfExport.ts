@@ -1,7 +1,8 @@
 import { jsPDF } from 'jspdf';
 import type { TemplateConfig } from '../types/template';
+import { edgeSegments } from '../templates/geometry';
 import type { Imposition } from './imposition';
-import { rotateClockwise } from './rasterExport';
+import { cropCanvas, rotateClockwise } from './rasterExport';
 
 interface Segment {
   x1: number;
@@ -13,18 +14,9 @@ interface Segment {
 
 const JPEG_QUALITY = 0.95;
 
-/** Trim rectangle and panel fold lines in item-local mm. */
+/** Cut (solid) and fold (dashed) lines in item-local mm, derived from the template's panel edges. */
 export function guideSegments(t: TemplateConfig): Segment[] {
-  const b = t.bleedMm;
-  const [x0, y0, x1, y1] = [b, b, b + t.trimWidthMm, b + t.trimHeightMm];
-  const segs: Segment[] = [
-    { x1: x0, y1: y0, x2: x1, y2: y0, dashed: false },
-    { x1: x1, y1: y0, x2: x1, y2: y1, dashed: false },
-    { x1: x1, y1: y1, x2: x0, y2: y1, dashed: false },
-    { x1: x0, y1: y1, x2: x0, y2: y0, dashed: false },
-  ];
-  for (const p of t.panels.slice(1)) segs.push({ x1: p.xMm, y1: y0, x2: p.xMm, y2: y1, dashed: true });
-  return segs;
+  return edgeSegments(t).map((s) => ({ x1: s.x1, y1: s.y1, x2: s.x2, y2: s.y2, dashed: s.kind === 'fold' }));
 }
 
 /** Maps an item-local point to sheet coordinates for a placement (90° CW when rotated). */
@@ -32,17 +24,50 @@ function toSheet(x: number, y: number, itemH: number, px: number, py: number, ro
   return rotated ? [px + (itemH - y), py + x] : [px + x, py + y];
 }
 
+/** The template's cut/fold lines positioned on a sheet for an item placed at (px, py) mm (90° CW when rotated). */
+export function placedGuides(t: TemplateConfig, px: number, py: number, rotated: boolean): Segment[] {
+  return guideSegments(t).map((s) => {
+    const [x1, y1] = toSheet(s.x1, s.y1, t.totalHeightMm, px, py, rotated);
+    const [x2, y2] = toSheet(s.x2, s.y2, t.totalHeightMm, px, py, rotated);
+    return { x1, y1, x2, y2, dashed: s.dashed };
+  });
+}
+
+export type { Segment };
+
+export interface PlacedMark {
+  x: number;
+  y: number;
+  r: number;
+  label: string;
+}
+
+/** The template's guide marks positioned on a sheet for an item placed at (px, py) mm. */
+export function placedMarks(t: TemplateConfig, px: number, py: number, rotated: boolean): PlacedMark[] {
+  return (t.marks ?? []).map((m) => {
+    const [x, y] = toSheet(m.xMm, m.yMm, t.totalHeightMm, px, py, rotated);
+    return { x, y, r: m.diameterMm / 2, label: m.label };
+  });
+}
+
 /** Vector cut (solid) and fold (dashed) lines for one item placed at (px, py) mm. */
 function drawVectorGuides(pdf: jsPDF, t: TemplateConfig, px: number, py: number, rotated: boolean): void {
   pdf.setLineWidth(0.2);
-  for (const s of guideSegments(t)) {
-    const [ax, ay] = toSheet(s.x1, s.y1, t.totalHeightMm, px, py, rotated);
-    const [bx, by] = toSheet(s.x2, s.y2, t.totalHeightMm, px, py, rotated);
+  for (const s of placedGuides(t, px, py, rotated)) {
     pdf.setDrawColor(s.dashed ? '#22d3ee' : '#ff2d95');
     pdf.setLineDashPattern(s.dashed ? [2, 1.5] : [], 0);
-    pdf.line(ax, ay, bx, by);
+    pdf.line(s.x1, s.y1, s.x2, s.y2);
+  }
+  pdf.setDrawColor('#f59e0b');
+  pdf.setTextColor('#f59e0b');
+  pdf.setLineDashPattern([1.5, 1], 0);
+  pdf.setFontSize(7);
+  for (const m of placedMarks(t, px, py, rotated)) {
+    pdf.circle(m.x, m.y, m.r, 'S');
+    pdf.text(m.label, m.x, m.y, { align: 'center', baseline: 'middle' });
   }
   pdf.setLineDashPattern([], 0);
+  pdf.setTextColor('#000000');
 }
 
 const orientation = (w: number, h: number) => (w > h ? 'landscape' : 'portrait');
@@ -77,6 +102,12 @@ export function buildSheetsPdf(
     items.forEach((canvas, i) => {
       const p = layout.placements[i];
       if (!p) return;
+      if (p.crop) {
+        // Die-cut label sheet: print only the label's part of the artwork (after any turn), with no cut/fold guides.
+        const part = cropCanvas(p.rotated ? rotateClockwise(canvas) : canvas, p.crop, template.dpiScale);
+        pdf.addImage(part.toDataURL('image/jpeg', JPEG_QUALITY), 'JPEG', p.xMm, p.yMm, p.crop.widthMm, p.crop.heightMm, undefined, 'FAST');
+        return;
+      }
       const src = p.rotated ? rotateClockwise(canvas) : canvas;
       const scale = layout.oversize ? Math.min(1, pw / layout.cellWidthMm, ph / layout.cellHeightMm) : 1;
       const w = layout.cellWidthMm * scale;

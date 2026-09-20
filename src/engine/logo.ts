@@ -3,11 +3,12 @@ import type { LogoSettings } from '../types/editor';
 import { brandAspect, brandHeight, brandPath2D, brandWidth, type Brand } from '../brands';
 import { paintRect } from './placement';
 
-/** Default logo width for front/back; the spine uses a share of its own (narrow) width instead. */
+/** Default logo width for big panels; spine-like panels use a share of their short side, narrow panels a share of their width. */
 const DEFAULT_WIDTH_MM = 24;
-const SPINE_WIDTH_SHARE = 0.7;
+const SPINE_SHARE = 0.7;
+const SMALL_PANEL_SHARE = 0.35;
 const BOTTOM_MARGIN_MM = 8;
-const SPINE_BOTTOM_MARGIN_MM = 6;
+const SPINE_MARGIN_MM = 6;
 
 export interface LogoPlacement {
   widthMm: number;
@@ -25,12 +26,17 @@ export interface LogoPlacement {
  */
 export function computeLogoPlacement(t: TemplateConfig, panel: PanelRect, aspect: number, logo: LogoSettings): LogoPlacement {
   const area = paintRect(t, panel);
-  const defaultWidthMm = panel.id === 'spine' ? panel.widthMm * SPINE_WIDTH_SHARE : DEFAULT_WIDTH_MM;
+  const shortSide = Math.min(panel.widthMm, panel.heightMm);
+  const defaultWidthMm = panel.text ? shortSide * SPINE_SHARE : Math.min(DEFAULT_WIDTH_MM, panel.widthMm * SMALL_PANEL_SHARE);
   const widthMm = logo.widthMm ?? defaultWidthMm;
   const heightMm = widthMm / aspect;
-  const margin = panel.id === 'spine' ? SPINE_BOTTOM_MARGIN_MM : BOTTOM_MARGIN_MM;
-  const centeredX = panel.xMm + (panel.widthMm - widthMm) / 2 - area.xMm;
-  const bottomY = panel.yMm + panel.heightMm - margin - heightMm - area.yMm;
+  let centeredX = panel.xMm + (panel.widthMm - widthMm) / 2 - area.xMm;
+  let bottomY = panel.yMm + panel.heightMm - (panel.text ? SPINE_MARGIN_MM : BOTTOM_MARGIN_MM) - heightMm - area.yMm;
+  if (panel.text === 'horizontal') {
+    // A wide, short spine (J-card): the mark sits at the right end, vertically centred.
+    centeredX = panel.xMm + panel.widthMm - SPINE_MARGIN_MM - widthMm - area.xMm;
+    bottomY = panel.yMm + (panel.heightMm - heightMm) / 2 - area.yMm;
+  }
   return { widthMm, heightMm, xMm: logo.xMm ?? centeredX, yMm: logo.yMm ?? bottomY, area, defaultWidthMm };
 }
 

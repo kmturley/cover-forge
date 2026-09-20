@@ -1,12 +1,13 @@
 import type { MediaItem } from '../types/media';
 import type { PanelId } from '../types/template';
-import { DEFAULT_LOGO, DEFAULT_TRANSFORM, type ImageRef, type LogoSettings, type PanelTransform, type SharedSettings, type SpineSettings } from '../types/editor';
+import { DEFAULT_CODE, DEFAULT_LOGO, DEFAULT_TRANSFORM, type CodeSettings, type ImageRef, type LogoSettings, type PanelTransform, type SharedSettings, type SpineSettings } from '../types/editor';
 import { defaultImageRef, resolveImageRef } from './imageLibrary';
 
 /** Fills the whole canvas before any panel is painted. */
 export const BASE_BACKGROUND = '#111111';
 
-export const PANEL_IDS: PanelId[] = ['front', 'spine', 'back'];
+/** Every panel id any template uses; used to scan settings regardless of the active template. */
+export const PANEL_IDS: PanelId[] = ['front', 'spine', 'spineRight', 'back', 'flap', 'top', 'bottom', 'glue', 'tuck', 'bottomTuck'];
 
 export interface ResolvedPanel {
   /** null = no panel colour; the base background shows through. */
@@ -15,6 +16,7 @@ export interface ResolvedPanel {
   imageUrl: string | null;
   transform: PanelTransform;
   logo: LogoSettings;
+  code: CodeSettings;
 }
 
 /**
@@ -39,6 +41,7 @@ export function resolvePanel(shared: SharedSettings, item: MediaItem | null, id:
     imageUrl,
     transform: { ...DEFAULT_TRANSFORM, ...s?.transform, ...o?.transform },
     logo: { ...DEFAULT_LOGO, ...s?.logo, ...o?.logo },
+    code: { ...DEFAULT_CODE, ...s?.code, ...o?.code },
   };
 }
 
@@ -50,7 +53,7 @@ export function resolveSpine(shared: SharedSettings, item: MediaItem | null): Sp
 export function panelHasOverride(item: MediaItem | null, id: PanelId): boolean {
   const p = item?.panels?.[id];
   const hasPanel = !!p && Object.values(p).some((v) => v !== undefined);
-  const hasSpine = id === 'spine' && !!item?.spineOverride && Object.keys(item.spineOverride).length > 0;
+  const hasSpine = (id === 'spine' || id === 'spineRight') && !!item?.spineOverride && Object.keys(item.spineOverride).length > 0;
   return hasPanel || hasSpine;
 }
 

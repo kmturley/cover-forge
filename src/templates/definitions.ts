@@ -1,0 +1,381 @@
+import type { PanelId, PanelRect, PreviewMaterial, PreviewSpec, Region, SpineOrientation, TemplateConfig, TemplateKind, TemplateMark, TemplateVariant } from '../types/template';
+
+export const PX_PER_MM = 300 / 25.4;
+
+/** A panel before it has a position: just its size. */
+interface Spec {
+  id: PanelId;
+  label: string;
+  w: number;
+  h: number;
+  text?: SpineOrientation;
+}
+
+/** Panels laid out edge to edge: a row (left→right, folds are vertical) or a column (top→bottom). */
+interface Piece {
+  dir: 'row' | 'col';
+  specs: Spec[];
+}
+
+/** A piece whose panels sit at explicit offsets (a cross-shaped box net). Offsets are from the piece's top-left, in mm. */
+interface FreePiece {
+  dir: 'free';
+  specs: (Spec & { x: number; y: number })[];
+}
+
+interface Build {
+  kind: TemplateKind;
+  name: string;
+  variantId: string;
+  region?: Region;
+  bleedMm: number;
+  pieces: (Piece | FreePiece)[];
+  preview: PreviewSpec;
+  /** Given the piece origins, guide marks in canvas mm. Called once panel positions are known. */
+  marks?: (panels: PanelRect[]) => TemplateMark[];
+}
+
+/** Separate pieces (e.g. a CD booklet and its tray card) sit side by side with room for both bleeds plus a little slack. */
+const pieceGap = (bleed: number) => bleed * 2 + 2;
+
+function assemble(b: Build): TemplateConfig {
+  const panels: PanelRect[] = [];
+  let cursorX = b.bleedMm;
+  let tallest = 0;
+  for (const piece of b.pieces) {
+    let x = cursorX;
+    let y = b.bleedMm;
+    let width = 0;
+    let height = 0;
+    for (const s of piece.specs) {
+      if (piece.dir === 'free') {
+        const f = s as FreePiece['specs'][number];
+        panels.push({ id: f.id, label: f.label, xMm: cursorX + f.x, yMm: y + f.y, widthMm: f.w, heightMm: f.h, text: f.text });
+        width = Math.max(width, f.x + f.w);
+        height = Math.max(height, f.y + f.h);
+        continue;
+      }
+      panels.push({ id: s.id, label: s.label, xMm: x, yMm: y, widthMm: s.w, heightMm: s.h, text: s.text });
+      if (piece.dir === 'row') {
+        x += s.w;
+        width += s.w;
+        height = Math.max(height, s.h);
+      } else {
+        y += s.h;
+        height += s.h;
+        width = Math.max(width, s.w);
+      }
+    }
+    cursorX += width + pieceGap(b.bleedMm);
+    tallest = Math.max(tallest, height);
+  }
+  return {
+    id: `${b.kind}-${b.variantId}`,
+    kind: b.kind,
+    name: b.name,
+    region: b.region,
+    variantId: b.variantId,
+    bleedMm: b.bleedMm,
+    totalWidthMm: cursorX - pieceGap(b.bleedMm) + b.bleedMm,
+    totalHeightMm: tallest + b.bleedMm * 2,
+    panels,
+    marks: b.marks?.(panels),
+    dpiScale: PX_PER_MM,
+    preview: b.preview,
+  };
+}
+
+export interface TemplateDef {
+  kind: TemplateKind;
+  name: string;
+  group: 'Cases' | 'Boxes' | 'Labels & cards';
+  variants: TemplateVariant[];
+  build(variantId: string): TemplateConfig;
+}
+
+/** Back | spine | front, the layout shared by keepcases and slipcases. `w`/`h` are the front panel's size. */
+function wrap(kind: TemplateKind, name: string, variantId: string, region: Region | undefined, w: number, h: number, spine: number, preview: PreviewSpec, bleed = 3): TemplateConfig {
+  return assemble({
+    kind,
+    name,
+    variantId,
+    region,
+    bleedMm: bleed,
+    pieces: [
+      {
+        dir: 'row',
+        specs: [
+          { id: 'back', label: 'Back', w, h },
+          { id: 'spine', label: 'Spine', w: spine, h, text: 'vertical' },
+          { id: 'front', label: 'Front', w, h },
+        ],
+      },
+    ],
+    preview,
+  });
+}
+
+const wrapPreview = (w: number, h: number, depth: number, casing: PreviewMaterial, glossy: boolean, radius: number): PreviewSpec => ({
+  kind: 'box',
+  widthMm: w,
+  heightMm: h,
+  depthMm: depth,
+  faces: { '-x': 'spine', '+z': 'front', '-z': 'back' },
+  casing,
+  glossy,
+  radiusMm: radius,
+});
+
+const BLURAY: Record<string, { label: string; region: Region; spine: number }> = {
+  'us-11': { label: 'Standard', region: 'US', spine: 11 },
+  'us-12.5': { label: 'Elite', region: 'US', spine: 12.5 },
+  'eu-14': { label: 'Standard', region: 'EU', spine: 14 },
+};
+
+const DVD: Record<string, { label: string; spine: number }> = {
+  'std-14': { label: 'Standard', spine: 14 },
+  'slim-9': { label: 'Slim', spine: 9 },
+};
+
+const NFC_BOX: Record<string, { label: string; w: number; h: number; d: number }> = {
+  card: { label: 'Card box', w: 58, h: 90, d: 16 },
+  small: { label: 'Small box', w: 60, h: 60, d: 25 },
+  cube: { label: 'Cube', w: 50, h: 50, d: 50 },
+};
+
+const variantLabel = (label: string, mm: number) => `${label} (${mm} mm)`;
+
+interface TuckBox {
+  kind: TemplateKind;
+  name: string;
+  variantId: string;
+  /** Front/back size and the depth of the sides, mm. The spine (a side) runs along the long edge when h > w. */
+  w: number;
+  h: number;
+  d: number;
+  casing: PreviewMaterial;
+  radiusMm: number;
+  marks?: (panels: PanelRect[]) => TemplateMark[];
+}
+
+/**
+ * A straight-tuck-end box net. A strip [ back | left side | front | right side | glue tab ] folds into a tube and only
+ * the glue tab needs sticking (double-sided tape works). The lid above the front and the bottom below it each carry
+ * a tuck flap that slots inside the box, so the ends close with a fold and a tuck and no glue.
+ */
+function tuckBox(b: TuckBox): TemplateConfig {
+  const { w, h, d } = b;
+  const glue = 10;
+  const tuck = Math.round(d * 0.85 * 10) / 10;
+  const stripY = tuck + d;
+  return assemble({
+    kind: b.kind,
+    name: b.name,
+    variantId: b.variantId,
+    bleedMm: 3,
+    pieces: [
+      {
+        dir: 'free',
+        specs: [
+          { id: 'back', label: 'Back', w, h, x: 0, y: stripY },
+          { id: 'spine', label: 'Side (spine)', w: d, h, x: w, y: stripY, text: 'vertical' },
+          { id: 'front', label: 'Front', w, h, x: w + d, y: stripY },
+          { id: 'spineRight', label: 'Side (right)', w: d, h, x: 2 * w + d, y: stripY },
+          { id: 'glue', label: 'Glue tab', w: glue, h, x: 2 * w + 2 * d, y: stripY },
+          { id: 'tuck', label: 'Top tuck flap', w, h: tuck, x: w + d, y: 0 },
+          { id: 'top', label: 'Top (lid)', w, h: d, x: w + d, y: tuck },
+          { id: 'bottom', label: 'Bottom', w, h: d, x: w + d, y: stripY + h },
+          { id: 'bottomTuck', label: 'Bottom tuck flap', w, h: tuck, x: w + d, y: stripY + h + d },
+        ],
+      },
+    ],
+    marks: b.marks,
+    preview: {
+      kind: 'box',
+      widthMm: w,
+      heightMm: h,
+      depthMm: d,
+      faces: { '+z': 'front', '-z': 'back', '-x': 'spine', '+x': 'spineRight', '+y': 'top', '-y': 'bottom' },
+      casing: b.casing,
+      glossy: false,
+      radiusMm: b.radiusMm,
+    },
+  });
+}
+
+export const TEMPLATE_DEFS: TemplateDef[] = [
+  {
+    kind: 'bluray',
+    name: 'Blu-ray',
+    group: 'Cases',
+    variants: Object.entries(BLURAY).map(([id, v]) => ({ id, label: variantLabel(v.label, v.spine), region: v.region })),
+    build: (id) => {
+      const v = BLURAY[id] ?? BLURAY['us-11'];
+      const w = 128;
+      const h = 148;
+      return wrap('bluray', `Blu-ray, ${v.region} ${variantLabel(v.label, v.spine)}`, BLURAY[id] ? id : 'us-11', v.region, w, h, v.spine,
+        wrapPreview(w, h, v.spine, { color: '#0a4da2', transmission: 0.8, roughness: 0.2 }, true, 2.5));
+    },
+  },
+  {
+    kind: 'dvd',
+    name: 'DVD',
+    group: 'Cases',
+    variants: Object.entries(DVD).map(([id, v]) => ({ id, label: variantLabel(v.label, v.spine) })),
+    build: (id) => {
+      const v = DVD[id] ?? DVD['std-14'];
+      const w = 129.5;
+      const h = 183;
+      return wrap('dvd', `DVD, ${variantLabel(v.label, v.spine)}`, DVD[id] ? id : 'std-14', undefined, w, h, v.spine,
+        wrapPreview(w, h, v.spine, { color: '#16191f', roughness: 0.35 }, true, 2.5));
+    },
+  },
+  {
+    kind: 'vhs',
+    name: 'VHS box',
+    group: 'Boxes',
+    variants: [{ id: 'std-25', label: 'Standard (105 × 190 × 25 mm)' }],
+    // A retail VHS sleeve is card, not plastic, so it is a printable box. The tape stands upright: 105 wide, 190 tall,
+    // with the spine (the 25 mm thickness) along the long side.
+    build: () => tuckBox({ kind: 'vhs', name: 'VHS box', variantId: 'std-25', w: 105, h: 190, d: 25, casing: { color: '#e6dfcf', roughness: 0.8 }, radiusMm: 1 }),
+  },
+  {
+    kind: 'cd',
+    name: 'CD',
+    group: 'Cases',
+    variants: [{ id: 'jewel', label: 'Standard jewel case (10 mm)' }],
+    build: () =>
+      assemble({
+        kind: 'cd',
+        name: 'CD',
+        variantId: 'jewel',
+        bleedMm: 3,
+        pieces: [
+          // Front booklet, then the rear tray card: [spine | back | spine], both spine flaps carry the title.
+          { dir: 'row', specs: [{ id: 'front', label: 'Front (booklet)', w: 120, h: 120 }] },
+          {
+            dir: 'row',
+            specs: [
+              { id: 'spine', label: 'Spine (left)', w: 6.5, h: 118, text: 'vertical' },
+              { id: 'back', label: 'Back (tray card)', w: 137, h: 118 },
+              { id: 'spineRight', label: 'Spine (right)', w: 6.5, h: 118, text: 'vertical' },
+            ],
+          },
+        ],
+        preview: {
+          kind: 'box',
+          widthMm: 125,
+          heightMm: 120,
+          depthMm: 10,
+          faces: { '-x': 'spine', '+x': 'spineRight', '+z': 'front', '-z': 'back' },
+          casing: { color: '#cfe3ee', transmission: 0.9, roughness: 0.12 },
+          glossy: true,
+          radiusMm: 1.5,
+        },
+      }),
+  },
+  {
+    kind: 'cassette',
+    name: 'Cassette',
+    group: 'Cases',
+    variants: [{ id: 'std', label: 'Standard J-card' }],
+    build: () =>
+      assemble({
+        kind: 'cassette',
+        name: 'Cassette',
+        variantId: 'std',
+        bleedMm: 3,
+        pieces: [
+          // One strip folded twice, 101.6 mm tall: the flap wraps round the spine onto the back of the case (a partial
+          // back image), then the spine, then the front. Sizes are the standard J-card: 25.4 + 12.7 + 65.1 mm.
+          {
+            dir: 'row',
+            specs: [
+              { id: 'back', label: 'Back (wraps round)', w: 25.4, h: 101.6 },
+              { id: 'spine', label: 'Spine', w: 12.7, h: 101.6, text: 'vertical' },
+              { id: 'front', label: 'Front', w: 65.1, h: 101.6 },
+            ],
+          },
+        ],
+        preview: {
+          kind: 'box',
+          widthMm: 65.1,
+          heightMm: 101.6,
+          depthMm: 12.7,
+          faces: { '+z': 'front', '-x': 'spine' },
+          decals: [{ panel: 'back', face: '-z', align: 'min-x' }],
+          casing: { color: '#d8e6ee', transmission: 0.85, roughness: 0.15 },
+          glossy: true,
+          radiusMm: 1,
+        },
+      }),
+  },
+  {
+    kind: 'floppy',
+    name: 'Floppy disk',
+    group: 'Labels & cards',
+    variants: [{ id: 'face', label: 'Face label (69.85 mm)' }],
+    build: () =>
+      assemble({
+        kind: 'floppy',
+        name: 'Floppy disk',
+        variantId: 'face',
+        bleedMm: 1,
+        pieces: [{ dir: 'row', specs: [{ id: 'front', label: 'Label', w: 69.85, h: 69.85 }] }],
+        preview: {
+          kind: 'slab',
+          bodyWidthMm: 90,
+          bodyHeightMm: 94,
+          bodyDepthMm: 3.3,
+          body: { color: '#2b2e36', roughness: 0.5 },
+          panel: 'front',
+          fullFace: false,
+          // Real labels start below the metal shutter and wrap round the bottom edge onto the back.
+          labelTopMm: 42,
+          shutter: { widthMm: 24, heightMm: 23, xMm: 6 },
+          radiusMm: 1.5,
+        },
+      }),
+  },
+  {
+    kind: 'nfc-card',
+    name: 'NFC card',
+    group: 'Labels & cards',
+    variants: [{ id: 'cr80', label: 'CR80 (54 × 85.6 mm, portrait)' }],
+    build: () =>
+      assemble({
+        kind: 'nfc-card',
+        name: 'NFC card',
+        variantId: 'cr80',
+        bleedMm: 1,
+        pieces: [{ dir: 'row', specs: [{ id: 'front', label: 'Card face', w: 54, h: 85.6 }] }],
+        preview: {
+          kind: 'slab',
+          bodyWidthMm: 54,
+          bodyHeightMm: 85.6,
+          bodyDepthMm: 0.76,
+          body: { color: '#f4f4f2', roughness: 0.4 },
+          panel: 'front',
+          fullFace: true,
+          radiusMm: 3.18,
+        },
+      }),
+  },
+  {
+    kind: 'nfc-box',
+    name: 'NFC box',
+    group: 'Boxes',
+    variants: Object.entries(NFC_BOX).map(([id, v]) => ({ id, label: `${v.label} (${v.w} × ${v.h} × ${v.d} mm)` })),
+    build: (id) => {
+      const v = NFC_BOX[id] ?? NFC_BOX.card;
+      const variantId = NFC_BOX[id] ? id : 'card';
+      // The tag sits inside the box, behind the front: mark its spot on the front panel for placement.
+      const marks = (panels: PanelRect[]): TemplateMark[] => {
+        const front = panels.find((p) => p.id === 'front')!;
+        const dia = Math.min(25, v.w * 0.6, v.h * 0.6);
+        return [{ label: 'NFC tag (inside)', xMm: front.xMm + front.widthMm / 2, yMm: front.yMm + front.heightMm / 2, diameterMm: dia }];
+      };
+      return tuckBox({ kind: 'nfc-box', name: `NFC box, ${v.label}`, variantId, ...v, casing: { color: '#e9e4d8', roughness: 0.85 }, radiusMm: 0.8, marks });
+    },
+  },
+];

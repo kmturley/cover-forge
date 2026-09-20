@@ -27,8 +27,9 @@ describe('reducer', () => {
   });
 
   it('switching region resets the spine to that region default', () => {
-    const s = reducer(initialState, { type: 'setRegion', region: 'EU' });
-    expect(s.template.spineMm).toBe(14);
+    const s = reducer(reducer(initialState, { type: 'setTemplate', kind: 'bluray' }), { type: 'setRegion', region: 'EU' });
+    expect(s.variantId).toBe('eu-14');
+    expect(s.template.panels.find((p) => p.id === 'spine')?.widthMm).toBe(14);
   });
 });
 
@@ -100,5 +101,51 @@ describe('shared and override settings', () => {
 
   it('defaults the spine text height to 4 mm', () => {
     expect(initialState.shared.spine.textHeightMm).toBe(4);
+  });
+});
+
+describe('templates', () => {
+  it('switching template rebuilds the layout and keeps a panel the new template also has', () => {
+    let s = reducer(initialState, { type: 'selectPanel', panel: 'spine' });
+    s = reducer(s, { type: 'setTemplate', kind: 'dvd' });
+    expect(s.templateKind).toBe('dvd');
+    expect(s.template.kind).toBe('dvd');
+    expect(s.selectedPanel).toBe('spine');
+    expect(s.variantId).toBe('std-14');
+  });
+
+  it('falls back to the first panel when the selected one does not exist in the new template', () => {
+    let s = reducer(initialState, { type: 'selectPanel', panel: 'back' });
+    s = reducer(s, { type: 'setTemplate', kind: 'nfc-card' });
+    expect(s.template.panels.map((p) => p.id)).toEqual(['front']);
+    expect(s.selectedPanel).toBe('front');
+  });
+
+  it('shared settings survive a template change (same panel id, new template)', () => {
+    let s = reducer(initialState, { type: 'updatePanel', id: null, panel: 'front', patch: { backgroundColor: '#123456' } });
+    s = reducer(s, { type: 'setTemplate', kind: 'cassette' });
+    expect(s.shared.panels.front?.backgroundColor).toBe('#123456');
+  });
+
+  it('keeps the region when moving between templates and only offers valid variants', () => {
+    let s = reducer(initialState, { type: 'setRegion', region: 'EU' });
+    s = reducer(s, { type: 'setTemplate', kind: 'vhs' });
+    expect(s.region).toBe('EU');
+    s = reducer(s, { type: 'setTemplate', kind: 'bluray' });
+    expect(s.variantId).toBe('eu-14');
+    expect(reducer(s, { type: 'setVariant', id: 'us-11' })).toBe(s); // not valid for EU
+    const slim = reducer(reducer(initialState, { type: 'setTemplate', kind: 'dvd' }), { type: 'setVariant', id: 'slim-9' });
+    expect(slim.template.panels[1].widthMm).toBe(9);
+  });
+});
+
+describe('addAsset', () => {
+  it('appends to the item library and leaves other items alone', () => {
+    let s = reducer(initialState, { type: 'addItem', item: item('a') });
+    s = reducer(s, { type: 'addItem', item: item('b') });
+    s = reducer(s, { type: 'addAsset', id: 'a', url: 'data:image/png;base64,AA' });
+    s = reducer(s, { type: 'addAsset', id: 'a', url: 'data:image/png;base64,BB' });
+    expect(s.items[0].assets.screenshots).toEqual(['data:image/png;base64,AA', 'data:image/png;base64,BB']);
+    expect(s.items[1].assets.screenshots).toEqual([]);
   });
 });

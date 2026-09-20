@@ -15,5 +15,10 @@ export default defineConfig({
       },
     },
   },
-  test: { environment: 'node', include: ['src/**/*.test.ts'] },
+  test: {
+    environment: 'node',
+    include: ['src/**/*.test.ts'],
+    // jsbarcode's src/ files are extensionless ES modules; let Vite transform them instead of loading them with Node.
+    server: { deps: { inline: [/jsbarcode/] } },
+  },
 });

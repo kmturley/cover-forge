@@ -1,5 +1,6 @@
 import { useAppDispatch, useAppState } from '../../context/AppContext';
 import { itemHasOverrides } from '../../engine/resolve';
+import { srcOf } from '../../storage/localImages';
 
 function OverrideIcon() {
   return (
@@ -29,7 +30,7 @@ export function QueueList() {
         {items.map((item, i) => (
           <li key={item.id} className={item.id === selectedItemId ? 'selected' : ''}>
             <button className="item" onClick={() => dispatch({ type: 'selectItem', id: item.id })}>
-              {item.assets.cover && <img src={item.assets.cover} alt="" loading="lazy" crossOrigin="anonymous" />}
+              {item.assets.cover && <img src={srcOf(item.assets.cover)} alt="" loading="lazy" crossOrigin="anonymous" />}
               <span>
                 {item.title}
                 {item.year && <small> · {item.year}</small>}

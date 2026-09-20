@@ -1,7 +1,6 @@
 import { useAppDispatch, useAppState } from '../../context/AppContext';
 import { BRAND_GROUPS, brandAspect, getBrand, type Brand } from '../../brands';
 import { computeLogoPlacement } from '../../engine/logo';
-import { PANEL_IDS } from '../../engine/resolve';
 import type { LogoSettings } from '../../types/editor';
 import type { PanelId } from '../../types/template';
 import { NumberSlider } from './NumberSlider';
@@ -78,7 +77,7 @@ export function LogoControls({ panel, target, logo }: Props) {
             <button onClick={() => patch({ widthMm: null, xMm: null, yMm: null, rotationDeg: 0 })}>Reset logo placement</button>
             <button
               title="Show this logo on the front, spine and back (each keeps its own default size and position)"
-              onClick={() => PANEL_IDS.filter((id) => id !== panel).forEach((id) => patch({ brand: logo.brand, color: logo.color, opacity: logo.opacity }, id))}
+              onClick={() => template.panels.map((p) => p.id).filter((id) => id !== panel).forEach((id) => patch({ brand: logo.brand, color: logo.color, opacity: logo.opacity }, id))}
             >
               Use on all panels
             </button>

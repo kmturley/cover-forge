@@ -1,46 +1,60 @@
 import { useAppDispatch, useAppState } from '../../context/AppContext';
-import { SPINE_OPTIONS, spineName } from '../../templates';
-import type { Region } from '../../types/template';
+import { TEMPLATE_DEFS, regionsOf, variantsFor } from '../../templates';
+import type { Region, TemplateKind } from '../../types/template';
+import type { StyleOverlay } from '../../types/editor';
 
 export function Toolbar({ onExport }: { onExport: () => void }) {
-  const { region, template, showGuides, view, styleOverlay } = useAppState();
+  const { templateKind, region, variantId, showGuides, view, styleOverlay } = useAppState();
+  const regions = regionsOf(templateKind);
+  const variants = variantsFor(templateKind, region);
   const dispatch = useAppDispatch();
   return (
     <header className="toolbar">
       <strong className="brand">CoverForge</strong>
       <label>
-        Region
-        <select value={region} onChange={(e) => dispatch({ type: 'setRegion', region: e.target.value as Region })}>
-          <option value="US">US</option>
-          <option value="EU">EU</option>
-        </select>
-      </label>
-      <label>
         Template
-        <select value="bluray" disabled>
-          <option value="bluray">Blu-ray Keepcase</option>
-        </select>
-      </label>
-      <label>
-        Spine
-        <select value={template.spineMm} onChange={(e) => dispatch({ type: 'setSpine', spineMm: Number(e.target.value) })}>
-          {SPINE_OPTIONS[region].map((o) => (
-            <option key={o.mm} value={o.mm}>
-              {spineName(o)}
-            </option>
+        <select value={templateKind} onChange={(e) => dispatch({ type: 'setTemplate', kind: e.target.value as TemplateKind })}>
+          {(['Cases', 'Boxes', 'Labels & cards'] as const).map((group) => (
+            <optgroup key={group} label={group}>
+              {TEMPLATE_DEFS.filter((d) => d.group === group).map((d) => (
+                <option key={d.kind} value={d.kind}>
+                  {d.name}
+                </option>
+              ))}
+            </optgroup>
           ))}
         </select>
       </label>
+      {regions.length > 1 && (
+        <label>
+          Region
+          <select value={region} onChange={(e) => dispatch({ type: 'setRegion', region: e.target.value as Region })}>
+            {regions.map((r) => (
+              <option key={r} value={r}>
+                {r}
+              </option>
+            ))}
+          </select>
+        </label>
+      )}
+      {variants.length > 1 && (
+        <label>
+          Size
+          <select value={variantId} onChange={(e) => dispatch({ type: 'setVariant', id: e.target.value })}>
+            {variants.map((v) => (
+              <option key={v.id} value={v.id}>
+                {v.label}
+              </option>
+            ))}
+          </select>
+        </label>
+      )}
       <label>
         Style
-        <select value={styleOverlay} onChange={(e) => dispatch({ type: 'setStyleOverlay', style: e.target.value as 'clean' })}>
+        <select value={styleOverlay} onChange={(e) => dispatch({ type: 'setStyleOverlay', style: e.target.value as StyleOverlay })}>
           <option value="clean">Clean</option>
-          <option value="digital" disabled>
-            Digital (soon)
-          </option>
-          <option value="retro" disabled>
-            Retro wear (soon)
-          </option>
+          <option value="digital">Digital / Official</option>
+          <option value="retro">Scanned / Retro wear</option>
         </select>
       </label>
       <label className="check">

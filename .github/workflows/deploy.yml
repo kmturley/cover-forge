@@ -38,6 +38,8 @@ jobs:
           # CORS relay for Steam search. Override with your own Cloudflare Worker (see worker/steam-proxy.js)
           # via Settings → Secrets and variables → Actions → Variables. No trailing slash = `?url=` style.
           VITE_STEAM_PROXY_URL: ${{ vars.VITE_STEAM_PROXY_URL || 'https://corx.venipa.workers.dev' }}
+          # Optional: your own relay holding a TMDB token turns on the Movies tab (see worker/steam-proxy.js).
+          VITE_TMDB_PROXY_URL: ${{ vars.VITE_TMDB_PROXY_URL }}
 
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3

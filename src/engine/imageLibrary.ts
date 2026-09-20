@@ -15,7 +15,7 @@ export function libraryImages(item: MediaItem): LibraryImage[] {
   if (cover) out.push({ ref: 'cover', label: 'Cover', url: cover });
   if (hero) out.push({ ref: 'hero', label: 'Hero', url: hero });
   if (logo) out.push({ ref: 'logo', label: 'Logo', url: logo });
-  screenshots.forEach((url, i) => out.push({ ref: `screenshot:${i}`, label: `Screenshot ${i + 1}`, url }));
+  screenshots.forEach((url, i) => out.push({ ref: `screenshot:${i}`, label: `Image ${i + 1}`, url }));
   return out;
 }
 

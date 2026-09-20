@@ -1,6 +1,6 @@
 import type { MediaItem } from '../types/media';
 import type { TemplateConfig } from '../types/template';
-import type { SharedSettings } from '../types/editor';
+import type { SharedSettings, StyleOverlay } from '../types/editor';
 import { canvasSizePx } from '../templates';
 import { drawGuides } from './GuideOverlays';
 import { drawSpineText } from './SpineTypography';
@@ -8,12 +8,18 @@ import { getCachedImage, loadImages } from './imageCache';
 import { BASE_BACKGROUND, PANEL_IDS, resolvePanel, resolveSpine } from './resolve';
 import { computePlacement, paintRect } from './placement';
 import { drawLogo } from './logo';
+import { drawCode } from './code';
 import { getBrand } from '../brands';
+import { drawOfficial, spineCapMm } from './official';
+import { drawWear, planWear } from './wear';
+import { seedFrom } from './random';
 
 export interface Scene {
   template: TemplateConfig;
   item: MediaItem | null;
   shared: SharedSettings;
+  /** Global aesthetic: clean artwork, official-style headers, or worn retro. */
+  style: StyleOverlay;
   showGuides: boolean;
 }
 
@@ -62,10 +68,15 @@ export function renderCover(
     ctx.restore();
   }
 
-  const spine = t.panels.find((p) => p.id === 'spine');
-  if (spine && item) {
+  const digital = scene.style === 'digital';
+  if (digital) drawOfficial(ctx, t, px);
+
+  if (item) {
     const settings = resolveSpine(shared, item);
-    drawSpineText(ctx, spine, settings.text ?? item.title, settings, px);
+    for (const p of t.panels) {
+      // With the Official style the spine has a cap at its start; keep the title clear of it.
+      if (p.text) drawSpineText(ctx, p, settings.text ?? item.title, settings, px, p.text, { start: spineCapMm(t.kind, digital), end: 0 });
+    }
   }
 
   // Brand logos sit above every image and the spine text.
@@ -74,6 +85,14 @@ export function renderCover(
     const brand = getBrand(logo.brand);
     if (brand && item) drawLogo(ctx, t, panel, brand, logo, px);
   }
+
+  // QR codes and barcodes go on top of logos.
+  for (const panel of t.panels) {
+    const { code } = resolvePanel(shared, item, panel.id);
+    if (item && code.kind !== 'none') drawCode(ctx, t, panel, code, item, px);
+  }
+
+  if (scene.style === 'retro') drawWear(ctx, planWear(t, seedFrom(`${item?.id ?? ''}|${t.id}`)), px);
 
   if (scene.showGuides) drawGuides(ctx, t, px);
   ctx.restore();

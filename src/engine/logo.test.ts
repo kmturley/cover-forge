@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { createBlurayTemplate } from '../templates/bluray';
+import { buildTemplate } from '../templates';
 import { DEFAULT_LOGO } from '../types/editor';
 import { computeLogoPlacement } from './logo';
 
-const t = createBlurayTemplate('US');
+const t = buildTemplate('bluray', 'us-11');
 const panel = (id: 'front' | 'spine' | 'back') => t.panels.find((p) => p.id === id)!;
 
 describe('computeLogoPlacement', () => {

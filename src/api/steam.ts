@@ -61,6 +61,7 @@ export async function createGameItem(result: SteamSearchResult): Promise<MediaIt
   }
   return {
     id: `steam-${result.appId}`,
+    sourceId: String(result.appId),
     type: 'game',
     title: result.name,
     subtitle,

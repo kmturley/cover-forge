@@ -1,15 +1,26 @@
-export type PaperSize = 'A4' | 'Letter';
+export type PaperSize = 'A3' | 'A4' | 'Letter';
 
 export const PAPER_MM: Record<PaperSize, { widthMm: number; heightMm: number }> = {
+  A3: { widthMm: 297, heightMm: 420 },
   A4: { widthMm: 210, heightMm: 297 },
   Letter: { widthMm: 215.9, heightMm: 279.4 },
 };
+
+/** A sub-rectangle of an item, in item-local mm (origin: the item's top-left, bleed included). */
+export interface CropRect {
+  xMm: number;
+  yMm: number;
+  widthMm: number;
+  heightMm: number;
+}
 
 export interface Placement {
   xMm: number;
   yMm: number;
   /** Rotated 90° clockwise on the sheet. */
   rotated: boolean;
+  /** Only this part of the item is printed, at (xMm, yMm); used for die-cut label sheets. */
+  crop?: CropRect;
 }
 
 export interface Imposition {
@@ -20,6 +31,10 @@ export interface Imposition {
   placements: Placement[];
   /** True when even one item doesn't fit at 100% (the single placement is then not to scale). */
   oversize: boolean;
+  /** Set for die-cut label sheets: the label outlines, for the preview. */
+  labelRects?: { xMm: number; yMm: number; widthMm: number; heightMm: number }[];
+  /** Human-readable caveats (e.g. artwork cropped to fit a label). */
+  warnings?: string[];
 }
 
 export interface ImpositionOptions {

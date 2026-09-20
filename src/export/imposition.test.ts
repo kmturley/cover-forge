@@ -2,16 +2,16 @@ import { describe, expect, it } from 'vitest';
 import { impose, paginate } from './imposition';
 
 describe('impose', () => {
-  it('fits one Blu-ray wrap (275×155) rotated on A4', () => {
-    const r = impose(275, 155, 'A4');
+  it('fits one Blu-ray wrap (273×154) rotated on A4', () => {
+    const r = impose(273, 154, 'A4');
     expect(r.placements).toHaveLength(1);
     expect(r.placements[0].rotated).toBe(true);
     expect(r.oversize).toBe(false);
   });
 
   it('fits one wrap on US Letter only with a small margin', () => {
-    expect(impose(275, 155, 'Letter').placements).toHaveLength(1);
-    expect(impose(275, 155, 'Letter', { marginMm: 5 }).oversize).toBe(true);
+    expect(impose(273, 154, 'Letter').placements).toHaveLength(1);
+    expect(impose(273, 154, 'Letter', { marginMm: 5 }).oversize).toBe(true);
   });
 
   it('packs many small items and centres the grid', () => {

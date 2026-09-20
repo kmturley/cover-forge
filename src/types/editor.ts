@@ -29,6 +29,8 @@ export interface PanelSettings {
   transform?: Partial<PanelTransform>;
   /** Brand logo layer, drawn above the image and (for the spine) the text. */
   logo?: Partial<LogoSettings>;
+  /** QR code or barcode layer, drawn above the image and logo. */
+  code?: Partial<CodeSettings>;
 }
 
 /** A store / console brand mark drawn on top of a panel's image and text. Every field is layered like the rest (default → shared → item). */
@@ -47,6 +49,41 @@ export interface LogoSettings {
 }
 
 export const DEFAULT_LOGO: LogoSettings = { brand: null, color: '#ffffff', widthMm: null, xMm: null, yMm: null, rotationDeg: 0, opacity: 1 };
+
+export type CodeKind = 'none' | 'qr' | 'ean13' | 'upca' | 'code128';
+
+/**
+ * A scannable identifier (QR code or barcode) drawn on top of a panel. Layered like everything else
+ * (default → shared → item). The pattern is filled per item; see codes/pattern.ts for the tokens.
+ */
+export interface CodeSettings {
+  kind: CodeKind;
+  /** Text to encode, with {tokens} filled per item. Barcodes use its digits (or a generated number if it has too few). */
+  pattern: string;
+  /** Bars / modules colour. */
+  color: string;
+  /** Quiet-zone and background colour (keep it light for scanners). */
+  background: string;
+  /** Overall width in mm including the quiet zone; `null` = automatic for the kind. */
+  widthMm: number | null;
+  /** Top-left from the panel's top-left (bleed included); `null` = default (bottom-right corner). */
+  xMm: number | null;
+  yMm: number | null;
+  rotationDeg: number;
+  opacity: number;
+}
+
+export const DEFAULT_CODE: CodeSettings = {
+  kind: 'none',
+  pattern: 'steam://run/{appId}',
+  color: '#000000',
+  background: '#ffffff',
+  widthMm: null,
+  xMm: null,
+  yMm: null,
+  rotationDeg: 0,
+  opacity: 1,
+};
 
 export const MIN_SCALE = 0.2;
 export const MAX_SCALE = 5;

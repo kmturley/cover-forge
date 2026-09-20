@@ -1,3 +1,5 @@
+import { srcOf } from '../storage/localImages';
+
 const cache = new Map<string, HTMLImageElement | null>();
 const pending = new Map<string, Promise<HTMLImageElement | null>>();
 
@@ -19,7 +21,7 @@ export function loadImage(url: string): Promise<HTMLImageElement | null> {
     img.crossOrigin = 'anonymous';
     img.onload = () => resolve(img);
     img.onerror = () => resolve(null);
-    img.src = url;
+    img.src = srcOf(url) ?? '';
   }).then((img) => {
     cache.set(url, img);
     pending.delete(url);

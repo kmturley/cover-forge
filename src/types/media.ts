@@ -16,6 +16,8 @@ export interface MediaItem {
   title: string;
   subtitle?: string;
   year?: string;
+  /** The id at the source (e.g. the Steam app id), usable in QR patterns as {appId}. */
+  sourceId?: string;
   assets: AssetSlots;
   /** Item-level overrides; anything unset inherits the global settings. */
   panels?: Partial<Record<PanelId, PanelSettings>>;

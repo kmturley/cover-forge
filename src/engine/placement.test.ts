@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { createBlurayTemplate } from '../templates/bluray';
+import { buildTemplate } from '../templates';
 import { DEFAULT_TRANSFORM } from '../types/editor';
 import { computePlacement, paintRect } from './placement';
 
-const t = createBlurayTemplate('US');
+const t = buildTemplate('bluray', 'us-11');
 const front = t.panels.find((p) => p.id === 'front')!;
 
 describe('computePlacement', () => {

@@ -55,3 +55,13 @@ describe('resolvePanel logo layering', () => {
     expect(resolvePanel(s, o, 'back').logo.brand).toBe('steam');
   });
 });
+
+describe('resolvePanel code layering', () => {
+  it('has no code by default, inherits shared fields, and lets an item override individual ones', () => {
+    expect(resolvePanel(shared(), item(), 'back').code.kind).toBe('none');
+    const s = shared({ back: { code: { kind: 'qr', pattern: 'https://x/{appId}', color: '#112233' } } });
+    const o = item({ panels: { back: { code: { pattern: 'other' } } } });
+    expect(resolvePanel(s, item(), 'back').code).toMatchObject({ kind: 'qr', pattern: 'https://x/{appId}', color: '#112233', background: '#ffffff' });
+    expect(resolvePanel(s, o, 'back').code).toMatchObject({ kind: 'qr', pattern: 'other', color: '#112233' });
+  });
+});

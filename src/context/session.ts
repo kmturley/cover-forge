@@ -1,8 +1,8 @@
 import type { MediaItem } from '../types/media';
 import type { Region } from '../types/template';
 import type { PanelSettings, SharedSettings, StyleOverlay } from '../types/editor';
-import type { PanelId } from '../types/template';
-import { createBlurayTemplate, DEFAULT_SPINE, SPINE_OPTIONS } from '../templates';
+import type { PanelId, TemplateKind } from '../types/template';
+import { DEFAULT_KIND, buildTemplate, defaultVariantId, isTemplateKind, variantsFor } from '../templates';
 import type { AppState, ViewMode } from './AppContext';
 
 /**
@@ -16,8 +16,12 @@ export interface SessionV2 {
   items: MediaItem[];
   selectedItemId: string | null;
   options: {
+    /** Absent in older saves, which stored a Blu-ray `region` + `spineMm` instead. */
+    templateKind?: TemplateKind;
+    variantId?: string;
     region: Region;
-    spineMm: number;
+    /** Legacy (Blu-ray only); still read when `variantId` is missing. */
+    spineMm?: number;
     styleOverlay: StyleOverlay;
     view: ViewMode;
   };
@@ -34,8 +38,9 @@ export function serializeSession(s: AppState): SessionV2 {
     items: s.items,
     selectedItemId: s.selectedItemId,
     options: {
+      templateKind: s.templateKind,
+      variantId: s.variantId,
       region: s.region,
-      spineMm: s.template.spineMm,
       styleOverlay: s.styleOverlay,
       view: s.view,
     },
@@ -47,7 +52,7 @@ const isObj = (v: unknown): v is Record<string, unknown> => typeof v === 'object
 const isItem = (v: unknown): v is MediaItem =>
   isObj(v) && typeof v.id === 'string' && typeof v.title === 'string' && isObj(v.assets) && Array.isArray(v.assets.screenshots);
 
-const PANEL_IDS: PanelId[] = ['front', 'spine', 'back'];
+const PANEL_IDS: PanelId[] = ['front', 'spine', 'spineRight', 'back', 'flap', 'top', 'bottom', 'glue', 'tuck'];
 
 function restoreShared(raw: unknown, defaults: SharedSettings): SharedSettings {
   if (!isObj(raw)) return defaults;
@@ -70,8 +75,12 @@ export function restoreSession(raw: unknown, defaults: AppState): AppState {
   const items = Array.isArray(raw.items) ? raw.items.filter(isItem) : [];
 
   const region: Region = o.region === 'US' || o.region === 'EU' ? o.region : defaults.region;
-  const spineMm =
-    typeof o.spineMm === 'number' && SPINE_OPTIONS[region].some((opt) => opt.mm === o.spineMm) ? o.spineMm : DEFAULT_SPINE[region];
+  // Saves from before other templates existed have no kind and were Blu-ray; an unrecognised kind gets today's default.
+  const kind: TemplateKind = isTemplateKind(o.templateKind) ? o.templateKind : o.templateKind === undefined ? 'bluray' : DEFAULT_KIND;
+  // Older saves only knew Blu-ray and stored the spine width; map it onto today's variant ids.
+  const legacyVariant = typeof o.spineMm === 'number' ? `${region.toLowerCase()}-${o.spineMm}` : undefined;
+  const wanted = typeof o.variantId === 'string' ? o.variantId : legacyVariant;
+  const variantId = variantsFor(kind, region).some((v) => v.id === wanted) ? (wanted as string) : defaultVariantId(kind, region);
   const selected = typeof raw.selectedItemId === 'string' && items.some((i) => i.id === raw.selectedItemId);
 
   let shared = defaults.shared;
@@ -94,8 +103,11 @@ export function restoreSession(raw: unknown, defaults: AppState): AppState {
     ...defaults,
     items,
     selectedItemId: selected ? (raw.selectedItemId as string) : (items[0]?.id ?? null),
+    templateKind: kind,
     region,
-    template: createBlurayTemplate(region, spineMm),
+    variantId,
+    template: buildTemplate(kind, variantId),
+    selectedPanel: defaults.selectedPanel,
     styleOverlay: o.styleOverlay === 'clean' || o.styleOverlay === 'digital' || o.styleOverlay === 'retro' ? o.styleOverlay : defaults.styleOverlay,
     view: o.view === '2d' || o.view === '3d' ? o.view : defaults.view,
     shared,
@@ -112,10 +124,12 @@ export function loadSession(defaults: AppState): AppState {
   }
 }
 
-export function saveSession(state: AppState): void {
+/** Returns false when the browser refused the write (quota exceeded, storage blocked) so the UI can say so. */
+export function saveSession(state: AppState): boolean {
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(serializeSession(state)));
+    return true;
   } catch {
-    // Quota exceeded or storage unavailable: persistence is best-effort.
+    return false;
   }
 }

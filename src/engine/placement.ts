@@ -1,18 +1,6 @@
 import type { PanelRect, TemplateConfig } from '../types/template';
+import { paintRect } from '../templates/geometry';
 import type { PanelTransform } from '../types/editor';
-
-/** A panel's paint area: the trim rect, extended into the bleed on any edge that touches the canvas edge. */
-export function paintRect(t: TemplateConfig, p: PanelRect): PanelRect {
-  const left = p.xMm <= t.bleedMm ? t.bleedMm : 0;
-  const right = p.xMm + p.widthMm >= t.totalWidthMm - t.bleedMm ? t.bleedMm : 0;
-  return {
-    ...p,
-    xMm: p.xMm - left,
-    yMm: p.yMm - t.bleedMm,
-    widthMm: p.widthMm + left + right,
-    heightMm: p.heightMm + t.bleedMm * 2,
-  };
-}
 
 export interface Placement {
   /** mm per source pixel. */
@@ -61,3 +49,5 @@ export function computePlacement(
     centeredYMm,
   };
 }
+
+export { paintRect };

@@ -22,7 +22,7 @@ const FIT: View = { ox: 0, oy: 0, k: 1 };
  * (about the cursor); images are positioned from the sidebar. A click selects the panel under the cursor.
  */
 export function CanvasEditor() {
-  const { template, shared, showGuides } = useAppState();
+  const { template, shared, showGuides, styleOverlay } = useAppState();
   const item = useSelectedItem();
   const dispatch = useAppDispatch();
   const wrapRef = useRef<HTMLDivElement>(null);
@@ -41,8 +41,8 @@ export function CanvasEditor() {
   }, []);
 
   useEffect(() => {
-    rendererRef.current?.setScene({ template, item, shared, showGuides });
-  }, [template, item, shared, showGuides]);
+    rendererRef.current?.setScene({ template, item, shared, style: styleOverlay, showGuides });
+  }, [template, item, shared, styleOverlay, showGuides]);
 
   // Track the viewport size so the canvas can be fitted to it.
   useEffect(() => {

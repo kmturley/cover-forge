@@ -1,8 +1,8 @@
-import { createContext, useContext, useEffect, useMemo, useReducer, type Dispatch, type ReactNode } from 'react';
+import { createContext, useContext, useEffect, useMemo, useReducer, useState, type Dispatch, type ReactNode } from 'react';
 import type { MediaItem } from '../types/media';
-import type { PanelId, Region, TemplateConfig } from '../types/template';
+import type { PanelId, Region, TemplateConfig, TemplateKind } from '../types/template';
 import type { PanelSettings, SharedSettings, SpineSettings, StyleOverlay } from '../types/editor';
-import { createBlurayTemplate, DEFAULT_SPINE } from '../templates';
+import { DEFAULT_KIND, buildTemplate, defaultVariantId, regionsOf, variantsFor } from '../templates';
 import { loadSession, saveSession } from './session';
 
 export type ViewMode = '2d' | '3d';
@@ -16,7 +16,10 @@ export interface AppState {
   selectedPanel: PanelId;
   /** UI-only (not persisted). */
   editMode: EditMode;
+  templateKind: TemplateKind;
+  /** Only meaningful for templates whose variants are regional (Blu-ray). */
   region: Region;
+  variantId: string;
   template: TemplateConfig;
   styleOverlay: StyleOverlay;
   /** UI-only (not persisted): guides are a preview aid, so they start off on every visit. */
@@ -30,11 +33,14 @@ export type Action =
   | { type: 'addItem'; item: MediaItem }
   | { type: 'removeItem'; id: string }
   | { type: 'reorderItems'; from: number; to: number }
+  /** Adds an image (e.g. an upload) to an item's library; it becomes `screenshot:<index>`. */
+  | { type: 'addAsset'; id: string; url: string }
   | { type: 'selectItem'; id: string | null }
   | { type: 'selectPanel'; panel: PanelId }
   | { type: 'setEditMode'; mode: EditMode }
+  | { type: 'setTemplate'; kind: TemplateKind }
   | { type: 'setRegion'; region: Region }
-  | { type: 'setSpine'; spineMm: number }
+  | { type: 'setVariant'; id: string }
   | { type: 'setStyleOverlay'; style: StyleOverlay }
   | { type: 'setShowGuides'; show: boolean }
   | { type: 'setView'; view: ViewMode }
@@ -50,8 +56,10 @@ export const initialState: AppState = {
   selectedItemId: null,
   selectedPanel: 'front',
   editMode: 'shared',
+  templateKind: DEFAULT_KIND,
   region: 'US',
-  template: createBlurayTemplate('US'),
+  variantId: defaultVariantId(DEFAULT_KIND),
+  template: buildTemplate(DEFAULT_KIND, defaultVariantId(DEFAULT_KIND)),
   styleOverlay: 'clean',
   showGuides: false,
   view: '2d',
@@ -66,13 +74,21 @@ function compact<T extends object>(o: T): T {
   return Object.fromEntries(Object.entries(o).filter(([, v]) => v !== undefined)) as T;
 }
 
-/** Merges a panel patch. `transform` and `logo` merge field by field; setting one to undefined clears it. */
+/** Merges a panel patch. `transform`, `logo` and `code` merge field by field; setting one to undefined clears it. */
 function mergePanel(existing: PanelSettings | undefined, patch: Partial<PanelSettings>): PanelSettings {
   const next: PanelSettings = { ...existing, ...patch };
   // Nested layers merge field by field; a field set to undefined is cleared so it inherits again.
   if (patch.transform) next.transform = compact({ ...existing?.transform, ...patch.transform });
   if (patch.logo) next.logo = compact({ ...existing?.logo, ...patch.logo });
+  if (patch.code) next.code = compact({ ...existing?.code, ...patch.code });
   return compact(next);
+}
+
+/** Switches template, keeping the selected panel if the new template has it (otherwise the first panel). */
+export function withTemplate(state: AppState, kind: TemplateKind, region: Region, variantId: string): AppState {
+  const template = buildTemplate(kind, variantId);
+  const selectedPanel = template.panels.some((p) => p.id === state.selectedPanel) ? state.selectedPanel : template.panels[0].id;
+  return { ...state, templateKind: kind, region, variantId: template.variantId, template, selectedPanel };
 }
 
 function updateItem(state: AppState, id: string, f: (i: MediaItem) => MediaItem): AppState {
@@ -99,20 +115,24 @@ export function reducer(state: AppState, action: Action): AppState {
       items.splice(action.to, 0, moved);
       return { ...state, items };
     }
+    case 'addAsset':
+      return updateItem(state, action.id, (i) => ({ ...i, assets: { ...i.assets, screenshots: [...i.assets.screenshots, action.url] } }));
     case 'selectItem':
       return { ...state, selectedItemId: action.id };
     case 'selectPanel':
       return { ...state, selectedPanel: action.panel };
     case 'setEditMode':
       return { ...state, editMode: action.mode };
+    case 'setTemplate': {
+      const region = regionsOf(action.kind).includes(state.region) ? state.region : (regionsOf(action.kind)[0] ?? state.region);
+      return withTemplate(state, action.kind, region, defaultVariantId(action.kind, region));
+    }
     case 'setRegion':
-      return {
-        ...state,
-        region: action.region,
-        template: createBlurayTemplate(action.region, DEFAULT_SPINE[action.region]),
-      };
-    case 'setSpine':
-      return { ...state, template: createBlurayTemplate(state.region, action.spineMm) };
+      return withTemplate(state, state.templateKind, action.region, defaultVariantId(state.templateKind, action.region));
+    case 'setVariant': {
+      const ok = variantsFor(state.templateKind, state.region).some((v) => v.id === action.id);
+      return ok ? withTemplate(state, state.templateKind, state.region, action.id) : state;
+    }
     case 'setStyleOverlay':
       return { ...state, styleOverlay: action.style };
     case 'setShowGuides':
@@ -155,20 +175,24 @@ export function reducer(state: AppState, action: Action): AppState {
 }
 
 const StateContext = createContext<AppState | null>(null);
+const StorageContext = createContext(true);
 const DispatchContext = createContext<Dispatch<Action> | null>(null);
 
 export function AppProvider({ children }: { children: ReactNode }) {
   const [state, dispatch] = useReducer(reducer, initialState, loadSession);
+  const [storageOk, setStorageOk] = useState(true);
 
   // Debounced so drags, sliders and typing don't hammer localStorage.
   useEffect(() => {
-    const t = setTimeout(() => saveSession(state), 300);
+    const t = setTimeout(() => setStorageOk(saveSession(state)), 300);
     return () => clearTimeout(t);
   }, [state]);
 
   return (
     <StateContext.Provider value={state}>
-      <DispatchContext.Provider value={dispatch}>{children}</DispatchContext.Provider>
+      <StorageContext.Provider value={storageOk}>
+        <DispatchContext.Provider value={dispatch}>{children}</DispatchContext.Provider>
+      </StorageContext.Provider>
     </StateContext.Provider>
   );
 }
@@ -178,6 +202,9 @@ export function useAppState(): AppState {
   if (!s) throw new Error('useAppState must be used inside AppProvider');
   return s;
 }
+
+/** False when the last attempt to save the session failed (e.g. the browser's storage is full). */
+export const useStorageOk = () => useContext(StorageContext);
 
 export function useAppDispatch(): Dispatch<Action> {
   const d = useContext(DispatchContext);

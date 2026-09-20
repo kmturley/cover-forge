@@ -2,10 +2,10 @@ import { useEffect, useMemo } from 'react';
 import { CanvasTexture, LinearFilter, SRGBColorSpace, type Texture } from 'three';
 import { useAppState, useSelectedItem } from '../../context/AppContext';
 import { preloadItem, renderCover } from '../../engine/CanvasRenderer';
-import { BlurayScene } from '../../three/BlurayScene';
+import { PreviewScene } from '../../three/PreviewScene';
 
-/** Texture resolution: ~7 px/mm keeps the sleeve crisp without a 3248px upload per edit. */
-const PREVIEW_PX_PER_MM = 7;
+/** Texture resolution: aim for ~2048 px across (crisp without a huge upload per edit), between 7 and 24 px/mm. */
+const previewPxPerMm = (widthMm: number) => Math.min(24, Math.max(7, 2048 / widthMm));
 
 /** Flags the GPU copy of a texture as stale after its source canvas was repainted. */
 function markStale(t: Texture): void {
@@ -13,14 +13,15 @@ function markStale(t: Texture): void {
 }
 
 export function ThreeDPreview() {
-  const { template, shared, showGuides } = useAppState();
+  const { template, shared, showGuides, styleOverlay } = useAppState();
   const item = useSelectedItem();
 
   // A dedicated offscreen render, so the 3D texture resolution is independent of the 2D editor canvas.
   const canvas = useMemo(() => {
     const c = document.createElement('canvas');
-    c.width = Math.round(template.totalWidthMm * PREVIEW_PX_PER_MM);
-    c.height = Math.round(template.totalHeightMm * PREVIEW_PX_PER_MM);
+    const px = previewPxPerMm(template.totalWidthMm);
+    c.width = Math.round(template.totalWidthMm * px);
+    c.height = Math.round(template.totalHeightMm * px);
     return c;
   }, [template]);
 
@@ -40,7 +41,7 @@ export function ThreeDPreview() {
     const paint = () => {
       const ctx = canvas.getContext('2d');
       if (!ctx || cancelled) return;
-      renderCover(ctx, { template, item, shared, showGuides }, PREVIEW_PX_PER_MM);
+      renderCover(ctx, { template, item, shared, style: styleOverlay, showGuides }, canvas.width / template.totalWidthMm);
       markStale(texture);
     };
     paint();
@@ -48,11 +49,11 @@ export function ThreeDPreview() {
     return () => {
       cancelled = true;
     };
-  }, [canvas, texture, template, item, shared, showGuides]);
+  }, [canvas, texture, template, item, shared, styleOverlay, showGuides]);
 
   return (
     <div className="three-wrap">
-      <BlurayScene texture={texture} template={template} />
+      <PreviewScene texture={texture} template={template} />
       <p className="hint">Drag to rotate · scroll to zoom</p>
     </div>
   );

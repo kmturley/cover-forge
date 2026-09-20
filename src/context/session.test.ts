@@ -13,12 +13,29 @@ const item: MediaItem = {
 describe('session', () => {
   it('round-trips through JSON', () => {
     let s = reducer(initialState, { type: 'addItem', item });
+    s = reducer(s, { type: 'setTemplate', kind: 'bluray' });
     s = reducer(s, { type: 'setRegion', region: 'EU' });
     s = reducer(s, { type: 'updatePanel', id: null, panel: 'front', patch: { backgroundColor: '#123456', transform: { scale: 1.2 } } });
     s = reducer(s, { type: 'updateSpine', id: null, patch: { textHeightMm: 5 } });
     s = reducer(s, { type: 'updatePanel', id: 'steam-1', panel: 'spine', patch: { backgroundColor: '#ff0000', image: 'logo', transform: { xMm: 1, opacity: 0.5 } } });
     const back = restoreSession(JSON.parse(JSON.stringify(serializeSession(s))), initialState);
     expect(back).toEqual(s);
+  });
+
+  it('round-trips the template kind and variant', () => {
+    let s = reducer(initialState, { type: 'setTemplate', kind: 'dvd' });
+    s = reducer(s, { type: 'setVariant', id: 'slim-9' });
+    const back = restoreSession(JSON.parse(JSON.stringify(serializeSession(s))), initialState);
+    expect(back.templateKind).toBe('dvd');
+    expect(back.variantId).toBe('slim-9');
+    expect(back.template.id).toBe('dvd-slim-9');
+  });
+
+  it('repairs an unknown template kind or variant', () => {
+    const s = restoreSession({ app: 'coverforge', version: 2, items: [], options: { templateKind: 'laserdisc', variantId: 'x' } }, initialState);
+    expect(s.templateKind).toBe('dvd');
+    const t = restoreSession({ app: 'coverforge', version: 2, items: [], options: { templateKind: 'vhs', variantId: 'bogus' } }, initialState);
+    expect(t.variantId).toBe('std-25');
   });
 
   it('does not persist guides: they start off every visit', () => {
@@ -46,7 +63,7 @@ describe('session', () => {
     const s = restoreSession(doc, initialState);
     expect(s.items).toHaveLength(1);
     expect(s.selectedItemId).toBe('steam-1');
-    expect(s.template.spineMm).toBe(14); // 11 mm isn't valid for EU
+    expect(s.variantId).toBe('eu-14'); // the legacy 11 mm spine isn't valid for EU
     expect(s.view).toBe(initialState.view);
     expect(s.showGuides).toBe(initialState.showGuides);
     expect(s.shared.panels).toEqual({ front: { image: 'hero' } }); // unknown panel dropped
@@ -62,7 +79,8 @@ describe('session', () => {
       options: { region: 'US', spineMm: 12.5, backgroundColor: '#222', spine: { fontFamily: 'Georgia, serif', textHeightMm: 6, color: '#ff0' } },
     };
     const s = restoreSession(v1, initialState);
-    expect(s.template.spineMm).toBe(12.5);
+    expect(s.variantId).toBe('us-12.5');
+    expect(s.templateKind).toBe('bluray');
     expect(s.shared.spine).toEqual({ fontFamily: 'Georgia, serif', textHeightMm: 4, color: '#ff0' });
     expect(s.items[0].panels?.back?.transform).toEqual({ scale: 2 });
   });

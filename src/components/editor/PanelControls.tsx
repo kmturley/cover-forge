@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useAppDispatch, useAppState, useSelectedItem, type EditMode } from '../../context/AppContext';
 import { DEFAULT_TRANSFORM, MAX_SCALE, MIN_SCALE, type ImageRef, type PanelSettings, type PanelTransform } from '../../types/editor';
 import type { PanelId } from '../../types/template';
@@ -6,15 +6,12 @@ import { libraryImages, type LibraryImage } from '../../engine/imageLibrary';
 import { getCachedImage, loadImage } from '../../engine/imageCache';
 import { computePlacement } from '../../engine/placement';
 import { BASE_BACKGROUND, panelHasOverride, resolvePanel } from '../../engine/resolve';
+import { readImageFile } from '../../api/upload';
+import { srcOf } from '../../storage/localImages';
 import { NumberSlider } from './NumberSlider';
 import { SpineTextControls } from './SpineEditor';
 import { LogoControls } from './LogoControls';
-
-const TABS: { id: PanelId; label: string }[] = [
-  { id: 'front', label: 'Front' },
-  { id: 'spine', label: 'Spine' },
-  { id: 'back', label: 'Back' },
-];
+import { CodeControls } from './CodeControls';
 
 /** Natural pixel size of an image once loaded (needed to show its centred position in mm). */
 function useImageSize(url: string | null) {
@@ -37,13 +34,14 @@ function Thumb({ image, selected, onPick }: { image: LibraryImage; selected: boo
   if (failed) return null; // e.g. games without a hero or logo asset
   return (
     <button className={`thumb ${selected ? 'selected' : ''}`} title={image.label} aria-label={image.label} aria-pressed={selected} onClick={onPick}>
-      <img src={image.url} alt="" loading="lazy" crossOrigin="anonymous" onError={() => setFailed(true)} />
+      <img src={srcOf(image.url)} alt="" loading="lazy" crossOrigin="anonymous" onError={() => setFailed(true)} />
     </button>
   );
 }
 
 export function PanelControls() {
-  const { selectedPanel: panel, editMode, items } = useAppState();
+  const { selectedPanel, editMode, items, template } = useAppState();
+  const panel = template.panels.some((p) => p.id === selectedPanel) ? selectedPanel : template.panels[0].id;
   const item = useSelectedItem();
   const dispatch = useAppDispatch();
   const modes: { id: EditMode; label: string }[] = [
@@ -75,7 +73,7 @@ export function PanelControls() {
       </p>
 
       <div className="seg wide" role="tablist" aria-label="Panel to edit">
-        {TABS.map((tab) => (
+        {template.panels.map((tab) => (
           <button
             key={tab.id}
             role="tab"
@@ -109,6 +107,22 @@ function PanelBody({ panel }: { panel: PanelId }) {
   const area = pl?.area ?? rect;
 
   const patch = (p: Partial<PanelSettings>) => dispatch({ type: 'updatePanel', id: target, panel, patch: p });
+  const fileInput = useRef<HTMLInputElement>(null);
+  const [uploadError, setUploadError] = useState<string | null>(null);
+
+  // Adds the picked images to this item's library and shows the first one on the panel.
+  async function upload(files: FileList | null) {
+    if (!files?.length) return;
+    setUploadError(null);
+    try {
+      const urls = await Promise.all(Array.from(files).map((f) => readImageFile(f)));
+      const firstIndex = item.assets.screenshots.length;
+      urls.forEach((url) => dispatch({ type: 'addAsset', id: item.id, url }));
+      patch({ image: `screenshot:${firstIndex}` });
+    } catch (e) {
+      setUploadError(e instanceof Error ? e.message : 'Couldn’t add that image');
+    }
+  }
   const setTransform = (change: Partial<PanelTransform>) => patch({ transform: change });
 
   // Where a field currently comes from, so it can be cleared back to the layer below.
@@ -136,7 +150,12 @@ function PanelBody({ panel }: { panel: PanelId }) {
         {libraryImages(item).map((img) => (
           <Thumb key={img.ref} image={img} selected={img.ref === r.imageRef} onPick={() => patch({ image: img.ref as ImageRef })} />
         ))}
+        <button className="thumb none" title="Add your own image to this item" aria-label="Add image" onClick={() => fileInput.current?.click()}>
+          + Add
+        </button>
+        <input ref={fileInput} type="file" accept="image/*" multiple hidden aria-label="Upload images" onChange={(e) => (void upload(e.target.files), (e.target.value = ''))} />
       </div>
+      {uploadError && <p className="error small">{uploadError}</p>}
 
       {r.imageRef !== null && !pl ? (
         <p className="muted">Loading image…</p>
@@ -161,7 +180,9 @@ function PanelBody({ panel }: { panel: PanelId }) {
 
       <LogoControls panel={panel} target={target} logo={r.logo} />
 
-      {panel === 'spine' && <SpineTextControls target={target} />}
+      <CodeControls panel={panel} target={target} code={r.code} />
+
+      {rect.text && <SpineTextControls target={target} />}
 
       {isOverride && (
         <div className="override-actions">

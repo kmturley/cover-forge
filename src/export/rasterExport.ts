@@ -2,14 +2,16 @@ import type { MediaItem } from '../types/media';
 import type { Scene } from '../engine/CanvasRenderer';
 import { preloadItem, renderCover } from '../engine/CanvasRenderer';
 import { canvasSizePx } from '../templates';
-import { PAPER_MM, type Imposition, type PaperSize } from './imposition';
+import { PAPER_MM, type CropRect, type Imposition, type PaperSize } from './imposition';
 
 export type RasterFormat = 'png' | 'jpeg';
 
-export type ExportFormat = RasterFormat | 'pdf';
+export type ExportFormat = RasterFormat | 'pdf' | 'svg';
 
 export interface ExportSettings {
   paper: PaperSize;
+  /** A die-cut sheet (see sheets.ts); when set it replaces automatic multi-up on `paper`. */
+  labelSheet?: string;
   format: ExportFormat;
   /** Cut/fold guides on sheets and (for PDF) on each game's page. Off by default. */
   guides: boolean;
@@ -51,6 +53,15 @@ export function rotateClockwise(src: HTMLCanvasElement): HTMLCanvasElement {
   return out;
 }
 
+/** Copies out the part of an item that a label sheet prints (item-local mm → pixels). */
+export function cropCanvas(src: HTMLCanvasElement, crop: CropRect, dpiScale: number): HTMLCanvasElement {
+  const out = document.createElement('canvas');
+  out.width = Math.max(1, Math.round(crop.widthMm * dpiScale));
+  out.height = Math.max(1, Math.round(crop.heightMm * dpiScale));
+  out.getContext('2d')!.drawImage(src, crop.xMm * dpiScale, crop.yMm * dpiScale, crop.widthMm * dpiScale, crop.heightMm * dpiScale, 0, 0, out.width, out.height);
+  return out;
+}
+
 /** Composes rendered item canvases onto one 300 DPI sheet following an imposition layout. */
 export function renderSheetCanvas(items: HTMLCanvasElement[], layout: Imposition, dpiScale: number): HTMLCanvasElement {
   const canvas = document.createElement('canvas');
@@ -62,6 +73,10 @@ export function renderSheetCanvas(items: HTMLCanvasElement[], layout: Imposition
   items.forEach((item, i) => {
     const p = layout.placements[i];
     if (!p) return;
+    if (p.crop) {
+      ctx.drawImage(cropCanvas(p.rotated ? rotateClockwise(item) : item, p.crop, dpiScale), Math.round(p.xMm * dpiScale), Math.round(p.yMm * dpiScale));
+      return;
+    }
     const src = p.rotated ? rotateClockwise(item) : item;
     // Oversize items are scaled down to fit the paper (not to physical scale).
     const scale = layout.oversize
