@@ -62,9 +62,37 @@ export async function adoptImages(raw: unknown): Promise<unknown> {
 
 export const CONFIG_EXTENSION = '.coverforge.json';
 
-export async function saveConfigFile(state: AppState): Promise<void> {
-  const session = await portableSession(state);
-  saveAs(new Blob([JSON.stringify(session)], { type: 'application/json' }), `coverforge-config${CONFIG_EXTENSION}`);
+interface SavePicker {
+  showSaveFilePicker?: (options: {
+    suggestedName: string;
+    types: { description: string; accept: Record<string, string[]> }[];
+  }) => Promise<{ createWritable: () => Promise<{ write: (data: Blob) => Promise<void>; close: () => Promise<void> }> }>;
+}
+
+const DEFAULT_NAME = `coverforge-config${CONFIG_EXTENSION}`;
+
+/**
+ * Saves the config. Browsers with the File System Access API (Chrome, Edge) open a native "Save as" dialog so the
+ * file goes where you choose; others download it to the usual folder. Returns false if the dialog was cancelled.
+ */
+export async function saveConfigFile(state: AppState): Promise<boolean> {
+  const blob = new Blob([JSON.stringify(await portableSession(state))], { type: 'application/json' });
+  const picker = (window as unknown as SavePicker).showSaveFilePicker;
+  if (!picker) {
+    saveAs(blob, DEFAULT_NAME);
+    return true;
+  }
+  try {
+    const handle = await picker.call(window, { suggestedName: DEFAULT_NAME, types: [{ description: 'CoverForge configuration', accept: { 'application/json': [CONFIG_EXTENSION, '.json'] } }] });
+    const out = await handle.createWritable();
+    await out.write(blob);
+    await out.close();
+    return true;
+  } catch (e) {
+    if (e instanceof DOMException && e.name === 'AbortError') return false;
+    saveAs(blob, DEFAULT_NAME); // the dialog was blocked (e.g. inside an iframe): fall back to a download
+    return true;
+  }
 }
 
 /** Reads a saved config. Throws a readable Error when the file isn't one. */

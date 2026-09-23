@@ -1,9 +1,12 @@
 import type { MediaItem } from '../types/media';
 import type { Region } from '../types/template';
-import type { PanelSettings, SharedSettings, StyleOverlay } from '../types/editor';
-import type { PanelId, TemplateKind } from '../types/template';
+import type { Design, PanelSettings, SharedSettings, StyleOverlay } from '../types/editor';
+import type { TemplateKind } from '../types/template';
 import { DEFAULT_KIND, buildTemplate, defaultVariantId, isTemplateKind, variantsFor } from '../templates';
 import { migrateItem, sortItems } from './items';
+import { TEMPLATE_DEFS } from '../templates';
+import { PANEL_IDS } from '../engine/resolve';
+import type { MediaType } from '../types/media';
 import type { AppState, ViewMode } from './AppContext';
 
 /**
@@ -28,6 +31,10 @@ export interface SessionV2 {
   };
   /** Applies to every item; items may override any field via their own `panels` / `spineOverride`. */
   shared: SharedSettings;
+  /** Named designs on top of the Default one (`shared`); items refer to them by `designId`. */
+  designs?: Design[];
+  /** Superseded by `designs`: per media type / template rules from an earlier version, converted on load. */
+  scopes?: unknown;
 }
 
 export const STORAGE_KEY = 'coverforge:session';
@@ -46,6 +53,7 @@ export function serializeSession(s: AppState): SessionV2 {
       view: s.view,
     },
     shared: s.shared,
+    ...(s.designs.length > 0 && { designs: s.designs }),
   };
 }
 
@@ -53,7 +61,6 @@ const isObj = (v: unknown): v is Record<string, unknown> => typeof v === 'object
 const isItem = (v: unknown): v is MediaItem =>
   isObj(v) && typeof v.id === 'string' && typeof v.title === 'string' && isObj(v.assets) && Array.isArray(v.assets.screenshots);
 
-const PANEL_IDS: PanelId[] = ['front', 'spine', 'spineRight', 'back', 'flap', 'top', 'bottom', 'glue', 'tuck'];
 
 function restoreShared(raw: unknown, defaults: SharedSettings): SharedSettings {
   if (!isObj(raw)) return defaults;
@@ -65,6 +72,48 @@ function restoreShared(raw: unknown, defaults: SharedSettings): SharedSettings {
   // Every earlier save stored the old fixed default of 4 mm; that now means "automatic", which fits the template.
   if (spine.textHeightMm === 4) delete spine.textHeightMm;
   return { panels, spine };
+}
+
+const MEDIA_TYPES: MediaType[] = ['game', 'movie', 'tv', 'music', 'custom'];
+
+function withoutDesign(item: MediaItem): MediaItem {
+  const rest = { ...item };
+  delete rest.designId;
+  return rest;
+}
+
+const templateName = (k: TemplateKind) => TEMPLATE_DEFS.find((d) => d.kind === k)?.name ?? k;
+
+/** Keeps the well-formed designs of a saved session and drops the rest. */
+function restoreDesigns(raw: unknown, defaults: SharedSettings): Design[] {
+  if (!Array.isArray(raw)) return [];
+  const out: Design[] = [];
+  for (const d of raw) {
+    if (!isObj(d) || typeof d.id !== 'string' || typeof d.name !== 'string' || d.id === 'default' || out.some((o) => o.id === d.id)) continue;
+    const { panels } = restoreShared({ panels: d.panels }, defaults);
+    out.push({ id: d.id, name: d.name, panels, spine: isObj(d.spine) ? (d.spine as Design['spine']) : {} });
+  }
+  return out;
+}
+
+/**
+ * Version 2 saves from before designs had per media type (and template) rules. Each one that names a media type becomes
+ * a design given to that type's items; a rule that named only a template can't be expressed and is dropped.
+ */
+function migrateScopes(raw: unknown, items: MediaItem[], defaults: SharedSettings): { designs: Design[]; items: MediaItem[] } {
+  if (!Array.isArray(raw)) return { designs: [], items };
+  const designs: Design[] = [];
+  let next = items;
+  raw.forEach((r, n) => {
+    if (!isObj(r) || !MEDIA_TYPES.includes(r.type as MediaType)) return;
+    const type = r.type as MediaType;
+    const { panels } = restoreShared({ panels: r.panels }, defaults);
+    const id = `design-${type}-${n}`;
+    const label = { game: 'Games', movie: 'Movies', tv: 'TV Shows', music: 'Music', custom: 'Custom' }[type];
+    designs.push({ id, name: isTemplateKind(r.template) ? `${label} · ${templateName(r.template)}` : label, panels, spine: isObj(r.spine) ? (r.spine as Design['spine']) : {} });
+    next = next.map((i) => (i.type === type && !i.designId ? { ...i, designId: id } : i));
+  });
+  return { designs, items: next };
 }
 
 /**
@@ -84,7 +133,12 @@ export function restoreSession(raw: unknown, defaults: AppState): AppState {
   const legacyVariant = typeof o.spineMm === 'number' ? `${region.toLowerCase()}-${o.spineMm}` : undefined;
   const wanted = typeof o.variantId === 'string' ? o.variantId : legacyVariant;
   const variantId = variantsFor(kind, region).some((v) => v.id === wanted) ? (wanted as string) : defaultVariantId(kind, region);
-  const selected = typeof raw.selectedItemId === 'string' && items.some((i) => i.id === raw.selectedItemId);
+  const restored = raw.version === 2 ? restoreDesigns(raw.designs, defaults.shared) : [];
+  const migrated = restored.length === 0 ? migrateScopes(raw.scopes, items, defaults.shared) : { designs: [], items };
+  const designs = [...restored, ...migrated.designs];
+  // An item can only use a design that exists.
+  const finalItems = migrated.items.map((i) => (i.designId && !designs.some((d) => d.id === i.designId) ? withoutDesign(i) : i));
+  const selected = typeof raw.selectedItemId === 'string' && finalItems.some((i) => i.id === raw.selectedItemId);
 
   let shared = defaults.shared;
   if (raw.version === 2) {
@@ -104,8 +158,8 @@ export function restoreSession(raw: unknown, defaults: AppState): AppState {
 
   return {
     ...defaults,
-    items,
-    selectedItemId: selected ? (raw.selectedItemId as string) : (items[0]?.id ?? null),
+    items: finalItems,
+    selectedItemId: selected ? (raw.selectedItemId as string) : (finalItems[0]?.id ?? null),
     templateKind: kind,
     region,
     variantId,
@@ -114,6 +168,7 @@ export function restoreSession(raw: unknown, defaults: AppState): AppState {
     styleOverlay: o.styleOverlay === 'clean' || o.styleOverlay === 'digital' || o.styleOverlay === 'retro' ? o.styleOverlay : defaults.styleOverlay,
     view: o.view === '2d' || o.view === '3d' ? o.view : defaults.view,
     shared,
+    designs,
   };
 }
 

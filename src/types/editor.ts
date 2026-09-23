@@ -17,6 +17,16 @@ export interface PanelTransform {
 
 export const DEFAULT_TRANSFORM: PanelTransform = { xMm: null, yMm: null, scale: 1, rotationDeg: 0, opacity: 1 };
 
+/** A decorative frame drawn just inside the panel's trim edge. `widthMm: 0` (the default) means none. */
+export interface BorderSettings {
+  color: string;
+  widthMm: number;
+  /** Gap between the trim edge and the stroke's centreline. */
+  insetMm: number;
+}
+
+export const DEFAULT_BORDER: BorderSettings = { color: '#ffffff', widthMm: 0, insetMm: 3 };
+
 /** A slot in an item's image library: a named asset, or `screenshot:<index>`. */
 export type ImageRef = 'cover' | 'hero' | 'logo' | `screenshot:${number}`;
 
@@ -31,6 +41,8 @@ export interface PanelSettings {
   logo?: Partial<LogoSettings>;
   /** QR code or barcode layer, drawn above the image and logo. */
   code?: Partial<CodeSettings>;
+  /** Accent border layer, drawn on top of everything else in the panel. */
+  border?: Partial<BorderSettings>;
 }
 
 /** A store / console brand mark drawn on top of a panel's image and text. Every field is layered like the rest (default → shared → item). */
@@ -96,6 +108,8 @@ export interface SpineSettings {
   /** Cap height. Unset = automatic: as large as still lets a typical long title fit on one line (see SpineTypography). */
   textHeightMm?: number;
   color: string;
+  /** Extra rotation on top of the template's own orientation; e.g. 180° reads bottom-to-top on a vertical spine. */
+  rotationDeg?: number;
 }
 
 export type SharedSpine = Omit<SpineSettings, 'text'>;
@@ -107,4 +121,15 @@ export type SharedSpine = Omit<SpineSettings, 'text'>;
 export interface SharedSettings {
   panels: Partial<Record<PanelId, PanelSettings>>;
   spine: SharedSpine;
+}
+
+/**
+ * A named set of panel settings that items can use. The built-in Default design (`SharedSettings`) applies to every
+ * item; any other design sits on top of it and only stores what it changes. An item's own overrides sit on top of both.
+ */
+export interface Design {
+  id: string;
+  name: string;
+  panels: Partial<Record<PanelId, PanelSettings>>;
+  spine: Partial<SharedSpine>;
 }

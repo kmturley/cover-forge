@@ -3,6 +3,8 @@ export interface FetchJsonOptions {
   /** Extra attempts after a 429/503 (rate limiting / "busy"), e.g. MusicBrainz. */
   retries?: number;
   retryDelayMs?: number;
+  /** Extra request headers, e.g. an `Authorization` bearer token for an API called directly from the browser. */
+  headers?: Record<string, string>;
 }
 
 export class HttpError extends Error {
@@ -21,9 +23,9 @@ const sleep = (ms: number, signal?: AbortSignal) =>
   });
 
 /** GET a JSON document, retrying politely when the server says it is busy or rate-limiting us. */
-export async function fetchJson<T>(url: string, { signal, retries = 0, retryDelayMs = 1100 }: FetchJsonOptions = {}): Promise<T> {
+export async function fetchJson<T>(url: string, { signal, retries = 0, retryDelayMs = 1100, headers }: FetchJsonOptions = {}): Promise<T> {
   for (let attempt = 0; ; attempt++) {
-    const res = await fetch(url, { signal });
+    const res = await fetch(url, { signal, headers });
     if (res.ok) return (await res.json()) as T;
     if ((res.status === 429 || res.status === 503) && attempt < retries) {
       await sleep(retryDelayMs * (attempt + 1), signal); // back off a little more each time

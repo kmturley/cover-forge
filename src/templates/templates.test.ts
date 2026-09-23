@@ -70,7 +70,7 @@ describe('template dimensions', () => {
     expect(w).toBeCloseTo(103.2 + 6);
     expect(h).toBeCloseTo(101.6 + 6);
   });
-  it('CR80 card: portrait 54 × 85.6 mm plus 1 mm bleed', () => expect(size('nfc-card')).toEqual([56, 87.6]));
+  it('CR80 card: portrait 54 × 85.6 mm plus 1 mm bleed', () => expect(size('nfc-card', 'cr80')).toEqual([56, 87.6]));
   it('3.5" floppy label: 69.85 mm square plus 1 mm bleed', () => {
     const [w, h] = size('floppy');
     expect(w).toBeCloseTo(71.85);
@@ -225,12 +225,17 @@ describe('NFC sticker', () => {
 });
 
 describe('NFC card back', () => {
-  it('front only has one panel; front + back adds a second, separate card', () => {
+  it('front + back (the default) has a second, separate card; front only has just the one', () => {
     expect(buildTemplate('nfc-card', 'cr80').panels).toHaveLength(1);
     const t = buildTemplate('nfc-card', 'cr80-duplex');
     expect(t.panels.map((q) => q.id)).toEqual(['front', 'back']);
     expect(t.totalWidthMm).toBeGreaterThan(54 * 2 + 2);
     expect(neighbour(t.panels, t.panels[0], 'right')).toBeUndefined(); // two cards, not a fold
     expect(t.preview).toMatchObject({ kind: 'slab', panel: 'front', backPanel: 'back' });
+  });
+
+  it('is the default NFC card variant', () => {
+    expect(defaultVariantId('nfc-card')).toBe('cr80-duplex');
+    expect(buildTemplate('nfc-card').panels.map((q) => q.id)).toEqual(['front', 'back']);
   });
 });

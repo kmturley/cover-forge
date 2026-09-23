@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { fetchJson, https } from '../http';
-import { createMoviesProvider } from './movies';
+import { createMoviesProvider, hasSharedMovieAccess, usingSharedMovieKey } from './movies';
 import { musicProvider } from './music';
 import { tvProvider } from './tv';
 
@@ -139,17 +139,17 @@ describe('TV provider (TVMaze)', () => {
   });
 });
 
-describe('movies provider (TMDB via a relay)', () => {
-  it('is unavailable, and searches nothing, without a relay', async () => {
-    const p = createMoviesProvider(undefined);
+describe('movies provider (TMDB, via a relay or called directly)', () => {
+  it('is unavailable, and searches nothing, with no relay, token or OMDb key', async () => {
+    const p = createMoviesProvider(undefined, null, null);
     expect(p.available).toBe(false);
-    expect(p.unavailableReason).toMatch(/VITE_TMDB_PROXY_URL/);
+    expect(p.unavailableReason).toMatch(/VITE_TMDB_API_KEY/);
     expect(await p.search('inception')).toEqual([]);
   });
 
   it('routes through a ?url= relay and maps results', async () => {
     const calls = mockFetch([['search%2Fmovie', { results: [{ id: 27205, title: 'Inception', release_date: '2010-07-15', poster_path: '/p.jpg' }, { id: 2, title: 'La Vita', original_title: 'La vita', release_date: '' }] }]]);
-    const p = createMoviesProvider('https://relay.example');
+    const p = createMoviesProvider('https://relay.example', null);
     const r = await p.search('inception');
     expect(calls[0]).toBe(`https://relay.example?url=${encodeURIComponent('https://api.themoviedb.org/3/search/movie?query=inception&include_adult=false')}`);
     expect(r[0]).toMatchObject({ id: '27205', title: 'Inception', year: '2010', thumbnail: 'https://image.tmdb.org/t/p/w92/p.jpg' });
@@ -158,8 +158,26 @@ describe('movies provider (TMDB via a relay)', () => {
 
   it('supports a cors-anywhere-style prefix relay', async () => {
     const calls = mockFetch([['search/movie', { results: [] }]]);
-    await createMoviesProvider('https://relay.example/').search('x');
+    await createMoviesProvider('https://relay.example/', null).search('x');
     expect(calls[0]).toBe('https://relay.example/https://api.themoviedb.org/3/search/movie?query=x&include_adult=false');
+  });
+
+  it('calls TMDB directly with a bearer token when no relay is configured (TMDB sends CORS headers)', async () => {
+    const calls = mockFetch([['search/movie', { results: [] }]]);
+    await createMoviesProvider(undefined, 'my-token').search('x');
+    expect(calls[0]).toBe('https://api.themoviedb.org/3/search/movie?query=x&include_adult=false');
+  });
+
+  it('a personal TMDB key calls TMDB directly, bypassing a configured relay (their own key, their own quota)', async () => {
+    const calls = mockFetch([['search/movie', { results: [] }]]);
+    await createMoviesProvider('https://relay.example', 'app-token', null, null, 'personal-tmdb').search('x');
+    expect(calls[0]).toBe('https://api.themoviedb.org/3/search/movie?query=x&include_adult=false');
+  });
+
+  it('a personal TMDB key wins over a personal OMDb key', async () => {
+    const calls = mockFetch([['search/movie', { results: [] }]]);
+    await createMoviesProvider(undefined, null, 'personal-omdb', 'personal-omdb', 'personal-tmdb').search('x');
+    expect(calls[0]).toBe('https://api.themoviedb.org/3/search/movie?query=x&include_adult=false');
   });
 
   it('builds an item preferring English/text-free, best-rated art', async () => {
@@ -177,7 +195,7 @@ describe('movies provider (TMDB via a relay)', () => {
         },
       ],
     ]);
-    const item = await createMoviesProvider('https://relay.example').createItem({ id: '27205', title: 'Inception', year: '2010' });
+    const item = await createMoviesProvider('https://relay.example', null).createItem({ id: '27205', title: 'Inception', year: '2010' });
     expect(item).toMatchObject({ id: 'tmdb-27205', type: 'movie', sourceId: '27205' });
     expect(item.assets.cover).toBe('https://image.tmdb.org/t/p/original/en-high.jpg');
     expect(item.assets.hero).toBe('https://image.tmdb.org/t/p/original/bd1.jpg');
@@ -187,6 +205,92 @@ describe('movies provider (TMDB via a relay)', () => {
 
   it('errors clearly when there is no poster at all', async () => {
     mockFetch([['images', { posters: [], backdrops: [], logos: [] }]]);
-    await expect(createMoviesProvider('https://r').createItem({ id: '1', title: 'X' })).rejects.toThrow(/No poster/);
+    await expect(createMoviesProvider('https://r', null).createItem({ id: '1', title: 'X' })).rejects.toThrow(/No poster/);
+  });
+});
+
+describe('movies provider (OMDb, used when no TMDB relay or token is available)', () => {
+  it('is unavailable without a relay, token or a personal key', async () => {
+    const p = createMoviesProvider(undefined, null, null);
+    expect(p.available).toBe(false);
+    expect(await p.search('batman')).toEqual([]);
+    await expect(p.createItem({ id: 'tt1', title: 'X' })).rejects.toThrow(/not configured/);
+  });
+
+  it('searches with the personal key and maps results, skipping posterless entries', async () => {
+    const calls = mockFetch([
+      ['omdbapi.com', { Response: 'True', Search: [{ imdbID: 'tt1375666', Title: 'Inception', Year: '2010', Poster: 'https://img/p.jpg' }, { imdbID: 'tt2', Title: 'No Art', Year: '2011', Poster: 'N/A' }] }],
+    ]);
+    const p = createMoviesProvider(undefined, null, 'mykey');
+    expect(p.available).toBe(true);
+    const r = await p.search('inception');
+    expect(calls[0]).toBe('https://www.omdbapi.com/?apikey=mykey&type=movie&s=inception');
+    expect(r).toEqual([
+      { id: 'tt1375666', title: 'Inception', year: '2010', thumbnail: 'https://img/p.jpg', payload: {} },
+      { id: 'tt2', title: 'No Art', year: '2011', thumbnail: undefined, payload: {} },
+    ]);
+  });
+
+  it('treats "not found" as an empty result, but surfaces other OMDb errors', async () => {
+    const p = createMoviesProvider(undefined, null, 'mykey');
+    mockFetch([['omdbapi.com', { Response: 'False', Error: 'Movie not found!' }]]);
+    expect(await p.search('zzz')).toEqual([]);
+    mockFetch([['omdbapi.com', { Response: 'False', Error: 'Invalid API key!' }]]);
+    await expect(p.search('zzz')).rejects.toThrow(/Invalid API key/);
+  });
+
+  it('builds an item from the detail lookup, asking for a bigger crop of the Amazon poster', async () => {
+    mockFetch([['omdbapi.com', { Response: 'True', Title: 'Inception', Year: '2010–', Poster: 'http://img/M/abc._V1_SX300.jpg' }]]);
+    const p = createMoviesProvider(undefined, null, 'mykey');
+    const item = await p.createItem({ id: 'tt1375666', title: 'Inception', year: '2010' });
+    expect(item).toMatchObject({ id: 'omdb-tt1375666', type: 'movie', title: 'Inception', year: '2010', sourceId: 'tt1375666' });
+    expect(item.assets).toEqual({ cover: 'https://img/M/abc._V1_SX1000_.jpg', hero: null, logo: null, screenshots: [] });
+  });
+
+  it('errors clearly when there is no poster at all', async () => {
+    mockFetch([['omdbapi.com', { Response: 'True', Title: 'X', Year: '2020', Poster: 'N/A' }]]);
+    await expect(createMoviesProvider(undefined, null, 'mykey').createItem({ id: 'tt1', title: 'X' })).rejects.toThrow(/No poster/);
+  });
+
+  it('prefers TMDB over OMDb when both are available', async () => {
+    const calls = mockFetch([['search%2Fmovie', { results: [] }]]);
+    await createMoviesProvider('https://relay.example', null, 'mykey').search('x');
+    expect(calls[0]).toContain('themoviedb.org');
+  });
+
+  it('a personal OMDb key opts out of a shared/relay TMDB token, so it is what actually gets used', async () => {
+    const calls = mockFetch([['omdbapi.com', { Response: 'True', Search: [] }]]);
+    await createMoviesProvider('https://relay.example', 'app-token', 'personal-omdb', 'personal-omdb').search('x');
+    expect(calls[0]).toBe('https://www.omdbapi.com/?apikey=personal-omdb&type=movie&s=x');
+  });
+});
+
+describe('a build-time shared key (VITE_TMDB_API_KEY / VITE_OMDB_API_KEY)', () => {
+  it('makes Movies work with no personal key, and reports itself as the shared path', () => {
+    expect(hasSharedMovieAccess(undefined, null, undefined)).toBe(false);
+    expect(hasSharedMovieAccess(undefined, null, 'app-key')).toBe(true);
+    expect(hasSharedMovieAccess(undefined, 'app-token', undefined)).toBe(true);
+    expect(usingSharedMovieKey(undefined, null, null, 'app-key')).toBe(true);
+    expect(usingSharedMovieKey(undefined, 'app-token', null, undefined)).toBe(true);
+    const p = createMoviesProvider(undefined, null, 'app-key');
+    expect(p.available).toBe(true);
+  });
+
+  it('yields to a personal key, whether it is an OMDb key or a TMDB one, and whether the shared token is a relay or a direct TMDB token', () => {
+    expect(usingSharedMovieKey(undefined, 'app-token', 'personal', undefined)).toBe(false);
+    expect(usingSharedMovieKey('https://relay.example', undefined, 'personal', undefined)).toBe(false);
+    expect(usingSharedMovieKey(undefined, 'app-token', null, undefined, 'personal-tmdb')).toBe(false);
+  });
+
+  it('the app-wide OMDb key is used for requests when no personal key or TMDB token overrides it', async () => {
+    const calls = mockFetch([['omdbapi.com', { Response: 'True', Search: [] }]]);
+    await createMoviesProvider(undefined, null, 'app-key').search('x');
+    expect(calls[0]).toBe('https://www.omdbapi.com/?apikey=app-key&type=movie&s=x');
+  });
+
+  it('the app-wide TMDB token is used directly (no relay) with a bearer header', async () => {
+    const calls = mockFetch([['search/movie', { results: [] }]]);
+    await createMoviesProvider(undefined, 'app-token').search('x');
+    expect(calls[0]).toBe('https://api.themoviedb.org/3/search/movie?query=x&include_adult=false');
   });
 });

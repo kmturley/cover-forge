@@ -116,7 +116,7 @@ describe('templates', () => {
 
   it('falls back to the first panel when the selected one does not exist in the new template', () => {
     let s = reducer(initialState, { type: 'selectPanel', panel: 'back' });
-    s = reducer(s, { type: 'setTemplate', kind: 'nfc-card' });
+    s = reducer(s, { type: 'setTemplate', kind: 'floppy' });
     expect(s.template.panels.map((p) => p.id)).toEqual(['front']);
     expect(s.selectedPanel).toBe('front');
   });

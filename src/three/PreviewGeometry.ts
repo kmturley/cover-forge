@@ -45,7 +45,7 @@ export function createBodyGeometry(t: TemplateConfig, spec: PreviewSpec): Rounde
   const [w, h, d] = modelSizeMm(spec);
   const radius = spec.radiusMm;
   const geo = new RoundedBoxGeometry(w, h, d, CORNER_SEGMENTS, radius);
-  const printed = printedFaces(spec);
+  const printed = bodyPrintedFaces(t, spec);
   const uv = geo.getAttribute('uv') as BufferAttribute;
 
   for (const g of geo.groups) {
@@ -61,6 +61,51 @@ export function createBodyGeometry(t: TemplateConfig, spec: PreviewSpec): Rounde
   }
   uv.needsUpdate = true;
   return geo;
+}
+
+export interface InsetFace {
+  face: BoxFace;
+  panel: PanelId;
+}
+
+/** How much narrower (mm) a panel may be than its face before it counts as an inset. */
+const INSET_TOLERANCE_MM = 0.6;
+
+/**
+ * Side faces whose panel is narrower than the face, like a CD's 6.5 mm spine cards on its 10 mm spine. Stretching them
+ * over the whole face would distort the art, so they are drawn at true size, centred, with the case showing either side.
+ * Fronts and backs always fill their face.
+ */
+export function insetFaces(t: TemplateConfig, spec: PreviewSpec): InsetFace[] {
+  if (spec.kind !== 'box') return [];
+  const out: InsetFace[] = [];
+  for (const [face, id] of Object.entries(spec.faces) as [BoxFace, PanelId][]) {
+    const panel = t.panels.find((p) => p.id === id);
+    if (!panel || (face !== '+x' && face !== '-x')) continue;
+    if (panel.widthMm < spec.depthMm - INSET_TOLERANCE_MM && panel.heightMm <= spec.heightMm + INSET_TOLERANCE_MM) out.push({ face, panel: id });
+  }
+  return out;
+}
+
+/** The faces printed directly on the body: everything `printedFaces` names except the insets, which are separate pieces. */
+export function bodyPrintedFaces(t: TemplateConfig, spec: PreviewSpec): Partial<Record<BoxFace, PanelId>> {
+  const insets = new Set(insetFaces(t, spec).map((i) => i.face));
+  return Object.fromEntries(Object.entries(printedFaces(spec)).filter(([f]) => !insets.has(f as BoxFace)));
+}
+
+/** Where the plane for an inset face sits (just proud of the surface) and how it is turned to face outwards. */
+export function insetPlacement(spec: Extract<PreviewSpec, { kind: 'box' }>, face: BoxFace): { position: [number, number, number]; rotation: [number, number, number] } {
+  const off = 0.05;
+  switch (face) {
+    case '+x':
+      return { position: [spec.widthMm / 2 + off, 0, 0], rotation: [0, Math.PI / 2, 0] };
+    case '-x':
+      return { position: [-spec.widthMm / 2 - off, 0, 0], rotation: [0, -Math.PI / 2, 0] };
+    case '-z':
+      return { position: [0, 0, -spec.depthMm / 2 - off], rotation: [0, Math.PI, 0] };
+    default:
+      return { position: [0, 0, spec.depthMm / 2 + off], rotation: [0, 0, 0] };
+  }
 }
 
 /** Which faces carry artwork directly on the body. */

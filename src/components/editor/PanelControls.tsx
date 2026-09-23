@@ -1,16 +1,24 @@
 import { useEffect, useRef, useState } from 'react';
-import { useAppDispatch, useAppState, useSelectedItem, type EditMode } from '../../context/AppContext';
+import { targetDesignId, useAppDispatch, useAppState, useSelectedItem } from '../../context/AppContext';
 import { DEFAULT_TRANSFORM, MAX_SCALE, MIN_SCALE, type ImageRef, type PanelSettings, type PanelTransform } from '../../types/editor';
 import type { PanelId } from '../../types/template';
 import { libraryImages, type LibraryImage } from '../../engine/imageLibrary';
 import { getCachedImage, loadImage } from '../../engine/imageCache';
 import { computePlacement } from '../../engine/placement';
-import { BASE_BACKGROUND, panelHasOverride, resolvePanel } from '../../engine/resolve';
+import { BASE_BACKGROUND, panelHasOverride } from '../../engine/resolve';
+import { designHasPanel } from '../../engine/designs';
+import { DesignBar } from './DesignBar';
+import { useEditView } from './useEditView';
 import { readImageFile } from '../../api/upload';
 import { srcOf } from '../../storage/localImages';
 import { NumberSlider } from './NumberSlider';
 import { SpineTextControls } from './SpineEditor';
+import { NoneLink } from './NoneLink';
 import { LogoControls } from './LogoControls';
+import { Section } from './Section';
+import { BackgroundSummary, BorderSummary, CodeSummary, ImageSummary, LogoSummary, SpineSummary } from './Summaries';
+import { getBrand } from '../../brands';
+import { defaultCapHeightMm } from '../../engine/SpineTypography';
 import { CodeControls } from './CodeControls';
 
 /** Natural pixel size of an image once loaded (needed to show its centred position in mm). */
@@ -40,66 +48,50 @@ function Thumb({ image, selected, onPick }: { image: LibraryImage; selected: boo
 }
 
 export function PanelControls() {
-  const { selectedPanel, editMode, items, template } = useAppState();
+  const state = useAppState();
+  const { selectedPanel, editMode, template } = state;
   const panel = template.panels.some((p) => p.id === selectedPanel) ? selectedPanel : template.panels[0].id;
   const item = useSelectedItem();
   const dispatch = useAppDispatch();
-  const modes: { id: EditMode; label: string }[] = [
-    { id: 'shared', label: 'Shared' },
-    { id: 'override', label: 'Override' },
-  ];
+  const grouped = editMode === 'shared' || !item;
 
   return (
-    <section>
-      <div className="seg wide" role="group" aria-label="Edit scope">
-        {modes.map((m) => (
-          <button
-            key={m.id}
-            className={m.id === editMode ? 'active' : ''}
-            aria-pressed={m.id === editMode}
-            disabled={m.id === 'override' && !item}
-            onClick={() => dispatch({ type: 'setEditMode', mode: m.id })}
-          >
-            {m.label}
-          </button>
-        ))}
-      </div>
-      <p className="scope-note">
-        {editMode === 'shared'
-          ? `Changes apply to all ${items.length} item${items.length === 1 ? '' : 's'}.`
-          : item
-            ? `Changes apply to “${item.title}” only.`
-            : 'Select an item to override.'}
-      </p>
-
-      <div className="seg wide" role="tablist" aria-label="Panel to edit">
-        {template.panels.filter((tab) => !tab.follows).map((tab) => (
-          <button
-            key={tab.id}
-            role="tab"
-            aria-selected={tab.id === panel}
-            className={tab.id === panel ? 'active' : ''}
-            onClick={() => dispatch({ type: 'selectPanel', panel: tab.id })}
-          >
-            {tab.label}
-            {panelHasOverride(item, tab.id) && <span className="dot" title="This item overrides the shared settings here" />}
-          </button>
-        ))}
+    <section className="controls">
+      <div className="controls-head">
+        <DesignBar panel={panel} />
+        <div className="seg wide" role="tablist" aria-label="Panel to edit">
+          {template.panels.filter((tab) => !tab.follows).map((tab) => {
+            const marked = grouped ? designHasPanel(state.shared, state.designs, targetDesignId(state), tab.id) : panelHasOverride(item, tab.id);
+            return (
+              <button
+                key={tab.id}
+                role="tab"
+                aria-selected={tab.id === panel}
+                className={tab.id === panel ? 'active' : ''}
+                onClick={() => dispatch({ type: 'selectPanel', panel: tab.id })}
+              >
+                {tab.label}
+                {marked && <span className="dot" title={grouped ? 'This design has its own settings here' : 'This item overrides its design here'} />}
+              </button>
+            );
+          })}
+        </div>
       </div>
 
-      {item ? <PanelBody panel={panel} /> : <p className="muted">Add a game to edit its panels.</p>}
+      <div className="controls-body">{item ? <PanelBody key={`${item.id}:${panel}`} panel={panel} /> : <p className="muted">Add a game to edit its panels.</p>}</div>
     </section>
   );
 }
 
 function PanelBody({ panel }: { panel: PanelId }) {
-  const { shared, editMode, template } = useAppState();
+  const { template } = useAppState();
   const item = useSelectedItem()!;
   const dispatch = useAppDispatch();
 
-  const isOverride = editMode === 'override';
-  const target = isOverride ? item.id : null; // null = shared layer
-  const r = resolvePanel(shared, item, panel);
+  const { isOverride, resolved: r, own, spine } = useEditView(panel);
+  // Which part of the design is open for editing; everything else is a read-only summary.
+  const [open, setOpen] = useState<'background' | 'border' | 'image' | 'logo' | 'code' | 'spine' | null>(null);
+  const target = isOverride ? item.id : null; // null = the group scope
   const t = r.transform;
   const size = useImageSize(r.imageUrl);
   const rect = template.panels.find((p) => p.id === panel)!;
@@ -126,68 +118,107 @@ function PanelBody({ panel }: { panel: PanelId }) {
   const setTransform = (change: Partial<PanelTransform>) => patch({ transform: change });
 
   // Where a field currently comes from, so it can be cleared back to the layer below.
-  const ownBackground = (isOverride ? item.panels?.[panel] : shared.panels[panel])?.backgroundColor;
+  const ownBackground = own?.backgroundColor;
 
   return (
     <>
-      <h2>Background</h2>
-      <div className="field row">
-        <input
-          type="color"
-          aria-label="Panel background colour"
-          value={r.backgroundColor ?? BASE_BACKGROUND}
-          onChange={(e) => patch({ backgroundColor: e.target.value })}
-        />
-        <span className="muted">{r.backgroundColor ?? 'None'}</span>
-        {ownBackground && <button onClick={() => patch({ backgroundColor: undefined })}>{isOverride ? 'Use shared' : 'Clear'}</button>}
-      </div>
+      <Section title="Background" summary={<BackgroundSummary r={r} />} editing={open === 'background'} onEdit={() => setOpen('background')} onDone={() => setOpen(null)}>
+        <div className="field row">
+          <input
+            type="color"
+            aria-label="Panel background colour"
+            value={r.backgroundColor ?? BASE_BACKGROUND}
+            onChange={(e) => patch({ backgroundColor: e.target.value })}
+          />
+          <span className="muted">{r.backgroundColor ?? 'None'}</span>
+          {ownBackground && <button onClick={() => patch({ backgroundColor: undefined })}>{isOverride ? 'Use design' : 'Clear'}</button>}
+        </div>
 
-      <h2>Image</h2>
-      <div className="thumbs">
-        <button className={`thumb none ${r.imageRef === null ? 'selected' : ''}`} aria-pressed={r.imageRef === null} onClick={() => patch({ image: null })}>
-          None
-        </button>
-        {libraryImages(item).map((img) => (
-          <Thumb key={img.ref} image={img} selected={img.ref === r.imageRef} onPick={() => patch({ image: img.ref as ImageRef })} />
-        ))}
-        <button className="thumb none" title="Add your own image to this item" aria-label="Add image" onClick={() => fileInput.current?.click()}>
-          + Add
-        </button>
-        <input ref={fileInput} type="file" accept="image/*" multiple hidden aria-label="Upload images" onChange={(e) => (void upload(e.target.files), (e.target.value = ''))} />
-      </div>
-      {uploadError && <p className="error small">{uploadError}</p>}
+      </Section>
 
-      {r.imageRef !== null && !pl ? (
-        <p className="muted">Loading image…</p>
-      ) : r.imageRef !== null && pl ? (
-        <>
-          <p className="muted">Position is the image's top-left corner from the panel's top-left (bleed included). 0, 0 aligns to the corner. Default: centred.</p>
-          <NumberSlider label="Position X" unit="mm" min={Math.floor(-pl.widthMm)} max={Math.ceil(area.widthMm)} step={0.1} decimals={1} value={pl.xMm} onChange={(xMm) => setTransform({ xMm })} />
-          <NumberSlider label="Position Y" unit="mm" min={Math.floor(-pl.heightMm)} max={Math.ceil(area.heightMm)} step={0.1} decimals={1} value={pl.yMm} onChange={(yMm) => setTransform({ yMm })} />
-          <NumberSlider label="Size (zoom)" unit="×" min={MIN_SCALE} max={MAX_SCALE} step={0.01} value={t.scale} onChange={(scale) => setTransform({ scale })} />
-          <NumberSlider label="Rotation" unit="°" min={-180} max={180} step={0.1} decimals={1} value={t.rotationDeg} onChange={(rotationDeg) => setTransform({ rotationDeg })} />
-          <NumberSlider label="Opacity" unit="%" min={0} max={100} step={1} decimals={0} value={Math.round(t.opacity * 100)} onChange={(v) => setTransform({ opacity: v / 100 })} />
-          <button
-            // Shared: drop the shared placement. Override: pin this item to centred cover-all regardless of shared.
-            onClick={() => patch({ transform: isOverride ? DEFAULT_TRANSFORM : undefined })}
-          >
-            Reset image (centred, cover all)
+      <Section
+        title="Border"
+        summary={<BorderSummary r={r} />}
+        editing={open === 'border'}
+        onEdit={() => setOpen('border')}
+        onDone={() => setOpen(null)}
+        extra={<NoneLink selected={r.border.widthMm <= 0} onClick={() => patch({ border: { widthMm: 0 } })} />}
+      >
+        <div className="field row">
+          <input type="color" aria-label="Border colour" value={r.border.color} onChange={(e) => patch({ border: { color: e.target.value } })} />
+          <span className="muted">{r.border.color}</span>
+        </div>
+        <NumberSlider label="Border width" unit="mm" min={0} max={5} step={0.1} decimals={1} value={r.border.widthMm} onChange={(widthMm) => patch({ border: { widthMm } })} />
+        <NumberSlider label="Inset from the edge" unit="mm" min={0} max={15} step={0.5} decimals={1} value={r.border.insetMm} onChange={(insetMm) => patch({ border: { insetMm } })} />
+      </Section>
+
+      <Section
+        title="Image"
+        summary={<ImageSummary r={r} item={item} />}
+        editing={open === 'image'}
+        onEdit={() => setOpen('image')}
+        onDone={() => setOpen(null)}
+        extra={<NoneLink selected={r.imageRef === null} onClick={() => patch({ image: null })} />}
+      >
+        <div className="thumbs">
+          {libraryImages(item).map((img) => (
+            <Thumb key={img.ref} image={img} selected={img.ref === r.imageRef} onPick={() => patch({ image: img.ref as ImageRef })} />
+          ))}
+          <button className="thumb none" title="Add your own image to this item" aria-label="Add image" onClick={() => fileInput.current?.click()}>
+            + Add
           </button>
-        </>
-      ) : (
-        <p className="muted">Choose an image above to position it.</p>
+          <input ref={fileInput} type="file" accept="image/*" multiple hidden aria-label="Upload images" onChange={(e) => (void upload(e.target.files), (e.target.value = ''))} />
+        </div>
+        {uploadError && <p className="error small">{uploadError}</p>}
+
+        {r.imageRef !== null && !pl ? (
+          <p className="muted">Loading image…</p>
+        ) : r.imageRef !== null && pl ? (
+          <>
+            <p className="muted">Position is the image's top-left corner from the panel's top-left (bleed included). 0, 0 aligns to the corner. Default: centred.</p>
+            <NumberSlider label="Position X" unit="mm" min={Math.floor(-pl.widthMm)} max={Math.ceil(area.widthMm)} step={0.1} decimals={1} value={pl.xMm} onChange={(xMm) => setTransform({ xMm })} />
+            <NumberSlider label="Position Y" unit="mm" min={Math.floor(-pl.heightMm)} max={Math.ceil(area.heightMm)} step={0.1} decimals={1} value={pl.yMm} onChange={(yMm) => setTransform({ yMm })} />
+            <NumberSlider label="Size (zoom)" unit="×" min={MIN_SCALE} max={MAX_SCALE} step={0.01} value={t.scale} onChange={(scale) => setTransform({ scale })} />
+            <NumberSlider label="Rotation" unit="°" min={-180} max={180} step={0.1} decimals={1} value={t.rotationDeg} onChange={(rotationDeg) => setTransform({ rotationDeg })} />
+            <NumberSlider label="Opacity" unit="%" min={0} max={100} step={1} decimals={0} value={Math.round(t.opacity * 100)} onChange={(v) => setTransform({ opacity: v / 100 })} />
+            <button
+              // Group: drop the design's placement. Item: pin this item to centred cover-all regardless of its design.
+              onClick={() => patch({ transform: isOverride ? DEFAULT_TRANSFORM : undefined })}
+            >
+              Reset image (centred, cover all)
+            </button>
+          </>
+        ) : (
+          <p className="muted">Choose an image above to position it.</p>
+        )}
+
+      </Section>
+
+      <Section
+        title="Brand logo"
+        summary={<LogoSummary r={r} template={template} rect={rect} />}
+        editing={open === 'logo'}
+        onEdit={() => setOpen('logo')}
+        onDone={() => setOpen(null)}
+        extra={<NoneLink selected={!getBrand(r.logo.brand)} onClick={() => patch({ logo: { brand: null } })} />}
+      >
+        <LogoControls panel={panel} target={target} logo={r.logo} />
+      </Section>
+
+      <Section title="QR code & barcode" summary={<CodeSummary r={r} template={template} rect={rect} />} editing={open === 'code'} onEdit={() => setOpen('code')} onDone={() => setOpen(null)}>
+        <CodeControls panel={panel} target={target} code={r.code} />
+      </Section>
+
+      {rect.text && (
+        <Section title="Spine text" summary={<SpineSummary spine={spine} autoMm={defaultCapHeightMm(rect, rect.text)} />} editing={open === 'spine'} onEdit={() => setOpen('spine')} onDone={() => setOpen(null)}>
+          <SpineTextControls target={target} />
+        </Section>
       )}
-
-      <LogoControls panel={panel} target={target} logo={r.logo} />
-
-      <CodeControls panel={panel} target={target} code={r.code} />
-
-      {rect.text && <SpineTextControls target={target} />}
 
       {isOverride && (
         <div className="override-actions">
           <button disabled={!panelHasOverride(item, panel)} onClick={() => dispatch({ type: 'clearOverrides', id: item.id, panel })}>
-            Remove overrides — use shared
+            Remove overrides — use design
           </button>
         </div>
       )}

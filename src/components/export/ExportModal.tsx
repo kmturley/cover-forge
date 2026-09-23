@@ -7,7 +7,7 @@ import { PrintSheetPreview } from './PrintSheetPreview';
 import { fitsLabelSheet, getLabelSheet, labelSheetsFor } from '../../export/sheets';
 
 export function ExportModal({ onClose }: { onClose: () => void }) {
-  const { items, template, shared, styleOverlay } = useAppState();
+  const { items, template, shared, designs, styleOverlay } = useAppState();
   const selected = useSelectedItem();
   const [paper, setPaper] = useState<PaperSize>('A4');
   const [chosenSheet, setChosenSheet] = useState<string>('');
@@ -17,7 +17,7 @@ export function ExportModal({ onClose }: { onClose: () => void }) {
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
 
-  const base = { template, shared, style: styleOverlay };
+  const base = { template, shared, designs, style: styleOverlay };
   // A die-cut sheet only applies to the templates it was made for; otherwise fall back to plain paper.
   const labelSheets = labelSheetsFor(template.kind).filter((s) => fitsLabelSheet(s, template));
   const labelSheet = fitsLabelSheet(getLabelSheet(chosenSheet), template) ? chosenSheet : undefined;

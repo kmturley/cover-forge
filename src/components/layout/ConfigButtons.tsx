@@ -37,6 +37,14 @@ export function ConfigButtons() {
     }
   }
 
+  async function save() {
+    try {
+      if (await saveConfigFile(state)) say("Saved");
+    } catch {
+      say("Couldn’t save the file.", true);
+    }
+  }
+
   async function share() {
     try {
       const link = await buildShareLink(state, window.location.href);
@@ -61,7 +69,7 @@ export function ConfigButtons() {
       <div className="seg" role="group" aria-label="Configuration">
         <button
           title="Save this configuration as a file"
-          onClick={() => void saveConfigFile(state)}
+          onClick={() => void save()}
         >
           Save
         </button>

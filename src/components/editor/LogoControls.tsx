@@ -33,17 +33,12 @@ export function LogoControls({ panel, target, logo }: Props) {
   const brand = getBrand(logo.brand);
   const rect = template.panels.find((p) => p.id === panel)!;
 
-  const patch = (change: Partial<LogoSettings>, on: PanelId = panel) =>
-    dispatch({ type: 'updatePanel', id: target, panel: on, patch: { logo: change } });
+  const patch = (change: Partial<LogoSettings>) => dispatch({ type: 'updatePanel', id: target, panel, patch: { logo: change } });
   const pl = brand ? computeLogoPlacement(template, rect, brandAspect(brand), logo) : null;
 
   return (
     <>
-      <h2>Brand logo</h2>
       <div className="brand-groups">
-        <button className={`brand-option none ${!brand ? 'selected' : ''}`} aria-pressed={!brand} onClick={() => patch({ brand: null })}>
-          None
-        </button>
         {BRAND_GROUPS.map((g) => (
           <div key={g.category}>
             <p className="group-label">{g.label}</p>
@@ -73,15 +68,7 @@ export function LogoControls({ panel, target, logo }: Props) {
           <NumberSlider label="Logo position Y" unit="mm" min={Math.floor(-pl.heightMm)} max={Math.ceil(pl.area.heightMm)} step={0.1} decimals={1} value={pl.yMm} onChange={(yMm) => patch({ yMm })} />
           <NumberSlider label="Logo rotation" unit="°" min={-180} max={180} step={0.1} decimals={1} value={logo.rotationDeg} onChange={(rotationDeg) => patch({ rotationDeg })} />
           <NumberSlider label="Logo opacity" unit="%" min={0} max={100} step={1} decimals={0} value={Math.round(logo.opacity * 100)} onChange={(v) => patch({ opacity: v / 100 })} />
-          <div className="button-row">
-            <button onClick={() => patch({ widthMm: null, xMm: null, yMm: null, rotationDeg: 0 })}>Reset logo placement</button>
-            <button
-              title="Show this logo on the front, spine and back (each keeps its own default size and position)"
-              onClick={() => template.panels.map((p) => p.id).filter((id) => id !== panel).forEach((id) => patch({ brand: logo.brand, color: logo.color, opacity: logo.opacity }, id))}
-            >
-              Use on all panels
-            </button>
-          </div>
+          <button onClick={() => patch({ widthMm: null, xMm: null, yMm: null, rotationDeg: 0 })}>Reset logo placement</button>
         </>
       )}
       <p className="muted small">

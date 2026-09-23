@@ -60,7 +60,7 @@ describe('planWear', () => {
   });
 
   it('a single-panel label has no creases', () => {
-    expect(planWear(buildTemplate('nfc-card'), 1).creases).toHaveLength(0);
-    expect(planWear(buildTemplate('nfc-card'), 1).corners).toHaveLength(4);
+    expect(planWear(buildTemplate('nfc-card', 'cr80'), 1).creases).toHaveLength(0);
+    expect(planWear(buildTemplate('nfc-card', 'cr80'), 1).corners).toHaveLength(4);
   });
 });

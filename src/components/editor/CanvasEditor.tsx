@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { useAppDispatch, useAppState, useSelectedItem } from '../../context/AppContext';
+import { useSelectionPulse } from '../../context/useSelectionPulse';
 import { CanvasRenderer } from '../../engine/CanvasRenderer';
 
 const PADDING = 24;
@@ -22,7 +23,7 @@ const FIT: View = { ox: 0, oy: 0, k: 1 };
  * (about the cursor); images are positioned from the sidebar. A click selects the panel under the cursor.
  */
 export function CanvasEditor() {
-  const { template, shared, showGuides, styleOverlay } = useAppState();
+  const { template, shared, designs, showGuides, styleOverlay } = useAppState();
   const item = useSelectedItem();
   const dispatch = useAppDispatch();
   const wrapRef = useRef<HTMLDivElement>(null);
@@ -30,6 +31,8 @@ export function CanvasEditor() {
   const rendererRef = useRef<CanvasRenderer | null>(null);
   const [box, setBox] = useState({ w: 0, h: 0 });
   const [view, setView] = useState<View>(FIT);
+  const pulse = useSelectionPulse();
+  const pulsed = pulse && template.panels.find((p) => p.id === pulse.panel);
 
   useEffect(() => {
     const renderer = new CanvasRenderer(canvasRef.current!);
@@ -41,8 +44,8 @@ export function CanvasEditor() {
   }, []);
 
   useEffect(() => {
-    rendererRef.current?.setScene({ template, item, shared, style: styleOverlay, showGuides });
-  }, [template, item, shared, styleOverlay, showGuides]);
+    rendererRef.current?.setScene({ template, item, shared, designs, style: styleOverlay, showGuides });
+  }, [template, item, shared, designs, styleOverlay, showGuides]);
 
   // Track the viewport size so the canvas can be fitted to it.
   useEffect(() => {
@@ -124,6 +127,18 @@ export function CanvasEditor() {
         className="editor-canvas"
         style={{ left: box.w / 2 + view.ox - w / 2, top: box.h / 2 + view.oy - h / 2, width: w, height: h, visibility: fitW ? 'visible' : 'hidden' }}
       />
+      {pulsed && fitW > 0 && (
+        <div
+          key={pulse.key}
+          className="panel-pulse"
+          style={{
+            left: box.w / 2 + view.ox - w / 2 + (pulsed.xMm / template.totalWidthMm) * w,
+            top: box.h / 2 + view.oy - h / 2 + (pulsed.yMm / template.totalHeightMm) * h,
+            width: (pulsed.widthMm / template.totalWidthMm) * w,
+            height: (pulsed.heightMm / template.totalHeightMm) * h,
+          }}
+        />
+      )}
       {!item && <p className="empty-hint">Add a game to the queue to start editing.</p>}
       {(view.k !== 1 || view.ox !== 0 || view.oy !== 0) && (
         <button className="fit-button" onClick={() => setView(FIT)} onPointerDown={(e) => e.stopPropagation()} onDoubleClick={(e) => e.stopPropagation()}>

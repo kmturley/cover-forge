@@ -389,8 +389,8 @@ export const TEMPLATE_DEFS: TemplateDef[] = [
     name: 'NFC card',
     group: 'Labels & cards',
     variants: [
-      { id: 'cr80', label: 'CR80 (54 × 85.6 mm, portrait), front only' },
       { id: 'cr80-duplex', label: 'CR80 (54 × 85.6 mm, portrait), front + back' },
+      { id: 'cr80', label: 'CR80 (54 × 85.6 mm, portrait), front only' },
     ],
     build: (id) => {
       const duplex = id === 'cr80-duplex';

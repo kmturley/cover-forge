@@ -1,6 +1,6 @@
 import type { MediaItem } from '../types/media';
 import type { PanelId } from '../types/template';
-import { DEFAULT_CODE, DEFAULT_LOGO, DEFAULT_TRANSFORM, type CodeSettings, type ImageRef, type LogoSettings, type PanelTransform, type SharedSettings, type SpineSettings } from '../types/editor';
+import { DEFAULT_BORDER, DEFAULT_CODE, DEFAULT_LOGO, DEFAULT_TRANSFORM, type BorderSettings, type CodeSettings, type ImageRef, type LogoSettings, type PanelTransform, type SharedSettings, type SpineSettings } from '../types/editor';
 import { defaultImageRef, resolveImageRef } from './imageLibrary';
 
 /** Fills the whole canvas before any panel is painted. */
@@ -17,6 +17,7 @@ export interface ResolvedPanel {
   transform: PanelTransform;
   logo: LogoSettings;
   code: CodeSettings;
+  border: BorderSettings;
 }
 
 /**
@@ -42,6 +43,7 @@ export function resolvePanel(shared: SharedSettings, item: MediaItem | null, id:
     transform: { ...DEFAULT_TRANSFORM, ...s?.transform, ...o?.transform },
     logo: { ...DEFAULT_LOGO, ...s?.logo, ...o?.logo },
     code: { ...DEFAULT_CODE, ...s?.code, ...o?.code },
+    border: { ...DEFAULT_BORDER, ...s?.border, ...o?.border },
   };
 }
 

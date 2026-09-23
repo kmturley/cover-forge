@@ -7,15 +7,15 @@ const t = buildTemplate('bluray', 'us-11');
 const panel = (id: 'front' | 'spine' | 'back') => t.panels.find((p) => p.id === id)!;
 
 describe('computeLogoPlacement', () => {
-  it('centres horizontally on the trimmed panel and sits near the bottom by default', () => {
+  it('centres horizontally on the trimmed panel and sits near the top by default', () => {
     const p = panel('front');
     const pl = computeLogoPlacement(t, p, 2, DEFAULT_LOGO);
     expect(pl.widthMm).toBe(24);
     expect(pl.heightMm).toBe(12);
     const centreX = pl.area.xMm + pl.xMm + pl.widthMm / 2;
     expect(centreX).toBeCloseTo(p.xMm + p.widthMm / 2);
-    const bottom = pl.area.yMm + pl.yMm + pl.heightMm;
-    expect(bottom).toBeCloseTo(p.yMm + p.heightMm - 8); // 8 mm above the trim edge
+    const top = pl.area.yMm + pl.yMm;
+    expect(top).toBeCloseTo(p.yMm + 8); // 8 mm below the trim edge
   });
 
   it('sizes the spine logo from the spine width so it fits', () => {
@@ -46,5 +46,18 @@ describe('default logo size on small templates', () => {
     expect(spine.widthMm).toBeLessThanOrEqual(10);
     const card = buildTemplate('nfc-card', 'cr80');
     expect(computeLogoPlacement(card, card.panels[0], 1, DEFAULT_LOGO).widthMm).toBeLessThan(24);
+  });
+});
+
+describe('default spine logo size', () => {
+  it('follows the automatic spine text, so a short spine (CD, cassette, NFC box) gets a small mark', () => {
+    const width = (kind: Parameters<typeof buildTemplate>[0], id: string) => {
+      const tpl = buildTemplate(kind, id);
+      return computeLogoPlacement(tpl, tpl.panels.find((p) => p.text)!, 1, DEFAULT_LOGO).widthMm;
+    };
+    expect(width('cassette', 'std')).toBeLessThanOrEqual(5);
+    expect(width('cd', 'jewel')).toBeLessThanOrEqual(5.5);
+    expect(width('nfc-box', 'card')).toBeLessThanOrEqual(5);
+    expect(width('dvd', 'std-14')).toBeGreaterThan(width('cassette', 'std'));
   });
 });

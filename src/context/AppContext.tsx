@@ -1,14 +1,15 @@
 import { createContext, useContext, useEffect, useMemo, useReducer, useState, type Dispatch, type ReactNode } from 'react';
 import type { MediaItem } from '../types/media';
 import type { PanelId, Region, TemplateConfig, TemplateKind } from '../types/template';
-import type { PanelSettings, SharedSettings, SpineSettings, StyleOverlay } from '../types/editor';
+import type { Design, PanelSettings, SharedSettings, SpineSettings, StyleOverlay } from '../types/editor';
+import { DEFAULT_DESIGN_ID } from '../engine/designs';
 import { DEFAULT_KIND, buildTemplate, defaultVariantId, regionsOf, variantsFor } from '../templates';
 import { sortItems } from './items';
 import { loadSession, restoreSession, saveSession } from './session';
 import { applyParams, type Startup } from './share';
 
 export type ViewMode = '2d' | '3d';
-/** Whether panel edits go to the shared settings (all items) or to the selected item's overrides. */
+/** Whether panel edits go to the selected item's design (shared with every item using it) or to that item's own overrides. */
 export type EditMode = 'shared' | 'override';
 
 export interface AppState {
@@ -16,6 +17,8 @@ export interface AppState {
   selectedItemId: string | null;
   /** UI-only (not persisted). */
   selectedPanel: PanelId;
+  /** UI-only (not persisted). Counts panel selections (even of the same panel), so the viewer can flash it. */
+  panelPulse: number;
   /** UI-only (not persisted). */
   editMode: EditMode;
   templateKind: TemplateKind;
@@ -28,9 +31,11 @@ export interface AppState {
   showGuides: boolean;
   view: ViewMode;
   shared: SharedSettings;
+  /** Named designs on top of the Default one (`shared`); an item picks one with `designId`. See engine/designs.ts. */
+  designs: Design[];
 }
 
-/** `id: null` targets the shared settings; a string targets that item's overrides. */
+/** `id: null` targets a design (`design` in the action, else the selected item's); a string targets that item's overrides. */
 export type Action =
   | { type: 'addItem'; item: MediaItem }
   | { type: 'removeItem'; id: string }
@@ -47,8 +52,17 @@ export type Action =
   | { type: 'setStyleOverlay'; style: StyleOverlay }
   | { type: 'setShowGuides'; show: boolean }
   | { type: 'setView'; view: ViewMode }
-  | { type: 'updatePanel'; id: string | null; panel: PanelId; patch: Partial<PanelSettings> }
-  | { type: 'updateSpine'; id: string | null; patch: Partial<SpineSettings> }
+  | { type: 'updatePanel'; id: string | null; panel: PanelId; patch: Partial<PanelSettings>; design?: string }
+  | { type: 'updateSpine'; id: string | null; patch: Partial<SpineSettings>; design?: string }
+  /** Gives the items a design (null = Default). */
+  | { type: 'assignDesign'; items: string[]; design: string | null }
+  /** Adds a design (a copy of `from`'s own settings; nothing for Default) and gives it to the items. */
+  | { type: 'forkDesign'; id: string; name: string; from: string; items: string[] }
+  | { type: 'renameDesign'; id: string; name: string }
+  /** Removes a design; the items using it go back to Default. */
+  | { type: 'deleteDesign'; id: string }
+  /** Empties a design (or one panel of it); for Default that resets it to the built-in look. */
+  | { type: 'clearDesign'; design: string; panel?: PanelId }
   /** Removes an item's overrides for one panel (or all of them), so it follows the shared settings again. */
   | { type: 'clearOverrides'; id: string; panel?: PanelId };
 
@@ -56,6 +70,7 @@ export const initialState: AppState = {
   items: [],
   selectedItemId: null,
   selectedPanel: 'front',
+  panelPulse: 0,
   editMode: 'shared',
   templateKind: DEFAULT_KIND,
   region: 'US',
@@ -68,6 +83,7 @@ export const initialState: AppState = {
     panels: {},
     spine: { fontFamily: 'Helvetica, Arial, sans-serif', color: '#ffffff' },
   },
+  designs: [],
 };
 
 /** Drops undefined values so "cleared" fields disappear from state and from saved JSON. */
@@ -75,13 +91,31 @@ function compact<T extends object>(o: T): T {
   return Object.fromEntries(Object.entries(o).filter(([, v]) => v !== undefined)) as T;
 }
 
-/** Merges a panel patch. `transform`, `logo` and `code` merge field by field; setting one to undefined clears it. */
+/** The design edits go to by default: the one the selected item uses (Default if none, or if it was deleted). */
+export function targetDesignId(state: Pick<AppState, 'items' | 'selectedItemId' | 'designs'>): string {
+  const item = state.items.find((i) => i.id === state.selectedItemId);
+  return item?.designId && state.designs.some((d) => d.id === item.designId) ? item.designId : DEFAULT_DESIGN_ID;
+}
+
+type Layer = { panels: SharedSettings['panels']; spine: Partial<SharedSettings['spine']> };
+
+/** Applies `f` to a design's own settings: `shared` for Default, otherwise the design with that id. */
+function editDesign(state: AppState, id: string, f: (layer: Layer) => Layer): AppState {
+  if (id === DEFAULT_DESIGN_ID) {
+    const next = f(state.shared);
+    return { ...state, shared: { panels: next.panels, spine: next.spine as SharedSettings['spine'] } };
+  }
+  return { ...state, designs: state.designs.map((d) => (d.id === id ? { ...d, ...f(d) } : d)) };
+}
+
+/** Merges a panel patch. `transform`, `logo`, `code` and `border` merge field by field; setting one to undefined clears it. */
 function mergePanel(existing: PanelSettings | undefined, patch: Partial<PanelSettings>): PanelSettings {
   const next: PanelSettings = { ...existing, ...patch };
   // Nested layers merge field by field; a field set to undefined is cleared so it inherits again.
   if (patch.transform) next.transform = compact({ ...existing?.transform, ...patch.transform });
   if (patch.logo) next.logo = compact({ ...existing?.logo, ...patch.logo });
   if (patch.code) next.code = compact({ ...existing?.code, ...patch.code });
+  if (patch.border) next.border = compact({ ...existing?.border, ...patch.border });
   return compact(next);
 }
 
@@ -116,7 +150,7 @@ export function reducer(state: AppState, action: Action): AppState {
     case 'selectItem':
       return { ...state, selectedItemId: action.id };
     case 'selectPanel':
-      return { ...state, selectedPanel: action.panel };
+      return { ...state, selectedPanel: action.panel, panelPulse: state.panelPulse + 1 };
     case 'setEditMode':
       return { ...state, editMode: action.mode };
     case 'setTemplate': {
@@ -137,8 +171,10 @@ export function reducer(state: AppState, action: Action): AppState {
       return { ...state, view: action.view };
     case 'updatePanel': {
       if (action.id === null) {
-        const panels = { ...state.shared.panels, [action.panel]: mergePanel(state.shared.panels[action.panel], action.patch) };
-        return { ...state, shared: { ...state.shared, panels } };
+        return editDesign(state, action.design ?? targetDesignId(state), (layer) => ({
+          ...layer,
+          panels: { ...layer.panels, [action.panel]: mergePanel(layer.panels[action.panel], action.patch) },
+        }));
       }
       return updateItem(state, action.id, (i) => ({
         ...i,
@@ -150,9 +186,43 @@ export function reducer(state: AppState, action: Action): AppState {
         const { text: _ignored, ...style } = action.patch; // the text is always per item
         void _ignored;
         // A field set to undefined is cleared (e.g. text height back to automatic).
-        return { ...state, shared: { ...state.shared, spine: compact({ ...state.shared.spine, ...style }) } };
+        return editDesign(state, action.design ?? targetDesignId(state), (layer) => ({ ...layer, spine: compact({ ...layer.spine, ...style }) }));
       }
       return updateItem(state, action.id, (i) => ({ ...i, spineOverride: compact({ ...i.spineOverride, ...action.patch }) }));
+    }
+    case 'assignDesign': {
+      const ids = new Set(action.items);
+      const exists = action.design !== null && state.designs.some((d) => d.id === action.design);
+      return { ...state, items: state.items.map((i) => {
+        if (!ids.has(i.id)) return i;
+        const next = { ...i };
+        if (exists) next.designId = action.design!;
+        else delete next.designId;
+        return next;
+      }) };
+    }
+    case 'forkDesign': {
+      const source = action.from === DEFAULT_DESIGN_ID ? undefined : state.designs.find((d) => d.id === action.from);
+      const design: Design = { id: action.id, name: action.name, panels: structuredClone(source?.panels ?? {}), spine: { ...source?.spine } };
+      return reducer({ ...state, designs: [...state.designs, design] }, { type: 'assignDesign', items: action.items, design: action.id });
+    }
+    case 'renameDesign':
+      return { ...state, designs: state.designs.map((d) => (d.id === action.id ? { ...d, name: action.name } : d)) };
+    case 'deleteDesign':
+      return { ...state, designs: state.designs.filter((d) => d.id !== action.id), items: state.items.map((i) => {
+        if (i.designId !== action.id) return i;
+        const next = { ...i };
+        delete next.designId;
+        return next;
+      }) };
+    case 'clearDesign': {
+      const spineToo = !action.panel || action.panel === 'spine' || action.panel === 'spineRight';
+      return editDesign(state, action.design, (layer) => {
+        const panels = { ...layer.panels };
+        if (action.panel) delete panels[action.panel];
+        const spine = spineToo ? (action.design === DEFAULT_DESIGN_ID ? initialState.shared.spine : {}) : layer.spine;
+        return { panels: action.panel ? panels : {}, spine };
+      });
     }
     case 'clearOverrides':
       return updateItem(state, action.id, (i) => {

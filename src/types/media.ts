@@ -22,4 +22,6 @@ export interface MediaItem {
   /** Item-level overrides; anything unset inherits the global settings. */
   panels?: Partial<Record<PanelId, PanelSettings>>;
   spineOverride?: Partial<SpineSettings>;
+  /** The design this item uses on top of the Default one; unset = Default. */
+  designId?: string;
 }

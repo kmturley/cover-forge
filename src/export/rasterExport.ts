@@ -32,7 +32,7 @@ export function canvasToBlob(canvas: HTMLCanvasElement, format: RasterFormat, qu
 
 /** Renders one item's flat wrap at full 300 DPI on a fresh offscreen canvas. */
 export async function renderItemCanvas(base: SceneBase, item: MediaItem, guides: boolean): Promise<HTMLCanvasElement> {
-  await preloadItem(item, base.shared);
+  await preloadItem({ ...base, item });
   const { width, height } = canvasSizePx(base.template);
   const canvas = document.createElement('canvas');
   canvas.width = width;

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { TEMPLATE_DEFS, buildTemplate } from '../templates';
-import { FACE_ORDER, TARGET_SIZE_UNITS, createBodyGeometry, createLabelGeometry, createLabelSliceGeometry, createSlabBodyGeometry, createSlabFaceGeometry, labelWrap, modelSizeMm, panelUvRange, previewScale, printedFaces, slabOutline } from './PreviewGeometry';
+import { FACE_ORDER, TARGET_SIZE_UNITS, createBodyGeometry, createLabelGeometry, createLabelSliceGeometry, createSlabBodyGeometry, createSlabFaceGeometry, insetFaces, labelWrap, modelSizeMm, panelUvRange, previewScale, printedFaces, slabOutline } from './PreviewGeometry';
 
 describe('panelUvRange', () => {
   it('excludes bleed and splits the texture back | spine | front', () => {
@@ -51,7 +51,7 @@ describe('createBodyGeometry', () => {
   });
 
   it('a card prints its front over the whole face, while a floppy uses a separate label', () => {
-    expect(printedFaces(buildTemplate('nfc-card').preview)).toEqual({ '+z': 'front' });
+    expect(printedFaces(buildTemplate('nfc-card', 'cr80').preview)).toEqual({ '+z': 'front' });
     expect(printedFaces(buildTemplate('floppy').preview)).toEqual({});
     const floppy = buildTemplate('floppy');
     const label = createLabelGeometry(floppy, 'front');
@@ -138,5 +138,19 @@ describe('slab bodies (cards, disks, stickers)', () => {
     const r = panelUvRange(t, 'back');
     expect(Math.min(...us)).toBeCloseTo(r.u0);
     expect(Math.max(...us)).toBeCloseTo(r.u1);
+  });
+});
+
+describe('inset faces', () => {
+  it('draws a CD\'s narrow spine cards at true size on the thicker spine', () => {
+    const t = buildTemplate('cd', 'jewel');
+    expect(insetFaces(t, t.preview).map((i) => i.face).sort()).toEqual(['+x', '-x']);
+  });
+
+  it('leaves every other case, box and card printed straight onto its faces', () => {
+    for (const [kind, id] of [['dvd', 'std-14'], ['bluray', 'us-11'], ['vhs', 'std-25'], ['cassette', 'std'], ['nfc-box', 'card'], ['nfc-box', 'small'], ['nfc-card', 'cr80']] as const) {
+      const t = buildTemplate(kind, id);
+      expect(insetFaces(t, t.preview), `${kind}/${id}`).toEqual([]);
+    }
   });
 });

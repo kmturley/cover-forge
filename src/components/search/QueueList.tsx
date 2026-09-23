@@ -15,7 +15,7 @@ function OverrideIcon() {
 
 /** The queued items of one media type (all of them when `filter` is 'all'), in alphabetical order. */
 export function QueueList({ filter }: { filter: MediaType | 'all' }) {
-  const { items, selectedItemId } = useAppState();
+  const { items, selectedItemId, designs } = useAppState();
   const dispatch = useAppDispatch();
   const shown = filter === 'all' ? items : items.filter((i) => i.type === filter);
 
@@ -36,6 +36,7 @@ export function QueueList({ filter }: { filter: MediaType | 'all' }) {
               <span>
                 {item.title}
                 {item.year && <small> · {item.year}</small>}
+                {item.designId && designs.some((d) => d.id === item.designId) && <small className="design-tag">{designs.find((d) => d.id === item.designId)!.name}</small>}
               </span>
             </button>
             <span className="row-actions">

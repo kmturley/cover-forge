@@ -1,7 +1,9 @@
-import { useEffect, useState } from 'react';
-import { PROVIDERS, getProvider, type ProviderId, type SearchResult } from '../../api/providers';
+import { useEffect, useMemo, useState } from 'react';
+import { getProviders, type ProviderId, type SearchResult } from '../../api/providers';
+import { usingSharedMovieKey } from '../../api/providers/movies';
 import { useAppDispatch } from '../../context/AppContext';
 import { CustomEntry } from './CustomEntry';
+import { MovieKeySetup } from './MovieKeySetup';
 import { SearchResults } from './SearchResults';
 import type { MediaType } from '../../types/media';
 import { QueueList } from './QueueList';
@@ -16,9 +18,16 @@ export function SearchPanel() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [adding, setAdding] = useState<string | null>(null);
+  // Bumped after a personal API key is saved, so providers (whose `available` flag can depend on one) are re-read.
+  const [keyVersion, setKeyVersion] = useState(0);
+  const [showOwnKeyForm, setShowOwnKeyForm] = useState(false);
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- keyVersion is the trigger to re-read providers (their `available` flag can depend on a key just saved to localStorage)
+  const providers = useMemo(() => getProviders(), [keyVersion]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- same trigger: whether search is riding on the shared key can change once a personal one is saved
+  const sharedMovieKey = useMemo(() => tab === 'movies' && usingSharedMovieKey(), [tab, keyVersion]);
 
-  const provider = tab === 'custom' || tab === 'all' ? null : getProvider(tab);
-  const filter: MediaType | 'all' = tab === 'all' ? 'all' : tab === 'custom' ? 'custom' : getProvider(tab).mediaType;
+  const provider = tab === 'custom' || tab === 'all' ? null : providers.find((p) => p.id === tab);
+  const filter: MediaType | 'all' = tab === 'all' ? 'all' : tab === 'custom' ? 'custom' : (provider?.mediaType ?? 'all');
   const searchable = provider?.available && query.trim().length > 0;
 
   useEffect(() => {
@@ -61,13 +70,13 @@ export function SearchPanel() {
   }
 
   return (
-    <aside className="sidebar left">
+    <>
       <h2>Media</h2>
       <div className="provider-tabs" role="tablist" aria-label="Media type">
         <button role="tab" aria-selected={tab === 'all'} className={tab === 'all' ? 'active' : ''} onClick={() => switchTab('all')}>
           All
         </button>
-        {PROVIDERS.map((p) => (
+        {providers.map((p) => (
           <button key={p.id} role="tab" aria-selected={tab === p.id} className={tab === p.id ? 'active' : ''} onClick={() => switchTab(p.id)} title={p.available ? undefined : p.unavailableReason}>
             {p.label}
           </button>
@@ -77,21 +86,45 @@ export function SearchPanel() {
         </button>
       </div>
 
-      {tab === 'custom' ? (
-        <CustomEntry />
-      ) : provider && !provider.available ? (
-        <p className="muted">{provider.unavailableReason}</p>
-      ) : provider ? (
+      {provider?.available && (
         <>
           <div className="search-input">
             <input type="search" value={query} placeholder={provider.placeholder} onChange={(e) => setQuery(e.target.value)} aria-label={`Search ${provider.label}`} />
             {loading && <span className="spinner" role="status" aria-label="Loading" />}
           </div>
-          {error && <p className="error">{error}</p>}
-          <SearchResults results={searchable ? results : []} addingId={adding} onAdd={add} />
+          {sharedMovieKey &&
+            (showOwnKeyForm ? (
+              <MovieKeySetup
+                onCancel={() => setShowOwnKeyForm(false)}
+                onSaved={() => {
+                  setKeyVersion((v) => v + 1);
+                  setShowOwnKeyForm(false);
+                }}
+              />
+            ) : (
+              <p className="muted small">
+                Using a shared key (its daily quota is split across every visitor).{' '}
+                <button className="link" onClick={() => setShowOwnKeyForm(true)}>
+                  Use your own free key
+                </button>
+              </p>
+            ))}
         </>
-      ) : null}
-      <QueueList filter={filter} />
-    </aside>
+      )}
+
+      <div className="pane-scroll">
+        {tab === 'custom' ? (
+          <CustomEntry />
+        ) : provider && !provider.available ? (
+          tab === 'movies' ? <MovieKeySetup onSaved={() => setKeyVersion((v) => v + 1)} /> : <p className="muted">{provider.unavailableReason}</p>
+        ) : provider ? (
+          <>
+            {error && <p className="error">{error}</p>}
+            <SearchResults results={searchable ? results : []} addingId={adding} onAdd={add} />
+          </>
+        ) : null}
+        <QueueList filter={filter} />
+      </div>
+    </>
   );
 }

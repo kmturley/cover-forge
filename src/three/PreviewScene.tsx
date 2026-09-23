@@ -3,7 +3,7 @@ import { Canvas } from '@react-three/fiber';
 import { ContactShadows, Environment, OrbitControls } from '@react-three/drei';
 import { MeshStandardMaterial, type BufferGeometry, type Texture } from 'three';
 import type { TemplateConfig } from '../types/template';
-import { FACE_ORDER, createBodyGeometry, createLabelGeometry, createLabelSliceGeometry, createSlabBodyGeometry, createSlabFaceGeometry, labelWrap, modelSizeMm, previewScale, printedFaces } from './PreviewGeometry';
+import { FACE_ORDER, createBodyGeometry, createLabelGeometry, createLabelSliceGeometry, createSlabBodyGeometry, createSlabFaceGeometry, bodyPrintedFaces, insetFaces, insetPlacement, labelWrap, modelSizeMm, previewScale } from './PreviewGeometry';
 import { createBodyMaterial, createSleeveMaterial } from './PreviewMaterials';
 
 /** Three-quarter view showing the left edge (-X), top edge (+Y) and front (+Z). Tune via the console log. */
@@ -20,6 +20,7 @@ function Model({ texture, template }: { texture: Texture; template: TemplateConf
   const pieces = useMemo(() => {
     const out: { geometry: BufferGeometry; position: [number, number, number]; rotation: [number, number, number] }[] = [];
     if (spec.kind === 'box') {
+      for (const { face, panel } of insetFaces(template, spec)) out.push({ geometry: createLabelGeometry(template, panel), ...insetPlacement(spec, face) });
       for (const d of spec.decals ?? []) {
         const panel = template.panels.find((p) => p.id === d.panel);
         if (!panel) continue;
@@ -60,9 +61,9 @@ function Model({ texture, template }: { texture: Texture; template: TemplateConf
   // One material per face: the printed sleeve where a panel is mapped, otherwise the body.
   const materials = useMemo(() => {
     if (spec.kind === 'slab') return body; // slabs are one solid body; their printed faces are separate pieces
-    const printed = printedFaces(spec);
+    const printed = bodyPrintedFaces(template, spec);
     return FACE_ORDER.map((f) => (printed[f] ? sleeve : body));
-  }, [spec, sleeve, body]);
+  }, [template, spec, sleeve, body]);
   const metal = useMemo(() => new MeshStandardMaterial({ color: '#b9bcc2', metalness: 0.9, roughness: 0.35 }), []);
   const dark = useMemo(() => new MeshStandardMaterial({ color: '#0b0c0f', roughness: 0.9 }), []);
 

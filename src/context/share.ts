@@ -63,7 +63,7 @@ export interface ShareLink {
  */
 export function plainShareUrl(state: AppState, base: string): string | null {
   const untouched = (i: MediaItem) => /^steam-\d+$/.test(i.id) && !i.panels && !i.spineOverride && i.assets.cover === buildAssetUrls(Number(i.sourceId)).cover;
-  if (!state.items.every(untouched) || Object.keys(state.shared.panels).length > 0 || Object.keys(state.shared.spine).some((k) => k !== 'fontFamily' && k !== 'color')) return null;
+  if (state.designs.length > 0 || !state.items.every(untouched) || Object.keys(state.shared.panels).length > 0 || Object.keys(state.shared.spine).some((k) => k !== 'fontFamily' && k !== 'color')) return null;
   // The last app id is the one selected when the link opens.
   const ids = [...state.items].sort((a, b) => Number(a.id === state.selectedItemId) - Number(b.id === state.selectedItemId)).map((i) => i.sourceId);
   const q = new URLSearchParams({ template: state.templateKind, variant: state.variantId, region: state.region, style: state.styleOverlay, view: state.view });

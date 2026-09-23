@@ -52,7 +52,7 @@ describe('imposeOnLabels', () => {
   });
 
   it('CR80 on 5395: 8 per sheet, fits entirely inside each label, bleed allowed into the gap', () => {
-    const t = buildTemplate('nfc-card');
+    const t = buildTemplate('nfc-card', 'cr80');
     const layout = imposeOnLabels(LABEL_SHEETS.find((s) => s.id === 'avery-5395')!, t);
     expect(layout.placements).toHaveLength(8);
     for (const p of layout.placements) {
@@ -64,14 +64,14 @@ describe('imposeOnLabels', () => {
   });
 
   it('CR80 on 5371: warns that a 2" card is shorter than a CR80', () => {
-    const layout = imposeOnLabels(LABEL_SHEETS.find((s) => s.id === 'avery-5371')!, buildTemplate('nfc-card'));
+    const layout = imposeOnLabels(LABEL_SHEETS.find((s) => s.id === 'avery-5371')!, buildTemplate('nfc-card', 'cr80'));
     expect(layout.placements).toHaveLength(10);
     expect(layout.warnings![0]).toMatch(/trimmed by up to 1\.6 mm/);
   });
 
   it('never lets adjacent printed areas overlap', () => {
-    for (const [kind, sheetId] of [['floppy', 'avery-5196'], ['nfc-card', 'avery-5395'], ['nfc-card', 'avery-5371']] as const) {
-      const layout = imposeOnLabels(LABEL_SHEETS.find((s) => s.id === sheetId)!, buildTemplate(kind));
+    for (const [kind, id, sheetId] of [['floppy', undefined, 'avery-5196'], ['nfc-card', 'cr80', 'avery-5395'], ['nfc-card', 'cr80', 'avery-5371']] as const) {
+      const layout = imposeOnLabels(LABEL_SHEETS.find((s) => s.id === sheetId)!, buildTemplate(kind, id));
       for (const [i, a] of layout.placements.entries()) {
         for (const b of layout.placements.slice(i + 1)) {
           const ox = Math.min(a.xMm + a.crop!.widthMm, b.xMm + b.crop!.widthMm) - Math.max(a.xMm, b.xMm);
@@ -93,6 +93,6 @@ describe('computeLayout', () => {
   });
 
   it('auto multi-up packs small labels onto plain paper', () => {
-    expect(computeLayout(buildTemplate('nfc-card'), 'A4').placements.length).toBeGreaterThanOrEqual(10);
+    expect(computeLayout(buildTemplate('nfc-card', 'cr80'), 'A4').placements.length).toBeGreaterThanOrEqual(10);
   });
 });

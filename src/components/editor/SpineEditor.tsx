@@ -1,10 +1,10 @@
 import { useAppDispatch, useAppState, useSelectedItem } from '../../context/AppContext';
-import { resolveSpine } from '../../engine/resolve';
+import { useEditView } from './useEditView';
 import { defaultCapHeightMm } from '../../engine/SpineTypography';
 import type { SpineSettings } from '../../types/editor';
 import { NumberSlider } from './NumberSlider';
 
-const FONTS = [
+export const FONTS = [
   ['Helvetica, Arial, sans-serif', 'Sans'],
   ['Georgia, serif', 'Serif'],
   ['"Courier New", monospace', 'Mono'],
@@ -13,11 +13,11 @@ const FONTS = [
 
 /** Spine text controls. Font, colour and height follow the edit mode; the text itself is always per item. */
 export function SpineTextControls({ target }: { target: string | null }) {
-  const { shared, editMode, template } = useAppState();
+  const { editMode, template, selectedPanel } = useAppState();
   const item = useSelectedItem();
   const dispatch = useAppDispatch();
+  const { spine: eff } = useEditView(template.panels.some((p) => p.id === selectedPanel) ? selectedPanel : template.panels[0].id);
   if (!item) return null;
-  const eff = resolveSpine(shared, item);
   const spine = template.panels.find((q) => q.text);
   const auto = spine ? defaultCapHeightMm(spine, spine.text) : 4;
   const patch = (p: Partial<SpineSettings>) =>
@@ -25,14 +25,13 @@ export function SpineTextControls({ target }: { target: string | null }) {
 
   return (
     <>
-      <h2>Spine text</h2>
       {editMode === 'override' ? (
         <label className="field">
           <span>Text (this item)</span>
           <input type="text" value={eff.text ?? item.title} onChange={(e) => patch({ text: e.target.value })} />
         </label>
       ) : (
-        <p className="muted">Each spine shows its own title. Switch to Override to change one.</p>
+        <p className="muted">Each spine shows its own title. Switch to “This item” to change one.</p>
       )}
       <NumberSlider
         label="Text height (shrinks to fit)"
@@ -46,6 +45,19 @@ export function SpineTextControls({ target }: { target: string | null }) {
       />
       {eff.textHeightMm !== undefined && (
         <button onClick={() => patch({ textHeightMm: undefined })}>Automatic size ({auto} mm for this template)</button>
+      )}
+      <NumberSlider
+        label="Text rotation"
+        unit="°"
+        min={-180}
+        max={180}
+        step={1}
+        decimals={0}
+        value={eff.rotationDeg ?? 0}
+        onChange={(rotationDeg) => patch({ rotationDeg: rotationDeg || undefined })}
+      />
+      {eff.rotationDeg && (
+        <p className="muted small">180° reverses the reading direction (e.g. bottom-to-top on a vertical spine).</p>
       )}
       <label className="field">
         <span>Font</span>

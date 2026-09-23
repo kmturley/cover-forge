@@ -72,7 +72,6 @@ export function CodeControls({ panel, target, code }: Props) {
 
   return (
     <>
-      <h2>QR code &amp; barcode</h2>
       <label className="field">
         <span>Type</span>
         <select value={code.kind} onChange={(e) => patch({ kind: e.target.value as CodeKind })}>

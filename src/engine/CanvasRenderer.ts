@@ -1,14 +1,16 @@
 import type { MediaItem } from '../types/media';
 import type { TemplateConfig } from '../types/template';
-import type { SharedSettings, StyleOverlay } from '../types/editor';
+import type { Design, SharedSettings, StyleOverlay } from '../types/editor';
 import { canvasSizePx } from '../templates';
 import { drawGuides } from './GuideOverlays';
 import { drawSpineText } from './SpineTypography';
 import { getCachedImage, loadImages } from './imageCache';
 import { BASE_BACKGROUND, PANEL_IDS, resolvePanel, resolveSpine } from './resolve';
 import { computePlacement, paintRect } from './placement';
+import { designOf, layeredShared } from './designs';
 import { drawLogo } from './logo';
 import { drawCode } from './code';
+import { drawBorder } from './border';
 import { getBrand } from '../brands';
 import { drawOfficial, spineCapMm } from './official';
 import { drawWear, planWear } from './wear';
@@ -18,6 +20,8 @@ export interface Scene {
   template: TemplateConfig;
   item: MediaItem | null;
   shared: SharedSettings;
+  /** The designs items can use; an item's design sits between `shared` (Default) and its own overrides. */
+  designs?: Design[];
   /** Global aesthetic: clean artwork, official-style headers, or worn retro. */
   style: StyleOverlay;
   showGuides: boolean;
@@ -35,7 +39,8 @@ export function renderCover(
   px: number,
   getImage: ImageLookup = getCachedImage,
 ): void {
-  const { template: t, item, shared } = scene;
+  const { template: t, item } = scene;
+  const shared = layeredShared(scene.shared, designOf(scene.designs, item));
   ctx.save();
   ctx.clearRect(0, 0, t.totalWidthMm * px, t.totalHeightMm * px);
   ctx.fillStyle = BASE_BACKGROUND;
@@ -48,25 +53,26 @@ export function renderCover(
       ctx.fillStyle = r.backgroundColor;
       ctx.fillRect(area.xMm * px, area.yMm * px, area.widthMm * px, area.heightMm * px);
     }
-    if (panel.follows) continue; // a dust flap is plain: no image, logo or code
+    if (panel.follows) continue; // a dust flap is plain: no image, border, logo or code
 
     const img = getImage(r.imageUrl);
-    if (!img) continue;
-    const tr = r.transform;
+    if (img) {
+      const tr = r.transform;
+      ctx.save();
+      ctx.beginPath();
+      ctx.rect(area.xMm * px, area.yMm * px, area.widthMm * px, area.heightMm * px);
+      ctx.clip();
+      ctx.globalAlpha = tr.opacity ?? 1;
 
-    ctx.save();
-    ctx.beginPath();
-    ctx.rect(area.xMm * px, area.yMm * px, area.widthMm * px, area.heightMm * px);
-    ctx.clip();
-    ctx.globalAlpha = tr.opacity ?? 1;
-
-    // Position is the image's top-left from the panel's visible top-left (centred by default); rotation is about the image centre.
-    const pl = computePlacement(t, panel, img.naturalWidth, img.naturalHeight, tr);
-    ctx.translate((pl.area.xMm + pl.xMm + pl.widthMm / 2) * px, (pl.area.yMm + pl.yMm + pl.heightMm / 2) * px);
-    ctx.rotate((tr.rotationDeg * Math.PI) / 180);
-    ctx.scale(pl.fit * px, pl.fit * px);
-    ctx.drawImage(img, -img.naturalWidth / 2, -img.naturalHeight / 2);
-    ctx.restore();
+      // Position is the image's top-left from the panel's visible top-left (centred by default); rotation is about the image centre.
+      const pl = computePlacement(t, panel, img.naturalWidth, img.naturalHeight, tr);
+      ctx.translate((pl.area.xMm + pl.xMm + pl.widthMm / 2) * px, (pl.area.yMm + pl.yMm + pl.heightMm / 2) * px);
+      ctx.rotate((tr.rotationDeg * Math.PI) / 180);
+      ctx.scale(pl.fit * px, pl.fit * px);
+      ctx.drawImage(img, -img.naturalWidth / 2, -img.naturalHeight / 2);
+      ctx.restore();
+    }
+    drawBorder(ctx, panel, r.border, px);
   }
 
   const digital = scene.style === 'digital';
@@ -100,8 +106,10 @@ export function renderCover(
 }
 
 /** Preloads every image the item uses so a subsequent synchronous render is complete. */
-export function preloadItem(item: MediaItem | null, shared: SharedSettings): Promise<unknown> {
-  return item ? loadImages(PANEL_IDS.map((id) => resolvePanel(shared, item, id).imageUrl)) : Promise.resolve();
+export function preloadItem({ item, shared, designs }: Pick<Scene, 'item' | 'shared' | 'designs'>): Promise<unknown> {
+  if (!item) return Promise.resolve();
+  const layered = layeredShared(shared, designOf(designs, item));
+  return loadImages(PANEL_IDS.map((id) => resolvePanel(layered, item, id).imageUrl));
 }
 
 /**
@@ -129,7 +137,7 @@ export class CanvasRenderer {
       this.canvas.width = width;
       this.canvas.height = height;
     }
-    void preloadItem(scene.item, scene.shared).then(() => this.invalidate());
+    void preloadItem(scene).then(() => this.invalidate());
     this.invalidate();
   }
 

@@ -7,18 +7,20 @@ export interface SpineBox {
   heightMm: number;
 }
 
-/** Titles longer than this are rare (catalogue titles average about 20 characters; roughly 40 covers all but a few). */
-export const TYPICAL_LONG_TITLE_CHARS = 40;
+/** Titles longer than this are rare (catalogue titles average about 20 characters; roughly 45 covers all but a few). */
+export const TYPICAL_LONG_TITLE_CHARS = 45;
 /** Average width of a character of bold sans text, in em (mixed case with spaces). */
 const AVG_CHAR_EM = 0.6;
 const CAP_HEIGHT_EM = 0.72;
 /** The largest automatic text height, used wherever a long title fits at this size. */
 export const MAX_AUTO_CAP_MM = 4;
+/** Automatic text never fills more than this share of the spine's thickness. */
+const MAX_THICKNESS_SHARE = 0.4;
 const SPINE_MARGIN_MM = 4;
 
 /**
  * The default cap height for a spine: MAX_AUTO_CAP_MM, or smaller when the spine is too short to fit a long title on one
- * line at that size (a CD, cassette or NFC box), and never more than 60% of the spine's thickness.
+ * line at that size (a CD, cassette or NFC box), and never more than 40% of the spine's thickness so it doesn't crowd the edges.
  */
 export function defaultCapHeightMm(
   box: SpineBox,
@@ -29,7 +31,7 @@ export function defaultCapHeightMm(
   const runMm = (vertical ? box.heightMm : box.widthMm) - SPINE_MARGIN_MM * 2 - inset.start - inset.end;
   const thicknessMm = vertical ? box.widthMm : box.heightMm;
   const fit = runMm / ((TYPICAL_LONG_TITLE_CHARS * AVG_CHAR_EM) / CAP_HEIGHT_EM);
-  return Math.floor(Math.max(1.5, Math.min(MAX_AUTO_CAP_MM, fit, thicknessMm * 0.6)) * 10) / 10;
+  return Math.floor(Math.max(1.5, Math.min(MAX_AUTO_CAP_MM, fit, thicknessMm * MAX_THICKNESS_SHARE)) * 10) / 10;
 }
 
 /**
@@ -71,6 +73,7 @@ export function drawSpineText(
   const shift = (inset.start - inset.end) / 2;
   ctx.translate((box.xMm + box.widthMm / 2 + (vertical ? 0 : shift)) * px, (box.yMm + box.heightMm / 2 + (vertical ? shift : 0)) * px);
   if (vertical) ctx.rotate(Math.PI / 2);
+  if (s.rotationDeg) ctx.rotate((s.rotationDeg * Math.PI) / 180);
   ctx.fillText(text, 0, 0);
   ctx.restore();
 }
