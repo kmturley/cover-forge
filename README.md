@@ -14,7 +14,28 @@ Client-side cover art generator for physical media collectors: build a queue of 
 - **Export:** 300 DPI PNG/JPEG, PDF or SVG at exact millimetres with vector cut/fold guides, multi-up sheets on A4/Letter, die-cut **Avery** label sheets, and a "Download all" ZIP with each item's flat render and the print sheets (use *Save* if you also want the original source images).
 - **Layout:** both side panels can be drag-resized from their inner edge (double-click it to reset) or collapsed to a slim rail; sizes are remembered per browser.
 - **Session:** your queue and settings are saved in the browser and restored on return (`localStorage`, as a versioned JSON document).
-- **Save, load and share:** *Save* writes the whole configuration to a `.coverforge.json` file (a native "Save as" dialog in Chrome and Edge, a normal download elsewhere) (uploaded images are embedded, so it works on another machine) and *Load* opens one. *Share* copies a link that reopens the same configuration; when it's only Steam games with default styling it's a readable link like the one below, otherwise a packed `?c=` link. Uploaded images can't travel in a link, so those slots come back empty; use *Save* for them. Links can also be written by hand: `?template=dvd&variant=slim-9&region=EU&style=retro&view=3d&app=1091500` opens that template and adds Steam game 1091500 to the queue (several ids may be comma-separated).
+- **Save, load and share:** *Save* writes the whole configuration to a `.coverforge.json` file (a native "Save as" dialog in Chrome and Edge, a normal download elsewhere) (uploaded images are embedded, so it works on another machine) and *Load* opens one. *Share* copies a link that reopens the same configuration; when it's only Steam games with default styling it's a readable link like the one below, otherwise a packed `?c=` link. Uploaded images can't travel in a link, so those slots come back empty; use *Save* for them. Links can also be written by hand — see [Deep linking](#deep-linking) below.
+
+## Deep linking
+
+CoverForge reads a handful of plain query params on load, so another site can link straight into a specific template and game instead of the empty app. For example, to open the generator with **Cyberpunk 2077** pre-loaded onto an **NFC card**:
+
+```
+https://kmturley.github.io/cover-forge?template=nfc-card&app=1091500
+```
+
+The params are read once on load and then stripped from the address bar, so they don't fight with later edits or reloads.
+
+| Param | Values | Description |
+| --- | --- | --- |
+| `app` | one or more Steam app ids, comma-separated | Adds each game to the queue by its [Steam app id](https://store.steampowered.com/) (found in a store URL, e.g. `.../app/1091500/Cyberpunk_2077/`) and selects the last one. `appid` also works and may be repeated instead of comma-separating. |
+| `template` | e.g. `dvd`, `bluray`, `vhs`, `cd`, `cassette`, `floppy`, `nfc-card`, `nfc-sticker`, `nfc-box` | Which physical template to open. See the tabs in the app for the full, current list. |
+| `variant` | template-specific, e.g. `cr80-duplex`, `slim-9` | A specific size/layout within the template (e.g. the NFC card's front+back "cr80-duplex" vs. front-only "cr80"). Ignored if it doesn't belong to the chosen `template`/`region`. |
+| `region` | `US`, `EU` | Only affects templates with region-specific sizes (currently Blu-ray). |
+| `style` | `clean`, `digital`, `retro` | The visual style overlay applied to every panel. |
+| `view` | `2d`, `3d` | Which preview mode opens. |
+
+Not every combination produces a readable link like the one above — this only covers plain, hand-writable params. Anything involving custom uploaded images, per-item edits or multiple designs is represented by the packed `?c=…` format that *Share* generates, which isn't meant to be hand-written.
 
 ## Develop
 
