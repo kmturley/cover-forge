@@ -1,13 +1,13 @@
 # CoverForge
 
-Client-side cover art generator for physical media collectors: build a queue of games, TV, movies and music (or your own artwork), pick a physical template, style it, preview it in 3D and export print-ready sheets.
+Browser-based cover art generator for physical media collectors: build a queue of games, TV, movies and music (or your own artwork), pick a physical template, style it, preview it in 3D and export print-ready sheets.
 
 <img src="./screenshot.png" alt="CoverForge screenshot" />
 
 ## Features
 
-- **Media sources:** Steam games, TV (TVMaze), music (MusicBrainz + Cover Art Archive), movies (TMDB or a free [OMDb](https://www.omdbapi.com/apikey.aspx) key — both are callable straight from the browser, no relay to deploy; see below) and **custom** entries with your own images. Each item gets a normalised image library (cover, hero/back, logo, extra images) you can assign to any panel.
-- **Templates:** Blu-ray, DVD, CD and cassette cases; VHS box; NFC box (slim card box, small box, or a spineless card wallet with a slip cover); 3.5" floppy label; NFC card (front only, or front + back) and round NFC stickers (25, 30 or 35 mm). Templates are one-click tabs with an icon each. Each has its real panel layout, bleed, and fold and cut lines, and every item in the queue follows the chosen template. Boxes are printable nets: the strip folds into a tube with one glue tab (double-sided tape works), the lid and bottom each have a tuck flap that slots in, so the ends close without glue, and dust flaps on the sides close the corners. The cassette's Back design is a flap that wraps round the spine onto the back of the case, as a partial back image.
+- **Media sources:** Video games (Steam), TV (TVMaze), music (MusicBrainz + Cover Art Archive), movies (TMDB or OMDb) and **custom** entries with your own images. Each item gets a list of images you can assign to any panel (cover, spine, back).
+- **Templates:** Blu-ray, DVD, CD and cassette cases; VHS box; NFC box (slim card box, small box, or a spineless card wallet with a slip cover); 3.5" floppy label; NFC card (front only, or front + back) and round NFC stickers (25, 30 or 35 mm). Templates are one-click tabs with an icon each. Each has its real panel layout, bleed, and fold and cut lines, and every item in the queue follows the chosen template. Boxes have glue/tape tabs, the lid and bottom each have a tuck flap that slots in, so the ends close without glue, and dust flaps on the sides close the corners. The cassette's Back design is a flap that wraps round the spine onto the back of the case, as a partial back image.
 - **Editor:** per-panel background, an accent border (colour, width and inset from the trim edge), image, position (from the panel's top-left, centred by default), size, rotation and opacity; brand logos for stores and consoles; QR codes and EAN-13 / UPC-A / Code 128 barcodes; spine text (sized automatically so a long title of about 45 characters fits on one line; override it with the Text height slider, and rotate it, e.g. 180° to read bottom-to-top). Styling lives in **designs**: the built-in *Default* design applies to every item, and you can *Fork* it (or any design) into a named design that only stores what you change, used by the selected item. Each part of a design (background, image, logo, code, spine text) shows a read-only summary until you press *Edit* on it. Edits go to the item's design, so everything using it follows; *This item* edits just that item on top of its design. Designs work on every template.
 - **Styles:** *Clean*, *Digital / Official* (header banners and spine caps that name only the medium: BLU-RAY, DVD, VHS, COMPACT DISC, TAPE, FLOPPY, NFC, so they suit any content) and *Scanned / Retro wear* (procedural plastic glare, creases, scuffs and grain).
 - **3D preview:** rotate and zoom a model of the case, box, card or disk with your artwork mapped on.
@@ -18,7 +18,7 @@ Client-side cover art generator for physical media collectors: build a queue of 
 
 ## Deep linking
 
-CoverForge reads a handful of plain query params on load, so another site can link straight into a specific template and game instead of the empty app. For example, to open the generator with **Cyberpunk 2077** pre-loaded onto an **NFC card**:
+CoverForge reads a handful of plain query params on load, so another site can link straight into a specific template and game instead of the empty app. For example, to open the generator with **Cyberpunk 2077** from Steam pre-loaded onto an **NFC card**:
 
 ```
 https://kmturley.github.io/cover-forge?template=nfc-card&app=1091500
@@ -62,26 +62,6 @@ npm run gen:brands   # regenerate src/brands/brands.generated.ts from Simple Ico
 
 The build uses relative asset paths (`base: './'`), so it works under `https://<user>.github.io/<repo>/`.
 
-### Movies and Steam: keys, and whether you need a relay
-
-It's easy to assume Movies and Steam work differently because one is set with a key and the other with a URL — they don't; **every** provider here except Steam needs a key, TMDB included. The two things that actually vary are:
-
-- **Does the API need a key at all?** Steam's Store API needs none. TMDB and OMDb both do — there's no free, key-less movie catalogue.
-- **Does the API send CORS headers, so a browser can call it directly?** Steam's doesn't, so it always needs a relay. TMDB and OMDb both do (confirmed by hand), so **neither needs a relay** — a key alone, used straight from the browser, is enough for either.
-
-So the simplest working setup for Movies is just `VITE_TMDB_API_KEY` or `VITE_OMDB_API_KEY`, no server involved, exactly like a Steam-proxy-style shared key: it ships inside the client bundle (visible to anyone who looks, not a secret) and its quota is shared by everyone who uses your deployment.
-
-**Hiding the key behind a relay instead** is only worth doing if you don't want the token visible in your bundle. [`worker/steam-proxy.js`](worker/steam-proxy.js) is a small Cloudflare Worker that relays `store.steampowered.com/api/*` (Steam, which needs this regardless) and, optionally, `api.themoviedb.org/3/*` with your TMDB token kept as a server-side secret:
-
-```sh
-npx wrangler deploy worker/steam-proxy.js --name coverforge-relay --compatibility-date 2025-01-01
-npx wrangler secret put TMDB_TOKEN --name coverforge-relay     # optional: your TMDB "API Read Access Token"
-```
-
-Set `VITE_STEAM_PROXY_URL` to `https://coverforge-relay.<you>.workers.dev`; add `VITE_TMDB_PROXY_URL` set to the same URL only if you'd rather route TMDB through it than use `VITE_TMDB_API_KEY` directly. A visitor's own personal TMDB key (below) always bypasses this relay regardless — it's their key, their quota.
-
-**Choosing between a visitor's own key and yours:** the Movies tab lets a visitor paste in their own key — TMDB (richer art) offered first, with a link to switch to OMDb — kept only in their browser (`localStorage`), never bundled or sent anywhere but the chosen provider's API, and using their own quota instead of sharing yours. It asks for one when nothing else is configured, and offers it as an opt-in "use your own key" link when a shared key is already working. Precedence, most specific first: a personal TMDB key > a personal OMDb key (which also opts out of any shared/relay TMDB token) > a shared/relay TMDB token > a shared OMDb key > nothing. (Both movie providers are unit-tested against their documented response shapes but have not been run end-to-end against the live APIs.)
-
 ## How it works
 
 - **Rendering:** `src/engine/CanvasRenderer.ts` exposes a pure `renderCover()` used by the editor, the 3D texture and every export. Settings resolve field by field: built-in default → Default design → the item's design → item override (`src/engine/resolve.ts`, `src/engine/designs.ts`).
@@ -105,4 +85,4 @@ Store and console marks come from [Simple Icons](https://simpleicons.org) (CC0 a
 
 ## Not built yet
 
-Non-Steam game catalogues.
+- Non-Steam game catalogues.
