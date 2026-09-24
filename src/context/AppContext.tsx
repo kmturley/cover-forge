@@ -30,6 +30,8 @@ export interface AppState {
   /** UI-only (not persisted): guides are a preview aid, so they start off on every visit. */
   showGuides: boolean;
   view: ViewMode;
+  /** UI-only (not persisted): slowly spins the 3D model as a hands-free product demo. */
+  autoRotate: boolean;
   shared: SharedSettings;
   /** Named designs on top of the Default one (`shared`); an item picks one with `designId`. See engine/designs.ts. */
   designs: Design[];
@@ -52,6 +54,7 @@ export type Action =
   | { type: 'setStyleOverlay'; style: StyleOverlay }
   | { type: 'setShowGuides'; show: boolean }
   | { type: 'setView'; view: ViewMode }
+  | { type: 'setAutoRotate'; autoRotate: boolean }
   | { type: 'updatePanel'; id: string | null; panel: PanelId; patch: Partial<PanelSettings>; design?: string }
   | { type: 'updateSpine'; id: string | null; patch: Partial<SpineSettings>; design?: string }
   /** Gives the items a design (null = Default). */
@@ -79,6 +82,7 @@ export const initialState: AppState = {
   styleOverlay: 'clean',
   showGuides: false,
   view: '3d',
+  autoRotate: true,
   shared: {
     panels: {},
     spine: { fontFamily: 'Helvetica, Arial, sans-serif', color: '#ffffff' },
@@ -169,6 +173,8 @@ export function reducer(state: AppState, action: Action): AppState {
       return { ...state, showGuides: action.show };
     case 'setView':
       return { ...state, view: action.view };
+    case 'setAutoRotate':
+      return { ...state, autoRotate: action.autoRotate };
     case 'updatePanel': {
       if (action.id === null) {
         return editDesign(state, action.design ?? targetDesignId(state), (layer) => ({

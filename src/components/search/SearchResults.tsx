@@ -1,10 +1,10 @@
 import { useState } from 'react';
 import type { SearchResult } from '../../api/providers';
 
-interface Props {
-  results: SearchResult[];
+interface Props<T extends SearchResult> {
+  results: T[];
   addingId: string | null;
-  onAdd: (r: SearchResult) => void;
+  onAdd: (r: T) => void;
 }
 
 /** A result's thumbnail; hidden if it fails to load (e.g. an album with no cover art). */
@@ -14,7 +14,7 @@ function Thumb({ src }: { src?: string }) {
   return <img className="result-thumb" src={src} alt="" loading="lazy" onError={() => setFailed(true)} />;
 }
 
-export function SearchResults({ results, addingId, onAdd }: Props) {
+export function SearchResults<T extends SearchResult>({ results, addingId, onAdd }: Props<T>) {
   if (!results.length) return null;
   return (
     <ul className="results">

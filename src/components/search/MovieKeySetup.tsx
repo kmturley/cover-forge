@@ -1,87 +1,80 @@
 import { useState } from 'react';
 import { getOmdbKey, setOmdbKey } from '../../api/providers/omdbKey';
 import { getTmdbKey, setTmdbKey } from '../../api/providers/tmdbKey';
-
-type Kind = 'tmdb' | 'omdb';
-
-const COPY: Record<Kind, { label: string; href: string; linkText: string; placeholder: string; get: () => string | null; set: (v: string) => void }> = {
-  tmdb: {
-    label: 'TMDB API Read Access Token',
-    href: 'https://www.themoviedb.org/settings/api',
-    linkText: 'Get a free TMDB key',
-    placeholder: 'Your TMDB API Read Access Token',
-    get: getTmdbKey,
-    set: setTmdbKey,
-  },
-  omdb: {
-    label: 'OMDb API key',
-    href: 'https://www.omdbapi.com/apikey.aspx',
-    linkText: 'Get a free OMDb key',
-    placeholder: 'Your OMDb API key',
-    get: getOmdbKey,
-    set: setOmdbKey,
-  },
-};
+import { usingSharedMovieKey } from '../../api/providers/movies';
+import { Section } from '../editor/Section';
 
 /**
- * Movies need a key somewhere (there's no free, key-less movie catalogue). TMDB gives richer art (separate poster,
- * backdrop and logo) than OMDb's single poster, so it's offered first; either is instant, free and kept only in this
- * browser (`localStorage`), never sent anywhere but the chosen provider. `onCancel` is only passed when this is an
- * optional add-on (a shared key already works) rather than the only way to turn Movies on.
+ * Movies need a key somewhere (there's no free, key-less movie catalogue): a TMDB "API Read Access Token" (richer
+ * art: separate poster, backdrop and logo) or an OMDb "API key" (one poster only). Either is instant, free and kept
+ * only in this browser (localStorage), never sent anywhere but the chosen provider's API.
+ *
+ * TMDB actually issues two different credentials (a v3 "API key" and a v4 "API Read Access Token") — this app uses
+ * the Read Access Token, so that's the exact term shown here to avoid pasting the wrong one.
  */
-export function MovieKeySetup({ onSaved, onCancel }: { onSaved: () => void; onCancel?: () => void }) {
-  const [kind, setKind] = useState<Kind>('tmdb');
-  const c = COPY[kind];
-  const [value, setValue] = useState(c.get() ?? '');
+function summaryText(): string | null {
+  if (getTmdbKey() || getOmdbKey()) return null;
+  if (usingSharedMovieKey()) return 'Using a shared key (its daily quota is split across every visitor).';
+  return 'Not configured.';
+}
 
-  function switchKind(next: Kind) {
-    setKind(next);
-    setValue(COPY[next].get() ?? '');
-  }
+function KeyForm({ onDone }: { onDone: () => void }) {
+  const [tmdb, setTmdb] = useState(getTmdbKey() ?? '');
+  const [omdb, setOmdb] = useState(getOmdbKey() ?? '');
 
   function save(e: React.FormEvent) {
     e.preventDefault();
-    c.set(value);
-    onSaved();
+    setTmdbKey(tmdb);
+    setOmdbKey(omdb);
+    onDone();
   }
 
   return (
-    <form className="omdb-setup" onSubmit={save}>
-      <p className="muted">
-        {onCancel ? 'Your own key searches under your own quota instead of the shared one.' : 'Movie search needs a free API key.'}{' '}
-        <a href={c.href} target="_blank" rel="noreferrer">
-          {c.linkText}
-        </a>
-        , then paste it below.
-      </p>
-      <div className="field row">
-        <input type="text" value={value} onChange={(e) => setValue(e.target.value)} placeholder={c.placeholder} aria-label={c.label} />
-        <button type="submit" className="primary" disabled={!value.trim()}>
-          Save
-        </button>
-        {onCancel && (
-          <button type="button" onClick={onCancel}>
-            Cancel
-          </button>
-        )}
+    <form className="movie-key-setup" onSubmit={save}>
+      <p className="muted">To enable Movie search enter either:</p>
+      <div className="movie-key-fields">
+        <label className="field">
+          <span>
+            TMDB API Read Access Token (
+            <a href="https://www.themoviedb.org/settings/api" target="_blank" rel="noreferrer">
+              Get one free
+            </a>
+            )
+          </span>
+          <input type="text" value={tmdb} onChange={(e) => setTmdb(e.target.value)} placeholder="Paste your token" aria-label="TMDB API Read Access Token" />
+        </label>
+        <label className="field">
+          <span>
+            OMDb API key (
+            <a href="https://www.omdbapi.com/apikey.aspx" target="_blank" rel="noreferrer">
+              Get one free
+            </a>
+            )
+          </span>
+          <input type="text" value={omdb} onChange={(e) => setOmdb(e.target.value)} placeholder="Paste your key" aria-label="OMDb API key" />
+        </label>
       </div>
-      <p className="muted small">
-        {kind === 'tmdb' ? (
-          <>
-            Prefer OMDb?{' '}
-            <button className="link" type="button" onClick={() => switchKind('omdb')}>
-              Use an OMDb key instead
-            </button>
-          </>
-        ) : (
-          <>
-            Want TMDB's richer art (separate poster, backdrop and logo)?{' '}
-            <button className="link" type="button" onClick={() => switchKind('tmdb')}>
-              Use a TMDB key instead
-            </button>
-          </>
-        )}
-      </p>
+      <button type="submit" className="primary" disabled={!tmdb.trim() && !omdb.trim()}>
+        Save
+      </button>
     </form>
+  );
+}
+
+export function MovieKeySetup({ onSaved, required = false }: { onSaved: () => void; required?: boolean }) {
+  const [editing, setEditing] = useState(required);
+
+  function done() {
+    setEditing(false);
+    onSaved();
+  }
+
+  if (required) return <KeyForm onDone={done} />;
+
+  const summary = summaryText();
+  return (
+    <Section title="Settings" summary={summary && <p className="muted small">{summary}</p>} editing={editing} onEdit={() => setEditing(true)} onDone={() => setEditing(false)}>
+      <KeyForm onDone={done} />
+    </Section>
   );
 }

@@ -15,7 +15,6 @@ export function ExportModal({ onClose }: { onClose: () => void }) {
   const [guides, setGuides] = useState(false);
   const [progress, setProgress] = useState<{ done: number; total: number; label: string } | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [notice, setNotice] = useState<string | null>(null);
 
   const base = { template, shared, designs, style: styleOverlay };
   // A die-cut sheet only applies to the templates it was made for; otherwise fall back to plain paper.
@@ -26,7 +25,6 @@ export function ExportModal({ onClose }: { onClose: () => void }) {
 
   async function run(task: () => Promise<void>) {
     setError(null);
-    setNotice(null);
     try {
       await task();
     } catch (e) {
@@ -95,7 +93,6 @@ export function ExportModal({ onClose }: { onClose: () => void }) {
           </div>
         )}
         {error && <p className="error">{error}</p>}
-        {notice && <p className="muted">{notice}</p>}
 
         <div className="modal-actions">
           <button onClick={onClose}>Close</button>
@@ -110,12 +107,7 @@ export function ExportModal({ onClose }: { onClose: () => void }) {
           <button
             className="primary"
             disabled={busy || !items.length}
-            onClick={() =>
-              run(async () => {
-                const { missingAssets } = await exportZip(base, items, settings, (done, total, label) => setProgress({ done, total, label }));
-                if (missingAssets.length) setNotice(`Done. Not available (skipped): ${missingAssets.join(', ')}.`);
-              })
-            }
+            onClick={() => run(() => exportZip(base, items, settings, (done, total, label) => setProgress({ done, total, label })))}
           >
             Download all (ZIP)
           </button>

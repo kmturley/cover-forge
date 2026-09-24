@@ -1,8 +1,8 @@
 import { useAppDispatch, useAppState } from '../../context/AppContext';
 
-/** 2D / 3D switch and the guide lines toggle. They only change the viewer, so they sit inside it. */
+/** 2D / 3D switch, the guide lines toggle, and (in 3D) an auto-rotate demo spin. They only change the viewer, so they sit inside it. */
 export function ViewerControls() {
-  const { showGuides, view } = useAppState();
+  const { showGuides, view, autoRotate } = useAppState();
   const dispatch = useAppDispatch();
   return (
     <div className="viewer-controls" onPointerDown={(e) => e.stopPropagation()} onDoubleClick={(e) => e.stopPropagation()}>
@@ -18,6 +18,12 @@ export function ViewerControls() {
         <input type="checkbox" checked={showGuides} onChange={(e) => dispatch({ type: 'setShowGuides', show: e.target.checked })} />
         Guides
       </label>
+      {view === '3d' && (
+        <label className="check">
+          <input type="checkbox" checked={autoRotate} onChange={(e) => dispatch({ type: 'setAutoRotate', autoRotate: e.target.checked })} />
+          Auto-rotate
+        </label>
+      )}
     </div>
   );
 }

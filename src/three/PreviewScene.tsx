@@ -114,7 +114,7 @@ function Model({ texture, template }: { texture: Texture; template: TemplateConf
   );
 }
 
-export function PreviewScene({ texture, template }: { texture: Texture; template: TemplateConfig }) {
+export function PreviewScene({ texture, template, autoRotate = false }: { texture: Texture; template: TemplateConfig; autoRotate?: boolean }) {
   const controls = useRef<ElementRef<typeof OrbitControls>>(null);
   const [, height] = modelSizeMm(template.preview);
   // Logged after each drag/zoom so a good angle can be copied into DEFAULT_CAMERA_POSITION.
@@ -127,7 +127,16 @@ export function PreviewScene({ texture, template }: { texture: Texture; template
       <Environment preset="city" />
       <Model texture={texture} template={template} />
       <ContactShadows position={[0, (-height * previewScale(template.preview)) / 2 - 0.02, 0]} opacity={0.5} blur={2.5} scale={6} />
-      <OrbitControls ref={controls} onEnd={logCamera} enableDamping enablePan={false} minDistance={1.8} maxDistance={6} />
+      <OrbitControls
+        ref={controls}
+        onEnd={logCamera}
+        enableDamping
+        enablePan={false}
+        minDistance={1.8}
+        maxDistance={6}
+        autoRotate={autoRotate}
+        autoRotateSpeed={1.2}
+      />
     </Canvas>
   );
 }

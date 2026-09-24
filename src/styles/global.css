@@ -35,7 +35,8 @@ input[type='color'] { width: 40px; height: 26px; padding: 0; border: 1px solid v
 .template-tabs button:hover { color: var(--text); background: var(--panel-2); }
 .template-tabs button.active { background: var(--accent); border-color: var(--accent); color: #fff; }
 .template-tabs svg { flex: none; }
-@media (max-width: 1300px) { .template-tabs button span { display: none; } .template-tabs button { padding: 5px 8px; } }
+/* Below this, the labelled tabs + Save/Load/Share/Export no longer fit on one line and silently wrap onto a second row. */
+@media (max-width: 1376px) { .template-tabs button span { display: none; } .template-tabs button { padding: 5px 8px; } }
 .toolbar label { display: flex; align-items: center; gap: 6px; color: var(--muted); font-size: 12px; }
 .toolbar select { width: auto; }
 .toolbar .check { color: var(--text); }
@@ -157,9 +158,17 @@ button.link.selected { color: var(--accent); text-decoration: none; cursor: defa
 .controls { display: flex; flex-direction: column; flex: 1; min-height: 0; }
 .controls-head { flex: none; padding-bottom: 8px; border-bottom: 1px solid var(--border); background: var(--panel); }
 .controls-body { padding-top: 4px; }
-.pane > h2, .pane > .provider-tabs, .pane > .search-input { flex: none; }
-.pane > .search-input { margin-bottom: 6px; }
-.pane-scroll .results:first-child, .pane-scroll .queue ul { margin-top: 4px; }
+.pane > h2, .pane > .provider-tabs, .pane > .search-area { flex: none; }
+.pane > .search-area { margin-bottom: 6px; }
+.pane-scroll .queue ul { margin-top: 4px; }
+
+/* The results dropdown floats over the media list below it, instead of pushing it down. */
+.search-area { position: relative; }
+.search-dropdown { position: absolute; top: 100%; left: 0; right: 0; z-index: 4; margin-top: 4px; max-height: min(60vh, 420px); overflow-y: auto; background: var(--panel); border: 1px solid var(--border); border-radius: 8px; box-shadow: 0 8px 24px rgba(0,0,0,.5); padding: 8px; }
+.search-dropdown .results { margin-top: 0; }
+/* The "All" tab groups mixed results by catalogue (TV Shows, Music…) instead of labelling every row. */
+.result-group + .result-group { margin-top: 10px; }
+.result-group-label { margin: 0 0 4px; font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }
 
 .panel-pulse { position: absolute; pointer-events: none; background: rgba(56,189,248,.4); outline: 2px solid #fff; outline-offset: -2px; animation: panel-pulse 1.2s ease-out forwards; }
 @keyframes panel-pulse { from { opacity: 1; } to { opacity: 0; } }
@@ -198,5 +207,9 @@ button.link.selected { color: var(--accent); text-decoration: none; cursor: defa
 .sidebar-rail.right { grid-area: right; border-left: 1px solid var(--border); }
 .sidebar-rail .sidebar-toggle { position: static; }
 
-.omdb-setup .field.row { align-items: stretch; }
-.omdb-setup input[type='text'] { flex: 1; }
+.movie-key-fields { display: flex; flex-direction: column; gap: 8px; margin: 6px 0 10px; }
+.movie-key-fields .field { margin-bottom: 0; }
+.movie-key-fields .field a { color: var(--accent); }
+
+/* Separates the Movies tab's Settings from the search/queue list below it. */
+.pane > .design-section, .pane > .movie-key-setup { border-bottom: 1px solid var(--border); padding-bottom: 10px; margin-bottom: 10px; }

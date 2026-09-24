@@ -1,9 +1,6 @@
 import JSZip from 'jszip';
 import { saveAs } from 'file-saver';
 import type { MediaItem } from '../types/media';
-import { libraryImages } from '../engine/imageLibrary';
-import { loadImage } from '../engine/imageCache';
-import { srcOf } from '../storage/localImages';
 import { paginate } from './imposition';
 import { computeLayout, fitsLabelSheet, getLabelSheet } from './sheets';
 import { buildItemPdf, buildSheetsPdf } from './pdfExport';
@@ -26,43 +23,6 @@ const isVector = (s: ExportSettings) => isPdf(s) || isSvg(s);
 const rasterExt = (f: RasterFormat) => (f === 'jpeg' ? 'jpg' : 'png');
 
 export type ProgressFn = (done: number, total: number, label: string) => void;
-
-/**
- * Original asset bytes. `cache: 'reload'` avoids a cached copy that was stored without CORS headers
- * (e.g. by a plain <img>), which would make fetch() fail. If fetching still fails, re-encode the
- * (CORS-clean) decoded image instead so the asset isn't silently dropped.
- */
-async function fetchAsset(url: string): Promise<Blob | null> {
-  try {
-    const res = await fetch(srcOf(url) ?? url, { cache: 'reload' });
-    if (res.ok) return await res.blob();
-  } catch {
-    // fall through to the canvas re-encode
-  }
-  const img = await loadImage(url);
-  if (!img) return null;
-  const c = document.createElement('canvas');
-  c.width = img.naturalWidth;
-  c.height = img.naturalHeight;
-  c.getContext('2d')!.drawImage(img, 0, 0);
-  return new Promise((resolve) => c.toBlob(resolve, 'image/png'));
-}
-
-const extFromBlob = (b: Blob) => ({ 'image/jpeg': 'jpg', 'image/png': 'png', 'image/webp': 'webp' })[b.type] ?? 'jpg';
-
-/** Adds every library image of an item to `folder`; returns the names that couldn't be retrieved. */
-async function addAssets(folder: JSZip, item: MediaItem): Promise<string[]> {
-  const images = libraryImages(item);
-  const results = await Promise.all(images.map((img) => fetchAsset(img.url)));
-  const missing: string[] = [];
-  results.forEach((blob, i) => {
-    const { ref } = images[i];
-    const name = ref.startsWith('screenshot:') ? `screenshot_${Number(ref.slice(11)) + 1}` : ref;
-    if (blob) folder.file(`${name}.${extFromBlob(blob)}`, blob);
-    else missing.push(`${item.title}: ${images[i].label}`);
-  });
-  return missing;
-}
 
 /**
  * Renders each item once. Guides are baked into pixels only for raster output; PDFs get vector guides
@@ -95,34 +55,22 @@ export async function exportSheetsPdf(base: SceneBase, items: MediaItem[], s: Ex
   saveAs(buildSheetsPdf(pages, layout, base.template, sheetGuides(s, base)), 'coverforge-sheets.pdf');
 }
 
-export interface ZipResult {
-  /** Assets that couldn't be downloaded (e.g. a game with no logo image). */
-  missingAssets: string[];
-}
-
 /**
  * "Download all". Contents depend on the format:
  *  - PNG/JPEG: `<game>/cover.<ext>` per game and `print_sheets/sheet_N.<ext>`
  *  - PDF:      `<game>/cover.pdf` per game and one `print_sheets/sheets.pdf`
  *  - SVG:      `<game>/cover.svg` per game and `print_sheets/sheet_N.svg` (SVG has no pages)
- * plus `<game>/assets/*` (the original images) in both cases.
+ * Just the rendered covers and print sheets — not the original source images (use *Save* for those).
  */
-export async function exportZip(
-  base: SceneBase,
-  items: MediaItem[],
-  s: ExportSettings,
-  onProgress: ProgressFn = () => {},
-): Promise<ZipResult> {
+export async function exportZip(base: SceneBase, items: MediaItem[], s: ExportSettings, onProgress: ProgressFn = () => {}): Promise<void> {
   const zip = new JSZip();
   const total = items.length + 2;
-  const missingAssets: string[] = [];
   const used = new Map<string, number>();
   const rendered: HTMLCanvasElement[] = []; // clean (guide-free) renders, reused for the sheets
   const sheetCanvases: HTMLCanvasElement[] = [];
 
   for (const [i, item] of items.entries()) {
-    const step = `(${i + 1} of ${items.length})`;
-    onProgress(i, total, `Rendering “${item.title}” ${step}`);
+    onProgress(i, total, `Rendering “${item.title}” (${i + 1} of ${items.length})`);
     const n = (used.get(slug(item.title)) ?? 0) + 1;
     used.set(slug(item.title), n);
     const dir = zip.folder(n > 1 ? `${slug(item.title)}-${n}` : slug(item.title))!;
@@ -137,9 +85,6 @@ export async function exportZip(
       const f = s.format as RasterFormat;
       dir.file(`cover.${rasterExt(f)}`, await canvasToBlob(clean, f, s.jpegQuality));
     }
-
-    onProgress(i, total, `Fetching assets for “${item.title}” ${step}`);
-    missingAssets.push(...(await addAssets(dir.folder('assets')!, item)));
   }
 
   onProgress(items.length, total, 'Composing print sheets');
@@ -164,5 +109,4 @@ export async function exportZip(
 
   onProgress(items.length + 1, total, 'Compressing ZIP');
   saveAs(await zip.generateAsync({ type: 'blob' }), 'coverforge-pack.zip');
-  return { missingAssets };
 }
