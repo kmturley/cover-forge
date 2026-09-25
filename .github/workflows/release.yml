@@ -24,7 +24,7 @@ jobs:
       - run: npm test
 
       - name: Build
-        run: npm run build
+        run: npm run build:release
         env:
           VITE_STEAM_PROXY_URL: ${{ vars.VITE_STEAM_PROXY_URL || 'https://corx.venipa.workers.dev' }}
           VITE_TMDB_PROXY_URL: ${{ vars.VITE_TMDB_PROXY_URL }}
