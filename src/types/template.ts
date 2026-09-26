@@ -22,7 +22,7 @@ export interface PanelRect {
 
 export type Region = 'US' | 'EU';
 
-export type TemplateKind = 'bluray' | 'dvd' | 'vhs' | 'cd' | 'cassette' | 'floppy' | 'nfc-card' | 'nfc-sticker' | 'nfc-box';
+export type TemplateKind = 'bluray' | 'dvd' | 'vhs' | 'cd' | 'cassette' | 'floppy' | 'nfc-card' | 'nfc-sticker' | 'nfc-box' | 'vinyl';
 
 /** Which 3D face a panel is mapped onto (BoxGeometry face order). */
 export type BoxFace = '+x' | '-x' | '+y' | '-y' | '+z' | '-z';

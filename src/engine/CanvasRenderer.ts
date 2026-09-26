@@ -3,7 +3,7 @@ import type { TemplateConfig } from '../types/template';
 import type { Design, SharedSettings, StyleOverlay } from '../types/editor';
 import { canvasSizePx } from '../templates';
 import { drawGuides } from './GuideOverlays';
-import { drawSpineText } from './SpineTypography';
+import { drawSpineText, defaultSpineText } from './SpineTypography';
 import { getCachedImage, loadImages } from './imageCache';
 import { BASE_BACKGROUND, PANEL_IDS, resolvePanel, resolveSpine } from './resolve';
 import { computePlacement, paintRect } from './placement';
@@ -82,7 +82,7 @@ export function renderCover(
     const settings = resolveSpine(shared, item);
     for (const p of t.panels) {
       // With the Official style the spine has a cap at its start; keep the title clear of it.
-      if (p.text) drawSpineText(ctx, p, settings.text ?? item.title, settings, px, p.text, { start: spineCapMm(t.kind, digital), end: 0 });
+      if (p.text) drawSpineText(ctx, p, settings.text ?? defaultSpineText(item), settings, px, p.text, { start: spineCapMm(t.kind, digital), end: 0 });
     }
   }
 

@@ -28,6 +28,7 @@ export const OFFICIAL_HEADERS: Record<TemplateKind, HeaderSpec> = {
   'nfc-card': { text: 'NFC', short: 'NFC', bg: '#1a73e8', fg: '#ffffff', heightMm: 7, capMm: 0 },
   'nfc-sticker': { text: 'NFC', short: 'NFC', bg: '#1a73e8', fg: '#ffffff', heightMm: 5, capMm: 0 },
   'nfc-box': { text: 'NFC', short: 'NFC', bg: '#1a73e8', fg: '#ffffff', heightMm: 7, capMm: 12 },
+  vinyl: { text: 'STEREO • 33⅓ RPM', short: 'VINYL', bg: '#1a1a1a', fg: '#f5e642', heightMm: 10, capMm: 0 },
 };
 
 /** Room to leave at the start of a spine's text for the cap (0 when the style adds none). */
