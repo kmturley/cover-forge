@@ -248,6 +248,16 @@ function wallet(name: string, w: number, h: number, marks: (panels: PanelRect[])
   });
 }
 
+/**
+ * Vinyl record sleeve sizes. The sleeve is a square jacket: front | spine | back in a row.
+ * Standard outer sleeve thickness is ~3 mm (spine). Sizes are the outer sleeve dimensions.
+ */
+const VINYL: Record<string, { label: string; sizeMm: number; spine: number }> = {
+  '12inch': { label: '12" LP', sizeMm: 314, spine: 3 },
+  '10inch': { label: '10"', sizeMm: 262, spine: 3 },
+  '7inch': { label: '7" Single', sizeMm: 184, spine: 3 },
+};
+
 export const TEMPLATE_DEFS: TemplateDef[] = [
   {
     kind: 'dvd',
@@ -465,6 +475,35 @@ export const TEMPLATE_DEFS: TemplateDef[] = [
       const v = NFC_BOX[id] ?? NFC_BOX.card;
       const variantId = NFC_BOX[id] ? id : 'card';
       return tuckBox({ kind: 'nfc-box', name: `NFC box, ${v.label}`, variantId, ...v, casing: { color: '#e9e4d8', roughness: 0.85 }, radiusMm: 0.8, marks: marksFor(v.w, v.h) });
+    },
+  },
+  {
+    kind: 'vinyl',
+    name: 'Vinyl',
+    group: 'Cases',
+    variants: Object.entries(VINYL).map(([id, v]) => ({ id, label: `${v.label} (${v.sizeMm} × ${v.sizeMm} mm)` })),
+    build: (id) => {
+      const v = VINYL[id] ?? VINYL['12inch'];
+      const s = v.sizeMm;
+      return wrap(
+        'vinyl',
+        `Vinyl ${v.label}`,
+        VINYL[id] ? id : '12inch',
+        undefined,
+        s,
+        s,
+        v.spine,
+        {
+          kind: 'box',
+          widthMm: s,
+          heightMm: s,
+          depthMm: v.spine,
+          faces: { '-x': 'spine', '+z': 'front', '-z': 'back' },
+          casing: { color: '#1a1a1a', roughness: 0.7 },
+          glossy: false,
+          radiusMm: 1,
+        },
+      );
     },
   },
 ];

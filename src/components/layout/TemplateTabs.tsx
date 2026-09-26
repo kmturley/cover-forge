@@ -75,6 +75,14 @@ const ICONS: Record<TemplateKind, ReactNode> = {
       <path d="M4 6l8 3.5L20 6M12 9.5v11" />
     </>,
   ),
+  vinyl: svg(
+    <>
+      <circle cx="12" cy="12" r="9" />
+      <circle cx="12" cy="12" r="3.5" />
+      <circle cx="12" cy="12" r="0.8" fill="currentColor" stroke="none" />
+      <path d="M12 3v2M12 19v2M3 12h2M19 12h2" />
+    </>,
+  ),
 };
 
 const GROUPS = ['Cases', 'Boxes', 'Labels & cards'] as const;

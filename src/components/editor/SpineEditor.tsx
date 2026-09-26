@@ -1,6 +1,6 @@
 import { useAppDispatch, useAppState, useSelectedItem } from '../../context/AppContext';
 import { useEditView } from './useEditView';
-import { defaultCapHeightMm } from '../../engine/SpineTypography';
+import { defaultCapHeightMm, defaultSpineText } from '../../engine/SpineTypography';
 import type { SpineSettings } from '../../types/editor';
 import { NumberSlider } from './NumberSlider';
 
@@ -28,7 +28,7 @@ export function SpineTextControls({ target }: { target: string | null }) {
       {editMode === 'override' ? (
         <label className="field">
           <span>Text (this item)</span>
-          <input type="text" value={eff.text ?? item.title} onChange={(e) => patch({ text: e.target.value })} />
+          <input type="text" value={eff.text ?? defaultSpineText(item)} onChange={(e) => patch({ text: e.target.value })} />
         </label>
       ) : (
         <p className="muted">Each spine shows its own title. Switch to “This item” to change one.</p>

@@ -1,3 +1,4 @@
+import type { MediaItem } from '../types/media';
 import type { SpineSettings } from '../types/editor';
 
 export interface SpineBox {
@@ -32,6 +33,11 @@ export function defaultCapHeightMm(
   const thicknessMm = vertical ? box.widthMm : box.heightMm;
   const fit = runMm / ((TYPICAL_LONG_TITLE_CHARS * AVG_CHAR_EM) / CAP_HEIGHT_EM);
   return Math.floor(Math.max(1.5, Math.min(MAX_AUTO_CAP_MM, fit, thicknessMm * MAX_THICKNESS_SHARE)) * 10) / 10;
+}
+
+/** Default spine text: "Artist · Title" when a subtitle is present, otherwise just the title. */
+export function defaultSpineText(item: MediaItem): string {
+  return item.subtitle ? `${item.subtitle} · ${item.title}` : item.title;
 }
 
 /**
