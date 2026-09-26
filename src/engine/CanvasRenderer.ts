@@ -82,7 +82,7 @@ export function renderCover(
     const settings = resolveSpine(shared, item);
     for (const p of t.panels) {
       // With the Official style the spine has a cap at its start; keep the title clear of it.
-      if (p.text) drawSpineText(ctx, p, settings.text ?? defaultSpineText(item), settings, px, p.text, { start: spineCapMm(t.kind, digital), end: 0 });
+      if (p.text) drawSpineText(ctx, p, settings.text ?? defaultSpineText(item), settings, px, p.text, { start: spineCapMm(t.kind, digital, t.variantId), end: 0 });
     }
   }
 

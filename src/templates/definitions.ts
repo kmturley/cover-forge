@@ -89,7 +89,7 @@ function assemble(b: Build): TemplateConfig {
 export interface TemplateDef {
   kind: TemplateKind;
   name: string;
-  group: 'Cases' | 'Boxes' | 'Labels & cards';
+  group: 'Cases' | 'Boxes' | 'Labels & cards' | 'Game cases';
   variants: TemplateVariant[];
   build(variantId: string): TemplateConfig;
 }
@@ -256,6 +256,20 @@ const VINYL: Record<string, { label: string; sizeMm: number; spine: number }> = 
   '12inch': { label: '12" LP', sizeMm: 314, spine: 3 },
   '10inch': { label: '10"', sizeMm: 262, spine: 3 },
   '7inch': { label: '7" Single', sizeMm: 184, spine: 3 },
+};
+
+/**
+ * Game case variants: each entry encodes the physical size and the platform brand.
+ * w/h are the front panel in mm; spine is the spine width in mm.
+ * Variants with the same w/h share a physical case; the brand drives the Official-style banner only.
+ */
+const GAME_CASE: Record<string, { label: string; w: number; h: number; spine: number; color: string }> = {
+  'ps4':         { label: 'PS4',               w: 135, h: 170, spine: 14.5, color: '#1a1a2e' },
+  'ps5':         { label: 'PS5',               w: 135, h: 170, spine: 14.5, color: '#ffffff' },
+  'xbox-one':    { label: 'Xbox One',           w: 135, h: 170, spine: 15,   color: '#107c10' },
+  'xbox-series': { label: 'Xbox Series X|S',    w: 135, h: 170, spine: 15,   color: '#107c10' },
+  'switch':      { label: 'Nintendo Switch',    w: 102, h: 184, spine: 12,   color: '#e4000f' },
+  'switch2':     { label: 'Nintendo Switch 2',  w: 102, h: 184, spine: 12,   color: '#e4000f' },
 };
 
 export const TEMPLATE_DEFS: TemplateDef[] = [
@@ -504,6 +518,18 @@ export const TEMPLATE_DEFS: TemplateDef[] = [
           radiusMm: 1,
         },
       );
+    },
+  },
+  {
+    kind: 'game-case',
+    name: 'Game case',
+    group: 'Game cases',
+    variants: Object.entries(GAME_CASE).map(([id, v]) => ({ id, label: v.label })),
+    build: (id) => {
+      const v = GAME_CASE[id] ?? GAME_CASE['ps4'];
+      const variantId = GAME_CASE[id] ? id : 'ps4';
+      return wrap('game-case', `Game case – ${v.label}`, variantId, undefined, v.w, v.h, v.spine,
+        wrapPreview(v.w, v.h, v.spine, { color: v.color, roughness: 0.3 }, true, 2));
     },
   },
 ];

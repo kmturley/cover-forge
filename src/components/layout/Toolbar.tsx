@@ -46,7 +46,7 @@ export function Toolbar({ onExport }: { onExport: () => void }) {
         )}
         {variants.length > 1 && (
           <label>
-            Size
+            {templateKind === 'game-case' ? 'Platform' : 'Size'}
             <select
               value={variantId}
               onChange={(e) =>

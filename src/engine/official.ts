@@ -29,11 +29,28 @@ export const OFFICIAL_HEADERS: Record<TemplateKind, HeaderSpec> = {
   'nfc-sticker': { text: 'NFC', short: 'NFC', bg: '#1a73e8', fg: '#ffffff', heightMm: 5, capMm: 0 },
   'nfc-box': { text: 'NFC', short: 'NFC', bg: '#1a73e8', fg: '#ffffff', heightMm: 7, capMm: 12 },
   vinyl: { text: 'STEREO • 33⅓ RPM', short: 'VINYL', bg: '#1a1a1a', fg: '#f5e642', heightMm: 10, capMm: 0 },
+  // Game cases: one entry per platform variant; looked up by variantId at render time.
+  'game-case': { text: 'GAME', short: 'GAME', bg: '#1a1a1a', fg: '#ffffff', heightMm: 10, capMm: 14 },
 };
 
+/** Per-platform branding for the game-case kind, keyed by variantId. */
+export const GAME_CASE_HEADERS: Record<string, HeaderSpec> = {
+  'ps4':         { text: 'PlayStation®4',    short: 'PS4',  bg: '#003087', fg: '#ffffff', heightMm: 10, capMm: 14 },
+  'ps5':         { text: 'PlayStation®5',    short: 'PS5',  bg: '#ffffff', fg: '#003087', heightMm: 10, capMm: 14 },
+  'xbox-one':    { text: 'Xbox One',          short: 'XBOX', bg: '#107c10', fg: '#ffffff', heightMm: 10, capMm: 15 },
+  'xbox-series': { text: 'Xbox Series X|S',   short: 'XBOX', bg: '#107c10', fg: '#ffffff', heightMm: 10, capMm: 15 },
+  'switch':      { text: 'Nintendo Switch',   short: 'NSW',  bg: '#e4000f', fg: '#ffffff', heightMm: 10, capMm: 12 },
+  'switch2':     { text: 'Nintendo Switch 2', short: 'NSW2', bg: '#e4000f', fg: '#ffffff', heightMm: 10, capMm: 12 },
+};
+
+/** Resolves the correct HeaderSpec for a template, using the variantId for game-case. */
+export function resolveHeader(kind: TemplateKind, variantId: string): HeaderSpec {
+  return kind === 'game-case' ? (GAME_CASE_HEADERS[variantId] ?? OFFICIAL_HEADERS['game-case']) : OFFICIAL_HEADERS[kind];
+}
+
 /** Room to leave at the start of a spine's text for the cap (0 when the style adds none). */
-export function spineCapMm(kind: TemplateKind, digital: boolean): number {
-  return digital ? OFFICIAL_HEADERS[kind].capMm : 0;
+export function spineCapMm(kind: TemplateKind, digital: boolean, variantId = ''): number {
+  return digital ? resolveHeader(kind, variantId).capMm : 0;
 }
 
 const FONT = 'Helvetica, Arial, sans-serif';
@@ -46,7 +63,7 @@ function fitText(ctx: CanvasRenderingContext2D, text: string, maxWidthPx: number
 
 /** Draws the front banner and the spine caps. `px` is pixels per mm. */
 export function drawOfficial(ctx: CanvasRenderingContext2D, t: TemplateConfig, px: number): void {
-  const spec = OFFICIAL_HEADERS[t.kind];
+  const spec = resolveHeader(t.kind, t.variantId);
   ctx.save();
   ctx.textBaseline = 'middle';
 

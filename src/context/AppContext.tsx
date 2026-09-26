@@ -127,7 +127,8 @@ function mergePanel(existing: PanelSettings | undefined, patch: Partial<PanelSet
 export function withTemplate(state: AppState, kind: TemplateKind, region: Region, variantId: string): AppState {
   const template = buildTemplate(kind, variantId);
   const selectedPanel = template.panels.some((p) => p.id === state.selectedPanel) ? state.selectedPanel : template.panels[0].id;
-  return { ...state, templateKind: kind, region, variantId: template.variantId, template, selectedPanel };
+  const styleOverlay = kind === 'game-case' && state.templateKind !== 'game-case' ? 'digital' : state.styleOverlay;
+  return { ...state, templateKind: kind, region, variantId: template.variantId, template, selectedPanel, styleOverlay };
 }
 
 function updateItem(state: AppState, id: string, f: (i: MediaItem) => MediaItem): AppState {

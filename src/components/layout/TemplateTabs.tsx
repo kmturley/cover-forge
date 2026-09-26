@@ -83,9 +83,16 @@ const ICONS: Record<TemplateKind, ReactNode> = {
       <path d="M12 3v2M12 19v2M3 12h2M19 12h2" />
     </>,
   ),
+  'game-case': svg(
+    <>
+      <rect x="5" y="2.5" width="14" height="19" rx="1.5" />
+      <path d="M8 2.5v19" />
+      <path d="M11 8.5h5M11 11h5M11 13.5h3" />
+    </>,
+  ),
 };
 
-const GROUPS = ['Cases', 'Boxes', 'Labels & cards'] as const;
+const GROUPS = ['Cases', 'Boxes', 'Labels & cards', 'Game cases'] as const;
 
 /** One button per template, grouped by type, so switching media is a single click. */
 export function TemplateTabs() {
