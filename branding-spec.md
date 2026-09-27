@@ -45,8 +45,7 @@ same way as the spine title.
 
 | Platform | Era | Front header | Front size | Spine top | Spine length | Conf. |
 | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
-| PS1 NTSC-U | 1995–2000 | black vertical strip, left | 15.5% W | – (jewel case) | – | F |
-| PS1 PAL | 1995–2000 | black top band | 12.4% H | black cap: PS symbol, "PAL" box, "PlayStation" | ≈30% L | W |
+| PS1 | 1995–2000 | black vertical strip, left | 15.5% W | – (jewel case) | – | F |
 | PS2 | 2000–2013 | black top band | 8.7–9.5% H | PS symbol in a white square, then "PlayStation 2" on black | black, full length | W, F |
 | PS3 | 2006–2009 | black vertical strip, left | 10% W | "PLAYSTATION 3" | – | F |
 | PS3 | 2009–2017 | black band fading to grey, crimson line | 8.3% H + 0.4% line | black cap with "PS3" | 16.5% L | W, F |
@@ -72,22 +71,11 @@ same way as the spine title.
 
 ## PlayStation
 
-### PS1
-- **NTSC-U (F), measured on *Crash Bandicoot* and *Spyro*; CD jewel case:**
-  - A black strip down the **left** edge, **15.5% W** wide, full height.
-  - At its top: the four-colour PS symbol, centred, about 80% of the strip width.
-  - Below it: "PlayStation" in white, **rotated −90° (reads bottom-to-top)**, about 55% H long.
-  - The ESRB box sits at the bottom of the strip.
-- **PAL (W), measured on *FIFA: Road to World Cup 98*:**
-  - **Front:** a full-width black band at the top, **12.4% H**.
-    - Left: "PlayStation®" in white, inset about 3% W, cap height about 5% H.
-    - Right: the four-colour PS symbol, inset 3% W, about 8% H tall.
-    - Below the band on the right: a small white "PAL" tag.
-  - **Spine:** black from the top to about 30% L.
-    - The PS symbol in a black square with a thin white border, at 2–7.5% L.
-    - A white "PAL" box at 9.7–11.7% L.
-    - "PlayStation" in white, rotated 90° clockwise, at 12–25% L.
-    - Then the title on white.
+### PS1 (F), measured on *Crash Bandicoot* and *Spyro*; CD jewel case
+- A black strip down the **left** edge, **15.5% W** wide, full height.
+- At its top: the four-colour PS symbol, centred, about 80% of the strip width.
+- Below it: "PlayStation" in white, **rotated −90° (reads bottom-to-top)**, about 55% H long.
+- The ESRB box sits at the bottom of the strip.
 
 ### PS2 (W, F), measured on *GTA: San Andreas*, *Jak and Daxter* and *Ratchet & Clank*
 - **Front:** a full-width black band at the top, **8.7–9.5% H**, colour `#000000`–`#10131A`.
@@ -282,20 +270,34 @@ same way as the spine title.
 
 ---
 
-## Case and insert sizes
+## Cover art sizes
 
-Sizes come from published print templates and case makers, **not** from the wraps in `cover-art/`; those are used for
-branding only. US inserts, in mm; these are the values in `definitions.ts`.
+The printed cover art for US cases: the full wrap (back, spine and front) at trim size, without bleed. These are the
+values in `definitions.ts`. Spine widths are the US case standards, and the front width is what the wrap leaves.
 
-| Template | Front W × H, spine | Evidence |
-| :--- | :--- | :--- |
-| PS4 / PS5 | **128 × 160, 14** | 3224 × 1906 px cover template with a 164 px spine (Cover Project standard); Walvis case 170 × 135 × 15 with a 162 mm insert pocket |
-| PS3 | **128 × 148, 14** | Blu-ray insert, 128 × 148 (CoverStitch); spine unverified |
-| Xbox One / Series | **128 × 150, 11** | Walvis 11 mm case, 170 × 135 × 11, with a 150 mm insert pocket; width as the Blu-ray insert |
-| PS2 / Xbox / Xbox 360 / Wii / Wii U / GameCube | **130 × 184, 14** | DVD keepcase insert, 274 × 184 wrap (CoverStitch); Walvis cases 190 × 135 × 14, Wii U pocket 185 |
-| Switch / Switch 2 | **99 × 161, 10** | 208 × 161 full wrap, 9–10 mm spine (Miketendo64); 10 × 161 spine (SwitchSpines); Walvis case 105 × 170 × 11 |
-| PS Vita | **99 × 125, 9** | 207 × 125 full cover (Cheap Ass Gamer); Walvis case 105 × 135 × 11 |
-| PS1 | **CD jewel case**: 120 × 120 booklet, 6.5 mm spine cards | Standard jewel case |
+Every size below was cross-checked in a dedicated investigation, [`case-research.md`](case-research.md): for each
+physical case, multiple independent sources (Wikipedia, case manufacturers, community references) were gathered with
+links, and a mode was computed per dimension (width, height, depth) rather than trusting any single page. **None of
+the sizes already in the codebase needed to change** — the investigation confirmed all of them, several more strongly
+than before. The Confidence column below reflects how many independent sources back each row; see `case-research.md`
+for the full source-by-source breakdown, including cases where sources disagree and why.
+
+| Template | Full cover (mm) | Front W × H, spine (mm) | Confidence |
+| :--- | :--- | :--- | :--- |
+| DVD, PC | 273 × 183 | 129.5 × 183, 14 | Strong — 6 case sources and 3 insert sources agree |
+| DVD Slim | 266 × 183 | 129.5 × 183, 7 | Strong on spine (unanimous across 6 sources); front size single-sourced at the insert level |
+| Blu-ray | 267 × 149 | 128 × 149, 11 | Strong — same insert class as Xbox One (below); the case's outer spine genuinely varies (5–24 mm) across commercial products, but our 11 mm insert-level figure is confirmed by a manufacturer and a community source |
+| CD, PS1 (jewel case) | 120 × 120 booklet | 120 × 120; 6.5 mm spine cards on the tray card | Strong on total size — front confirmed by 4 sources, back tray total width and height each confirmed by 2 of 3. **Low** on the 6.5/6.5 split specifically: real PS1 scans measured by `scripts/measure-covers.ts` consistently draw the flap nearest the front wider than the one nearest the back (see `case-research.md`) — not yet applied to the code, which still splits the tray card symmetrically |
+| PS2, Xbox, Xbox 360, GameCube, Wii, Wii U | 273 × 183 | 129.5 × 183, 14 | Strong — same insert data as DVD above |
+| PS3 | 273 × 149 | 129.5 × 149, 14 | Moderate — the case's *outer shell* may be shared with PS4/PS5 (see Sources), but 3 independent insert-level sources cluster tightly at 128–129.5 × 148–149.3, confirming this value specifically |
+| Xbox One, Xbox Series X\|S | 267 × 149 | 128 × 149, 11 | Strong — 3 sources agree on width/height within 1 mm, unanimous on the 11 mm spine |
+| PS4, PS5 | 273 × 161 | 129.5 × 161, 14 | Strong — a case manufacturer's insert-pocket spec (162 mm) and a community wiki (161 mm) agree |
+| Switch, Switch 2 | 208 × 161 | 99 × 161, 10 | Strong on height and spine (2 sources, exact match); width single-sourced but consistent with the case exterior |
+| PS Vita | 207 × 125 | 99 × 125, 9 | **Low** — one case source, one derived insert source; a dedicated further search found no second source for either |
+
+Wii U, Switch and PS Vita aren't on the r/customcovers wiki reference list. Wii U uses the DVD-size case, and Switch
+and PS Vita come from published full-wrap sizes (see Sources). Blu-ray Elite was removed; saves that used it now get
+Blu-ray.
 
 ---
 
@@ -322,7 +324,7 @@ Windows marks are drawn approximations, since Simple Icons does not carry them.
 ## Sources
 
 - **Full wraps (W):** `cover-art/*.jpg` in this repo: *Resident Evil Origins Collection* (PS4), *Black Myth: Wukong*
-  (PS5), *Madden NFL 25* (PS3), *GTA: San Andreas* (PS2), *FIFA: Road to World Cup 98* (PAL PS1), *Super Mario Party
+  (PS5), *Madden NFL 25* (PS3), *GTA: San Andreas* (PS2), *Super Mario Party
   Jamboree* (Switch), *Pac-Man World 2 Re-Pac* (Switch 2), *Disney Universe* (Wii), *Rayman Legends* (Wii U), *Super
   Smash Bros. Melee* (PAL GameCube), *Mario Party 3* (N64), *Sid Meier's Pirates!* (Xbox), *NeverDead* (Xbox 360),
   *FIFA 18* (Xbox One), *Forza Horizon 6* (Xbox Series X). Some are fan-made.
@@ -350,3 +352,42 @@ Windows marks are drawn approximations, since Simple Icons does not carry them.
 - [Insert sizes: CoverStitch](https://coverstitch.io/dimensions.html),
   [case sizes: Trevor Tyler Lee](https://www.trevortylerlee.com/posts/39-video-game-case-dimensions/),
   [PS4 print size: games-t](https://www.games-t.com/ps4-game-cover-dimensions)
+
+### Size cross-check ([full investigation: `case-research.md`](case-research.md))
+
+- [Wikipedia: Keep case](https://en.wikipedia.org/wiki/Keep_case),
+  [Optical disc packaging](https://en.wikipedia.org/wiki/Optical_disc_packaging),
+  [VHS](https://en.wikipedia.org/wiki/VHS), [J-card](https://en.wikipedia.org/wiki/J-card),
+  [Floppy disk](https://en.wikipedia.org/wiki/Floppy_disk)
+- [r/customcovers wiki, "coversizes"](https://www.reddit.com/r/customcovers/wiki/index/coversizes/) — a community
+  reference, explicitly marked "under construction"; treated as one source among several, not authoritative alone
+- [dvdnextcopy.com](https://www.dvdnextcopy.com/dvd-case-dimensions), [dvdfab.cn](https://www.dvdfab.cn/resource/dvd/dvd-case-size),
+  [cdrom2go.com](https://www.cdrom2go.com/dimensions-blu-ray-case), [ronyasoft.com](https://www.ronyasoft.com/products/cd-dvd-label-maker/articles/popular_dvd_case_dimensions/)
+- [SoonPak, CD inlay dimensions guide](https://soonpak.com/the-standard-cd-inlay-dimensions-guide-sourcing-and-printing-templates-for-jewel-cases/),
+  [ChilliPrinting, CD insert sizes](https://www.chilliprinting.com/online-printing-blog/cd-insert-sizes-dimensions-for-printing-explained/),
+  [Avery Template 8693](https://www.avery.com/products/labels/8693)
+- [GenesysDTP, Switch case](https://www.genesysdtp.com/nintendoswitchclr1d10mm.htm),
+  [GenesysDTP, Xbox One case](https://genesysdtp.com/xboxone1d12mm.htm),
+  [OnlineLabels.com, floppy disk labels](https://www.onlinelabels.com/products/ol225)
+- [VGBoxArt, PlayStation 3 template](https://vgboxart.com/resource/3877/playstation-3-template/) (site blocks
+  automated fetches directly; quoted via a search-engine snippet)
+- [ShunPoly, VHS box dimensions](https://shunpoly.com/article/what-size-are-plastic-vhs-boxes)
+- [Blu-ray Forum, PS4 vs. PS3 case comparison](https://forum.blu-ray.com/showthread.php?t=230309)
+
+### Branding cross-check (measured, `scripts/measure-covers.ts` → `scans-report.md`)
+
+A separate, later pass: rather than reading percentages off individual covers by eye, this tool measures the front
+header band's height and colour directly from pixels (DPI-scaled, median per row) across 3 real retail covers per
+platform — different titles than the ones already cited above (F/W marks), so this is independent corroboration, not
+a repeat of the same measurement. **PS2, PS3, PS4 and PS5's documented header heights all held up; none changed:**
+
+| Platform | Spec (this file) | Measured (median of 3 covers) | Titles measured |
+| :--- | :--- | :--- | :--- |
+| PS2 | 8.7–9.5% H | 9.0% H | *God of War II*, *GTA: San Andreas*, *Spawn: Armageddon* |
+| PS3 | 8.3% H | 8.1% H | *Darksiders*, *Future Tactics*, *Mass Effect 3* — one of three correctly identified as a black→grey **gradient**, not a flat colour |
+| PS4 | 10.3% H | 10.7% H | *Madden NFL 19*, *Marvel's Spider-Man*, *Mortal Kombat X* |
+| PS5 | 11.1% H, white | 11.2% H, `#ffffff` | *Kena: Bridge of Spirits*, *Marvel's Spider-Man 2*, *Tales of Arise* |
+
+PS1's front strip is vertical (down the left edge), not a horizontal band, so this tool's header-band detector
+doesn't apply to it and wasn't used to check the 15.5% W figure — see `case-research.md` for what it did measure on
+PS1 (the tray card's spine-flap widths, flagged in the sizes table above).

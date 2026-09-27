@@ -12,7 +12,7 @@ describe('panelUvRange', () => {
     expect(back.u1).toBeCloseTo(spine.u0);
     expect(spine.u1).toBeCloseTo(front.u0);
     expect(front.u1).toBeCloseTo(270 / 273);
-    expect(front.v1).toBeCloseTo(1 - 3 / 154);
+    expect(front.v1).toBeCloseTo(1 - 3 / 155);
   });
 
   it('finds panels in the J-card strip and rejects unknown ones', () => {
@@ -31,7 +31,7 @@ describe('createBodyGeometry', () => {
     geo.computeBoundingBox();
     const size = geo.boundingBox!.getSize(geo.boundingBox!.min.clone());
     expect(size.x).toBeCloseTo(128);
-    expect(size.y).toBeCloseTo(148);
+    expect(size.y).toBeCloseTo(149);
     expect(size.z).toBeCloseTo(11);
 
     const front = panelUvRange(t, 'front');

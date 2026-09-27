@@ -137,7 +137,7 @@ describe('templates', () => {
     s = reducer(s, { type: 'selectItem', id: 'a' });
     s = reducer(s, { type: 'selectPanel', panel: 'spine' });
     expect(s.template.id).toBe('dvd-slim-9');
-    expect(s.template.panels[1].widthMm).toBe(9);
+    expect(s.template.panels[1].widthMm).toBe(7);
     s = reducer(s, { type: 'selectItem', id: 'b' });
     expect(s.template.id).toBe('floppy-face');
     expect(s.selectedPanel).toBe('front');

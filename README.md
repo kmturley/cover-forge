@@ -47,7 +47,27 @@ npm run lint
 npm test             # Vitest unit tests
 npm run build
 npm run gen:brands   # regenerate src/brands/brands.generated.ts from Simple Icons
+npm run measure:covers  # measure scans/*/*.jpg, write scans-report.md — see below
 ```
+
+### Cover scan measurement (research tool)
+
+`scripts/measure-covers.ts` is a research tool, not part of the app: point it at a folder of
+real 300 DPI print files (grouped into one subfolder per case/platform, e.g. `scans/ps4/`,
+`scans/ps5/`) and it measures each wrap's overall size, spine width and front header band
+height/colour, then aggregates each folder to a median. It's used to cross-check the sizes and
+branding percentages already recorded in `branding-spec.md` and `case-research.md` against real
+files, not to replace that research.
+
+```sh
+npm run measure:covers                              # scans ./scans, writes scans-report.md
+node scripts/measure-covers.ts scans --out report.md # explicit source and output
+```
+
+Source defaults to `./scans` and `--out` defaults to `scans-report.md` when omitted. Any scan
+whose embedded DPI isn't exactly 300 is rejected outright and left out of the report (noted on
+stderr) rather than measured at an unreliable size. `scans/` is gitignored — cover art is
+copyrighted, so test images stay local and aren't committed.
 
 ## Deploy (GitHub Pages)
 

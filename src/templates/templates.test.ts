@@ -6,23 +6,24 @@ describe('blu-ray template', () => {
   it('matches the spec for the US standard case', () => {
     const t = buildTemplate('bluray', 'us-11');
     expect(t.totalWidthMm).toBe(273); // 128 + 11 + 128 + 3 mm bleed each side
-    expect(t.totalHeightMm).toBe(154);
-    expect(canvasSizePx(t)).toEqual({ width: 3224, height: 1819 });
+    expect(t.totalHeightMm).toBe(155);
+    expect(canvasSizePx(t)).toEqual({ width: 3224, height: 1831 });
   });
 
   it('lays panels out contiguously, back | spine | front', () => {
-    const t = buildTemplate('bluray', 'us-12.5');
+    const t = buildTemplate('bluray', 'us-11');
     const [back, spine, front] = t.panels;
     expect([back.id, spine.id, front.id]).toEqual(['back', 'spine', 'front']);
     expect(spine.xMm).toBe(back.xMm + back.widthMm);
     expect(front.xMm).toBe(spine.xMm + spine.widthMm);
-    expect(spine.widthMm).toBe(12.5);
+    expect(spine.widthMm).toBe(11);
   });
 
   it('offers the US cases only, and falls back for unknown variants', () => {
-    expect(variantsFor('bluray').map((v) => v.id)).toEqual(['us-11', 'us-12.5']);
+    expect(variantsFor('bluray').map((v) => v.id)).toEqual(['us-11']);
     expect(defaultVariantId('bluray')).toBe('us-11');
     expect(buildTemplate('bluray', 'eu-14').variantId).toBe('us-11');
+    expect(buildTemplate('bluray', 'us-12.5').variantId).toBe('us-11');
   });
 });
 
@@ -34,17 +35,37 @@ describe('game case sizes (see branding-spec.md)', () => {
     return [f.widthMm, f.heightMm, s.widthMm];
   };
 
-  it('uses the real US insert sizes', () => {
-    expect(front('ps4')).toEqual([128, 160, 14]);
-    expect(front('ps3')).toEqual([128, 148, 14]);
-    expect(front('ps2')).toEqual([130, 184, 14]);
-    expect(front('switch')).toEqual([99, 161, 10]);
-    expect(front('xbox-one')).toEqual([128, 150, 11]);
+  // The full cover (back + spine + front, trimmed) must match the US cover art sizes in branding-spec.md.
+  const cover = (kind: Parameters<typeof buildTemplate>[0], v?: string) => {
+    const t = buildTemplate(kind, v);
+    const row = t.panels.filter((p) => ['back', 'spine', 'front'].includes(p.id));
+    return [row.reduce((w, p) => w + p.widthMm, 0), row[0].heightMm];
+  };
+
+  it.each([
+    ['dvd', 'std-14', 273, 183],
+    ['dvd', 'slim-9', 266, 183],
+    ['bluray', 'us-11', 267, 149],
+    ['game-case', 'pc', 273, 183],
+    ['game-case', 'ps2', 273, 183],
+    ['game-case', 'xbox', 273, 183],
+    ['game-case', 'xbox-360', 273, 183],
+    ['game-case', 'gamecube', 273, 183],
+    ['game-case', 'wii', 273, 183],
+    ['game-case', 'ps3', 273, 149],
+    ['game-case', 'xbox-one', 267, 149],
+    ['game-case', 'xbox-series', 267, 149],
+    ['game-case', 'ps4', 273, 161],
+    ['game-case', 'ps5', 273, 161],
+  ] as const)('%s %s: %d × %d mm cover', (kind, v, w, h) => {
+    expect(cover(kind, v)).toEqual([w, h]);
   });
+
+  it('keeps the Switch sizes', () => expect(front('switch')).toEqual([99, 161, 10]));
 
   it('prints PS1 covers for a CD jewel case', () => {
     const t = buildTemplate('game-case', 'ps1');
-    expect(t.panels.map((p) => p.id)).toEqual(['front', 'spine', 'back', 'spineRight']);
+    expect(t.panels.map((p) => p.id)).toEqual(['spine', 'back', 'spineRight', 'front']);
     expect(t.id).toBe('game-case-ps1');
   });
 });
@@ -98,11 +119,11 @@ describe('template dimensions', () => {
   it('CD: booklet and tray card are separate pieces with room for both bleeds', () => {
     const t = buildTemplate('cd');
     const [front, spine, back, spineRight] = ['front', 'spine', 'back', 'spineRight'].map((id) => t.panels.find((p) => p.id === id)!);
-    expect(spine.xMm - (front.xMm + front.widthMm)).toBeGreaterThanOrEqual(t.bleedMm * 2);
+    expect(front.xMm - (spineRight.xMm + spineRight.widthMm)).toBeGreaterThanOrEqual(t.bleedMm * 2);
     expect(back.xMm).toBe(spine.xMm + spine.widthMm);
     expect(spineRight.xMm).toBe(back.xMm + back.widthMm);
     expect(spine.widthMm + back.widthMm + spineRight.widthMm).toBe(150); // the standard tray card
-    expect(neighbour(t.panels, front, 'right')).toBeUndefined(); // separate piece: not a fold
+    expect(neighbour(t.panels, front, 'left')).toBeUndefined(); // separate piece: not a fold
   });
 });
 

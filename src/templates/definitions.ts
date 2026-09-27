@@ -127,12 +127,12 @@ const wrapPreview = (w: number, h: number, depth: number, casing: PreviewMateria
 /** US Blu-ray cases. (Ids keep their old `us-` prefix so saved sessions still match; regions aren't shown.) */
 const BLURAY: Record<string, { label: string; spine: number }> = {
   'us-11': { label: 'Blu-ray', spine: 11 },
-  'us-12.5': { label: 'Blu-ray Elite', spine: 12.5 },
 };
 
 const DVD: Record<string, { label: string; spine: number }> = {
   'std-14': { label: 'DVD', spine: 14 },
-  'slim-9': { label: 'DVD Slim', spine: 9 },
+  // The id predates the US 7 mm slim spine; kept so saved sessions still match.
+  'slim-9': { label: 'DVD Slim', spine: 7 },
 };
 
 /** Boxes that hold an NFC item: a slim one for a CR80 card (54 × 85.6 × 0.8 mm plus room to slide) and a small keepsake box. */
@@ -245,8 +245,9 @@ function wallet(name: string, w: number, h: number, marks: (panels: PanelRect[])
 }
 
 /**
- * A CD jewel case: the front booklet, then the rear tray card [spine | back | spine] whose two spine flaps both carry
- * the title. Music CDs and PS1 games both use it.
+ * A CD jewel case: the rear tray card [spine | back | spine], whose two spine flaps both carry the title,
+ * then the front booklet — front last/rightmost, same convention as every other case (`wrap()`'s
+ * back | spine | front). Music CDs and PS1 games both use it.
  */
 function jewelCase(kind: TemplateKind, name: string, variantId: string): TemplateConfig {
   return assemble({
@@ -255,7 +256,6 @@ function jewelCase(kind: TemplateKind, name: string, variantId: string): Templat
     variantId,
     bleedMm: 3,
     pieces: [
-      { dir: 'row', specs: [{ id: 'front', label: 'Front (booklet)', w: 120, h: 120 }] },
       {
         dir: 'row',
         specs: [
@@ -264,6 +264,7 @@ function jewelCase(kind: TemplateKind, name: string, variantId: string): Templat
           { id: 'spineRight', label: 'Spine (right)', w: 6.5, h: 118, text: 'vertical' },
         ],
       },
+      { dir: 'row', specs: [{ id: 'front', label: 'Front (booklet)', w: 120, h: 120 }] },
     ],
     preview: {
       kind: 'box',
@@ -291,30 +292,31 @@ const VINYL: Record<string, { label: string; sizeMm: number; spine: number }> = 
 
 /**
  * Game case variants (US releases): the platform, the size of its printed insert (`w`/`h` = the front panel, `spine`)
- * and the case colour for the 3D view. Sizes come from published print templates and case makers (see the size table
- * in branding-spec.md): platforms on the same case share a size, and the brand only changes the Branded header. PS1 is
- * `jewel`: a CD jewel case, not a keepcase.
+ * and the case colour for the 3D view. Sizes are the US cover art sizes in branding-spec.md, cross-checked against
+ * multiple independent sources per case in case-research.md: platforms on the same case share a size, and the brand
+ * only changes the Branded header. PS1 is `jewel`: a CD jewel case, not a keepcase. PS Vita is the one entry
+ * case-research.md flags as low-confidence (only one case source and one derived insert source were found).
  */
 const GAME_CASE: Record<string, { label: string; w: number; h: number; spine: number; color: string; jewel?: boolean }> = {
   // PC boxed games shipped in standard DVD keepcases, so this matches the DVD insert.
   'pc':        { label: 'PC',                  w: 129.5, h: 183, spine: 14,   color: '#16191f' },
   'ps1':       { label: 'PS1',                 w: 120,   h: 120, spine: 6.5,  color: '#16181c', jewel: true },
-  'ps2':       { label: 'PS2',                 w: 130,   h: 184, spine: 14,   color: '#000000' },
-  'ps3':       { label: 'PS3',                 w: 128,   h: 148, spine: 14,   color: '#000000' },
-  'ps4':       { label: 'PS4',                 w: 128,   h: 160, spine: 14,   color: '#003791' },
-  'ps5':       { label: 'PS5',                 w: 128,   h: 160, spine: 14,   color: '#ffffff' },
+  'ps2':       { label: 'PS2',                 w: 129.5, h: 183, spine: 14,   color: '#000000' },
+  'ps3':       { label: 'PS3',                 w: 129.5, h: 149, spine: 14,   color: '#000000' },
+  'ps4':       { label: 'PS4',                 w: 129.5, h: 161, spine: 14,   color: '#003791' },
+  'ps5':       { label: 'PS5',                 w: 129.5, h: 161, spine: 14,   color: '#ffffff' },
   // From a reported 207 × 125 mm full cover.
   'ps-vita':   { label: 'PS Vita',             w: 99,    h: 125, spine: 9,    color: '#003791' },
   'switch':    { label: 'Nintendo Switch',     w: 99,    h: 161, spine: 10,   color: '#e60012' },
   'switch2':   { label: 'Nintendo Switch 2',   w: 99,    h: 161, spine: 10,   color: '#e60012' },
-  'wii-u':     { label: 'Wii U',               w: 130,   h: 184, spine: 14,   color: '#0096d6' },
-  'wii':       { label: 'Wii',                 w: 130,   h: 184, spine: 14,   color: '#ffffff' },
-  'gamecube':  { label: 'GameCube',            w: 130,   h: 184, spine: 14,   color: '#000000' },
-  'xbox':      { label: 'Xbox',                w: 130,   h: 184, spine: 14,   color: '#000000' },
-  'xbox-360':  { label: 'Xbox 360',            w: 130,   h: 184, spine: 14,   color: '#ffffff' },
-  // An 11 mm Blu-ray-size case with a 150 mm insert pocket.
-  'xbox-one':  { label: 'Xbox One',            w: 128,   h: 150, spine: 11,   color: '#107c10' },
-  'xbox-series': { label: 'Xbox Series X|S',   w: 128,   h: 150, spine: 11,   color: '#107c10' },
+  'wii-u':     { label: 'Wii U',               w: 129.5, h: 183, spine: 14,   color: '#0096d6' },
+  'wii':       { label: 'Wii',                 w: 129.5, h: 183, spine: 14,   color: '#ffffff' },
+  'gamecube':  { label: 'GameCube',            w: 129.5, h: 183, spine: 14,   color: '#000000' },
+  'xbox':      { label: 'Xbox',                w: 129.5, h: 183, spine: 14,   color: '#000000' },
+  'xbox-360':  { label: 'Xbox 360',            w: 129.5, h: 183, spine: 14,   color: '#ffffff' },
+  // The Blu-ray insert.
+  'xbox-one':  { label: 'Xbox One',            w: 128,   h: 149, spine: 11,   color: '#107c10' },
+  'xbox-series': { label: 'Xbox Series X|S',   w: 128,   h: 149, spine: 11,   color: '#107c10' },
 };
 
 export const TEMPLATE_DEFS: TemplateDef[] = [
@@ -339,7 +341,7 @@ export const TEMPLATE_DEFS: TemplateDef[] = [
     build: (id) => {
       const v = BLURAY[id] ?? BLURAY['us-11'];
       const w = 128;
-      const h = 148;
+      const h = 149;
       return wrap('bluray', v.label, BLURAY[id] ? id : 'us-11', w, h, v.spine,
         wrapPreview(w, h, v.spine, { color: '#0a4da2', transmission: 0.8, roughness: 0.2 }, true, 2.5));
     },

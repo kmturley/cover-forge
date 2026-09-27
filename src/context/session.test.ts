@@ -13,7 +13,7 @@ const item: MediaItem = {
 describe('session', () => {
   it('round-trips through JSON', () => {
     let s = reducer(initialState, { type: 'addItem', item });
-    s = reducer(s, { type: 'setItemTemplate', items: ['steam-1'], template: 'bluray-us-12.5' });
+    s = reducer(s, { type: 'setItemTemplate', items: ['steam-1'], template: 'bluray-us-11' });
     s = reducer(s, { type: 'setBanner', banner: false });
     s = reducer(s, { type: 'updatePanel', id: null, panel: 'front', patch: { backgroundColor: '#123456', transform: { scale: 1.2 } } });
     s = reducer(s, { type: 'updateSpine', id: null, patch: { textHeightMm: 5, textTemplate: '{title} ({year})' } });
@@ -92,8 +92,9 @@ describe('session', () => {
       options: { region: 'US', spineMm: 12.5, backgroundColor: '#222', spine: { fontFamily: 'Georgia, serif', textHeightMm: 6, color: '#ff0' } },
     };
     const s = restoreSession(v1, initialState);
-    expect(s.templateId).toBe('bluray-us-12.5');
-    expect(s.items[0].templateId).toBe('bluray-us-12.5');
+    // Blu-ray Elite (12.5 mm) was removed; it becomes the standard Blu-ray.
+    expect(s.templateId).toBe('bluray-us-11');
+    expect(s.items[0].templateId).toBe('bluray-us-11');
     expect(s.shared.spine).toEqual({ fontFamily: 'Georgia, serif', color: '#ff0' });
     expect(s.items[0].panels?.back?.transform).toEqual({ scale: 2 });
   });

@@ -25,13 +25,13 @@ describe('template library', () => {
   });
 
   it('names game cases by platform and shows sizes', () => {
-    expect(getEntry('game-case-ps4')).toMatchObject({ name: 'PS4', short: 'PS4', group: 'Games', size: '128 × 160 mm · 14 mm spine' });
-    expect(getEntry('bluray-us-11')).toMatchObject({ name: 'Blu-ray', short: 'Blu-ray', size: '128 × 148 mm · 11 mm spine' });
+    expect(getEntry('game-case-ps4')).toMatchObject({ name: 'PS4', short: 'PS4', group: 'Games', size: '129.5 × 161 mm · 14 mm spine' });
+    expect(getEntry('bluray-us-11')).toMatchObject({ name: 'Blu-ray', short: 'Blu-ray', size: '128 × 149 mm · 11 mm spine' });
   });
 
   it('searches every word, by name, maker or group', () => {
     expect(searchLibrary('nintendo').map((e) => e.variantId)).toEqual(['switch', 'switch2', 'wii-u', 'wii', 'gamecube']);
-    expect(searchLibrary('blu elite').map((e) => e.id)).toEqual(['bluray-us-12.5']);
+    expect(searchLibrary('blu ray').map((e) => e.id)).toEqual(['bluray-us-11']);
     expect(searchLibrary('')).toHaveLength(LIBRARY.length);
   });
 

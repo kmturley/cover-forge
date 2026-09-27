@@ -158,7 +158,7 @@ export const GAME_CASE_BRANDING: Record<string, Branding> = {
       ],
     },
   },
-  // PS1 (NTSC-U, jewel case): a black strip down the left, the PS symbol at its top and "PlayStation" reading upwards.
+  // PS1 (jewel case): a black strip down the left, the PS symbol at its top and "PlayStation" reading upwards.
   ps1: {
     front: {
       shape: 'strip', w: 0.155, fill: K,

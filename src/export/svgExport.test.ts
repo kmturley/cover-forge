@@ -13,7 +13,7 @@ describe('buildItemSvg', () => {
     expect(blob.type).toBe('image/svg+xml');
     const text = await blob.text();
     expect(text).toMatch(/^<\?xml/);
-    expect(text).toContain('width="273mm" height="154mm" viewBox="0 0 273 154"');
+    expect(text).toContain('width="273mm" height="155mm" viewBox="0 0 273 155"');
     expect(text).toContain('base64,IMG1');
     expect(count(text, /<image /g)).toBe(1);
     expect(text).not.toContain('<line');

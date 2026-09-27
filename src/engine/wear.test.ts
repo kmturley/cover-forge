@@ -40,8 +40,8 @@ describe('planWear', () => {
     const p = planWear(t, 1);
     const spine = t.panels.find((q) => q.id === 'spine')!;
     for (const c of p.creases) expect([spine.xMm, spine.xMm + spine.widthMm]).toContain(c.x1);
-    // The four real corners are the wrap's outer trim corners: (3,3), (270,3), (3,151), (270,151).
-    const expected = [[3, 3], [270, 3], [3, 151], [270, 151]];
+    // The four real corners are the wrap's outer trim corners: (3,3), (270,3), (3,152), (270,152).
+    const expected = [[3, 3], [270, 3], [3, 152], [270, 152]];
     for (const [x, y] of expected) expect(p.corners.some((c) => Math.abs(c.x - x) < 1e-9 && Math.abs(c.y - y) < 1e-9), `${x},${y}`).toBe(true);
     for (const c of p.creases) for (const [a, b] of c.gaps) expect(b).toBeGreaterThan(a);
   });

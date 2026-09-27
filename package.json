@@ -11,7 +11,8 @@
     "type-check": "tsc -b --noEmit",
     "lint": "eslint .",
     "test": "vitest run",
-    "gen:brands": "node scripts/gen-brands.mjs"
+    "gen:brands": "node scripts/gen-brands.mjs",
+    "measure:covers": "node scripts/measure-covers.ts"
   },
   "dependencies": {
     "@react-three/drei": "^9.122.0",
@@ -36,6 +37,7 @@
     "eslint": "^10.11.0",
     "eslint-plugin-react-hooks": "^7.1.1",
     "globals": "^17.12.0",
+    "sharp": "^0.35.5",
     "simple-icons": "^16.32.0",
     "svg-path-bbox": "^2.1.0",
     "typescript": "^6.0.3",

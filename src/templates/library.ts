@@ -11,7 +11,7 @@ export interface LibraryEntry {
   id: string;
   kind: TemplateKind;
   variantId: string;
-  /** Its common name, e.g. "Blu-ray Elite" or "PS4" (the variant's label); sizes are in `size`. */
+  /** Its common name, e.g. "DVD Slim" or "PS4" (the variant's label); sizes are in `size`. */
   name: string;
   /** Short label for tight spots such as the queue: the platform for game cases, else the format ("Blu-ray"). */
   short: string;
@@ -74,6 +74,7 @@ export const isTemplateId = (id: unknown): id is string => typeof id === 'string
 /** Templates that were removed or renamed, and what saves and links that used them get instead. */
 const REPLACED: Record<string, string> = {
   'bluray-eu-14': 'bluray-us-11', // only US cases are supported
+  'bluray-us-12.5': 'bluray-us-11', // Blu-ray Elite was removed
   'game-case-ps1-pal': 'game-case-ps1', // PS1 is a jewel case in every region
 };
 
