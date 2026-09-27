@@ -1,4 +1,4 @@
-import type { PanelId, PanelRect, PreviewMaterial, PreviewSpec, Region, SpineOrientation, TemplateConfig, TemplateKind, TemplateMark, TemplateVariant } from '../types/template';
+import type { PanelId, PanelRect, PreviewMaterial, PreviewSpec, SpineOrientation, TemplateConfig, TemplateKind, TemplateMark, TemplateVariant } from '../types/template';
 
 export const PX_PER_MM = 300 / 25.4;
 
@@ -28,7 +28,6 @@ interface Build {
   kind: TemplateKind;
   name: string;
   variantId: string;
-  region?: Region;
   bleedMm: number;
   pieces: (Piece | FreePiece)[];
   preview: PreviewSpec;
@@ -74,7 +73,6 @@ function assemble(b: Build): TemplateConfig {
     id: `${b.kind}-${b.variantId}`,
     kind: b.kind,
     name: b.name,
-    region: b.region,
     variantId: b.variantId,
     bleedMm: b.bleedMm,
     totalWidthMm: cursorX - pieceGap(b.bleedMm) + b.bleedMm,
@@ -95,12 +93,11 @@ export interface TemplateDef {
 }
 
 /** Back | spine | front, the layout shared by keepcases and slipcases. `w`/`h` are the front panel's size. */
-function wrap(kind: TemplateKind, name: string, variantId: string, region: Region | undefined, w: number, h: number, spine: number, preview: PreviewSpec, bleed = 3): TemplateConfig {
+function wrap(kind: TemplateKind, name: string, variantId: string, w: number, h: number, spine: number, preview: PreviewSpec, bleed = 3): TemplateConfig {
   return assemble({
     kind,
     name,
     variantId,
-    region,
     bleedMm: bleed,
     pieces: [
       {
@@ -127,26 +124,25 @@ const wrapPreview = (w: number, h: number, depth: number, casing: PreviewMateria
   radiusMm: radius,
 });
 
-const BLURAY: Record<string, { label: string; region: Region; spine: number }> = {
-  'us-11': { label: 'Standard', region: 'US', spine: 11 },
-  'us-12.5': { label: 'Elite', region: 'US', spine: 12.5 },
-  'eu-14': { label: 'Standard', region: 'EU', spine: 14 },
+/** US Blu-ray cases. (Ids keep their old `us-` prefix so saved sessions still match; regions aren't shown.) */
+const BLURAY: Record<string, { label: string; spine: number }> = {
+  'us-11': { label: 'Blu-ray', spine: 11 },
+  'us-12.5': { label: 'Blu-ray Elite', spine: 12.5 },
 };
 
 const DVD: Record<string, { label: string; spine: number }> = {
-  'std-14': { label: 'Standard', spine: 14 },
-  'slim-9': { label: 'Slim', spine: 9 },
+  'std-14': { label: 'DVD', spine: 14 },
+  'slim-9': { label: 'DVD Slim', spine: 9 },
 };
 
 /** Boxes that hold an NFC item: a slim one for a CR80 card (54 × 85.6 × 0.8 mm plus room to slide) and a small keepsake box. */
 const NFC_BOX: Record<string, { label: string; w: number; h: number; d: number }> = {
-  card: { label: 'Slim card box', w: 58, h: 90, d: 6 },
-  small: { label: 'Small box', w: 60, h: 60, d: 25 },
+  card: { label: 'NFC Card Box', w: 58, h: 90, d: 6 },
+  small: { label: 'NFC Keepsake Box', w: 60, h: 60, d: 25 },
 };
 const NFC_WALLET = { w: 58, h: 90 };
 const NFC_STICKER_MM: Record<string, number> = { '25': 25, '30': 30, '35': 35 };
-
-const variantLabel = (label: string, mm: number) => `${label} (${mm} mm)`;
+const NFC_STICKER_NAME: Record<string, string> = { '25': 'NFC Sticker Small', '30': 'NFC Sticker Medium', '35': 'NFC Sticker Large' };
 
 interface TuckBox {
   kind: TemplateKind;
@@ -249,36 +245,76 @@ function wallet(name: string, w: number, h: number, marks: (panels: PanelRect[])
 }
 
 /**
+ * A CD jewel case: the front booklet, then the rear tray card [spine | back | spine] whose two spine flaps both carry
+ * the title. Music CDs and PS1 games both use it.
+ */
+function jewelCase(kind: TemplateKind, name: string, variantId: string): TemplateConfig {
+  return assemble({
+    kind,
+    name,
+    variantId,
+    bleedMm: 3,
+    pieces: [
+      { dir: 'row', specs: [{ id: 'front', label: 'Front (booklet)', w: 120, h: 120 }] },
+      {
+        dir: 'row',
+        specs: [
+          { id: 'spine', label: 'Spine (left)', w: 6.5, h: 118, text: 'vertical' },
+          { id: 'back', label: 'Back (tray card)', w: 137, h: 118 },
+          { id: 'spineRight', label: 'Spine (right)', w: 6.5, h: 118, text: 'vertical' },
+        ],
+      },
+    ],
+    preview: {
+      kind: 'box',
+      widthMm: 125,
+      heightMm: 120,
+      depthMm: 10,
+      faces: { '-x': 'spine', '+x': 'spineRight', '+z': 'front', '-z': 'back' },
+      // Clear plastic over the black tray: it reads dark, not milky, where it shows beside the 6.5 mm spine cards.
+      casing: { color: '#16181c', transmission: 0.35, roughness: 0.12 },
+      glossy: true,
+      radiusMm: 1.5,
+    },
+  });
+}
+
+/**
  * Vinyl record sleeve sizes. The sleeve is a square jacket: front | spine | back in a row.
  * Standard outer sleeve thickness is ~3 mm (spine). Sizes are the outer sleeve dimensions.
  */
 const VINYL: Record<string, { label: string; sizeMm: number; spine: number }> = {
-  '12inch': { label: '12" LP', sizeMm: 314, spine: 3 },
-  '10inch': { label: '10"', sizeMm: 262, spine: 3 },
-  '7inch': { label: '7" Single', sizeMm: 184, spine: 3 },
+  '12inch': { label: 'Vinyl 12"', sizeMm: 314, spine: 3 },
+  '10inch': { label: 'Vinyl 10"', sizeMm: 262, spine: 3 },
+  '7inch': { label: 'Vinyl 7"', sizeMm: 184, spine: 3 },
 };
 
 /**
- * Game case variants: each entry encodes the physical size and the platform brand.
- * w/h are the front panel in mm; spine is the spine width in mm.
- * Variants with the same w/h share a physical case; the brand drives the Official-style banner only.
+ * Game case variants (US releases): the platform, the size of its printed insert (`w`/`h` = the front panel, `spine`)
+ * and the case colour for the 3D view. Sizes come from published print templates and case makers (see the size table
+ * in branding-spec.md): platforms on the same case share a size, and the brand only changes the Branded header. PS1 is
+ * `jewel`: a CD jewel case, not a keepcase.
  */
-const GAME_CASE: Record<string, { label: string; w: number; h: number; spine: number; color: string }> = {
-  'ps1-pal':   { label: 'PS1 (PAL)',           w: 135, h: 170, spine: 14,   color: '#000000' },
-  'ps2':       { label: 'PS2',                 w: 135, h: 170, spine: 14,   color: '#000000' },
-  'ps3':       { label: 'PS3',                 w: 135, h: 170, spine: 14,   color: '#000000' },
-  'ps4':       { label: 'PS4',                 w: 135, h: 170, spine: 14.5, color: '#003791' },
-  'ps5':       { label: 'PS5',                 w: 135, h: 170, spine: 14.5, color: '#ffffff' },
-  'ps-vita':   { label: 'PS Vita',             w: 65,  h: 110, spine: 6,    color: '#003791' },
-  'switch':    { label: 'Nintendo Switch',     w: 102, h: 184, spine: 12,   color: '#e60012' },
-  'switch2':   { label: 'Nintendo Switch 2',   w: 102, h: 184, spine: 12,   color: '#e60012' },
-  'wii-u':     { label: 'Wii U',               w: 135, h: 170, spine: 14,   color: '#0096d6' },
-  'wii':       { label: 'Wii',                 w: 135, h: 190, spine: 16,   color: '#ffffff' },
-  'gamecube':  { label: 'GameCube',            w: 135, h: 190, spine: 16,   color: '#000000' },
-  'xbox':      { label: 'Xbox',                w: 135, h: 170, spine: 15,   color: '#000000' },
-  'xbox-360':  { label: 'Xbox 360',            w: 135, h: 170, spine: 15,   color: '#ffffff' },
-  'xbox-one':  { label: 'Xbox One',            w: 135, h: 170, spine: 15,   color: '#107c10' },
-  'xbox-series': { label: 'Xbox Series X|S',   w: 135, h: 170, spine: 15,   color: '#107c10' },
+const GAME_CASE: Record<string, { label: string; w: number; h: number; spine: number; color: string; jewel?: boolean }> = {
+  // PC boxed games shipped in standard DVD keepcases, so this matches the DVD insert.
+  'pc':        { label: 'PC',                  w: 129.5, h: 183, spine: 14,   color: '#16191f' },
+  'ps1':       { label: 'PS1',                 w: 120,   h: 120, spine: 6.5,  color: '#16181c', jewel: true },
+  'ps2':       { label: 'PS2',                 w: 130,   h: 184, spine: 14,   color: '#000000' },
+  'ps3':       { label: 'PS3',                 w: 128,   h: 148, spine: 14,   color: '#000000' },
+  'ps4':       { label: 'PS4',                 w: 128,   h: 160, spine: 14,   color: '#003791' },
+  'ps5':       { label: 'PS5',                 w: 128,   h: 160, spine: 14,   color: '#ffffff' },
+  // From a reported 207 × 125 mm full cover.
+  'ps-vita':   { label: 'PS Vita',             w: 99,    h: 125, spine: 9,    color: '#003791' },
+  'switch':    { label: 'Nintendo Switch',     w: 99,    h: 161, spine: 10,   color: '#e60012' },
+  'switch2':   { label: 'Nintendo Switch 2',   w: 99,    h: 161, spine: 10,   color: '#e60012' },
+  'wii-u':     { label: 'Wii U',               w: 130,   h: 184, spine: 14,   color: '#0096d6' },
+  'wii':       { label: 'Wii',                 w: 130,   h: 184, spine: 14,   color: '#ffffff' },
+  'gamecube':  { label: 'GameCube',            w: 130,   h: 184, spine: 14,   color: '#000000' },
+  'xbox':      { label: 'Xbox',                w: 130,   h: 184, spine: 14,   color: '#000000' },
+  'xbox-360':  { label: 'Xbox 360',            w: 130,   h: 184, spine: 14,   color: '#ffffff' },
+  // An 11 mm Blu-ray-size case with a 150 mm insert pocket.
+  'xbox-one':  { label: 'Xbox One',            w: 128,   h: 150, spine: 11,   color: '#107c10' },
+  'xbox-series': { label: 'Xbox Series X|S',   w: 128,   h: 150, spine: 11,   color: '#107c10' },
 };
 
 export const TEMPLATE_DEFS: TemplateDef[] = [
@@ -286,12 +322,12 @@ export const TEMPLATE_DEFS: TemplateDef[] = [
     kind: 'dvd',
     name: 'DVD',
     group: 'Cases',
-    variants: Object.entries(DVD).map(([id, v]) => ({ id, label: variantLabel(v.label, v.spine) })),
+    variants: Object.entries(DVD).map(([id, v]) => ({ id, label: v.label })),
     build: (id) => {
       const v = DVD[id] ?? DVD['std-14'];
       const w = 129.5;
       const h = 183;
-      return wrap('dvd', `DVD, ${variantLabel(v.label, v.spine)}`, DVD[id] ? id : 'std-14', undefined, w, h, v.spine,
+      return wrap('dvd', v.label, DVD[id] ? id : 'std-14', w, h, v.spine,
         wrapPreview(w, h, v.spine, { color: '#16191f', roughness: 0.35 }, true, 2.5));
     },
   },
@@ -299,12 +335,12 @@ export const TEMPLATE_DEFS: TemplateDef[] = [
     kind: 'bluray',
     name: 'Blu-ray',
     group: 'Cases',
-    variants: Object.entries(BLURAY).map(([id, v]) => ({ id, label: variantLabel(v.label, v.spine), region: v.region })),
+    variants: Object.entries(BLURAY).map(([id, v]) => ({ id, label: v.label })),
     build: (id) => {
       const v = BLURAY[id] ?? BLURAY['us-11'];
       const w = 128;
       const h = 148;
-      return wrap('bluray', `Blu-ray, ${v.region} ${variantLabel(v.label, v.spine)}`, BLURAY[id] ? id : 'us-11', v.region, w, h, v.spine,
+      return wrap('bluray', v.label, BLURAY[id] ? id : 'us-11', w, h, v.spine,
         wrapPreview(w, h, v.spine, { color: '#0a4da2', transmission: 0.8, roughness: 0.2 }, true, 2.5));
     },
   },
@@ -312,7 +348,7 @@ export const TEMPLATE_DEFS: TemplateDef[] = [
     kind: 'vhs',
     name: 'VHS box',
     group: 'Boxes',
-    variants: [{ id: 'std-25', label: 'Standard (105 × 190 × 25 mm)' }],
+    variants: [{ id: 'std-25', label: 'VHS' }],
     // A retail VHS sleeve is card, not plastic, so it is a printable box. The tape stands upright: 105 wide, 190 tall,
     // with the spine (the 25 mm thickness) along the long side.
     build: () => tuckBox({ kind: 'vhs', name: 'VHS box', variantId: 'std-25', w: 105, h: 190, d: 25, casing: { color: '#e6dfcf', roughness: 0.8 }, radiusMm: 1 }),
@@ -321,42 +357,14 @@ export const TEMPLATE_DEFS: TemplateDef[] = [
     kind: 'cd',
     name: 'CD',
     group: 'Cases',
-    variants: [{ id: 'jewel', label: 'Standard jewel case (10 mm)' }],
-    build: () =>
-      assemble({
-        kind: 'cd',
-        name: 'CD',
-        variantId: 'jewel',
-        bleedMm: 3,
-        pieces: [
-          // Front booklet, then the rear tray card: [spine | back | spine], both spine flaps carry the title.
-          { dir: 'row', specs: [{ id: 'front', label: 'Front (booklet)', w: 120, h: 120 }] },
-          {
-            dir: 'row',
-            specs: [
-              { id: 'spine', label: 'Spine (left)', w: 6.5, h: 118, text: 'vertical' },
-              { id: 'back', label: 'Back (tray card)', w: 137, h: 118 },
-              { id: 'spineRight', label: 'Spine (right)', w: 6.5, h: 118, text: 'vertical' },
-            ],
-          },
-        ],
-        preview: {
-          kind: 'box',
-          widthMm: 125,
-          heightMm: 120,
-          depthMm: 10,
-          faces: { '-x': 'spine', '+x': 'spineRight', '+z': 'front', '-z': 'back' },
-          casing: { color: '#cfe3ee', transmission: 0.9, roughness: 0.12 },
-          glossy: true,
-          radiusMm: 1.5,
-        },
-      }),
+    variants: [{ id: 'jewel', label: 'CD Jewel Case' }],
+    build: () => jewelCase('cd', 'CD Jewel Case', 'jewel'),
   },
   {
     kind: 'cassette',
     name: 'Cassette',
     group: 'Cases',
-    variants: [{ id: 'std', label: 'Standard J-card' }],
+    variants: [{ id: 'std', label: 'Cassette' }],
     build: () =>
       assemble({
         kind: 'cassette',
@@ -392,7 +400,7 @@ export const TEMPLATE_DEFS: TemplateDef[] = [
     kind: 'floppy',
     name: 'Floppy disk',
     group: 'Labels & cards',
-    variants: [{ id: 'face', label: 'Face label (69.85 mm)' }],
+    variants: [{ id: 'face', label: '3.5" Floppy Disk' }],
     build: () =>
       assemble({
         kind: 'floppy',
@@ -422,8 +430,8 @@ export const TEMPLATE_DEFS: TemplateDef[] = [
     name: 'NFC card',
     group: 'Labels & cards',
     variants: [
-      { id: 'cr80-duplex', label: 'CR80 (54 × 85.6 mm, portrait), front + back' },
-      { id: 'cr80', label: 'CR80 (54 × 85.6 mm, portrait), front only' },
+      { id: 'cr80-duplex', label: 'NFC Card' },
+      { id: 'cr80', label: 'NFC Card (front only)' },
     ],
     build: (id) => {
       const duplex = id === 'cr80-duplex';
@@ -455,7 +463,7 @@ export const TEMPLATE_DEFS: TemplateDef[] = [
     kind: 'nfc-sticker',
     name: 'NFC sticker',
     group: 'Labels & cards',
-    variants: Object.keys(NFC_STICKER_MM).map((id) => ({ id, label: `Round sticker (${id} mm)` })),
+    variants: Object.keys(NFC_STICKER_MM).map((id) => ({ id, label: NFC_STICKER_NAME[id] })),
     build: (id) => {
       const dia = NFC_STICKER_MM[id] ?? 25;
       return assemble({
@@ -484,8 +492,8 @@ export const TEMPLATE_DEFS: TemplateDef[] = [
     name: 'NFC box',
     group: 'Boxes',
     variants: [
-      ...Object.entries(NFC_BOX).map(([id, v]) => ({ id, label: `${v.label} (${v.w} × ${v.h} × ${v.d} mm)` })),
-      { id: 'wallet', label: `Card wallet, slip cover (${NFC_WALLET.w} × ${NFC_WALLET.h} mm, no spine)` },
+      ...Object.entries(NFC_BOX).map(([id, v]) => ({ id, label: v.label })),
+      { id: 'wallet', label: 'NFC Card Wallet' },
     ],
     build: (id) => {
       // The tag sits inside, behind the front: mark its spot on the front panel for placement.
@@ -497,22 +505,21 @@ export const TEMPLATE_DEFS: TemplateDef[] = [
       if (id === 'wallet') return wallet('NFC card wallet', NFC_WALLET.w, NFC_WALLET.h, marksFor(NFC_WALLET.w, NFC_WALLET.h));
       const v = NFC_BOX[id] ?? NFC_BOX.card;
       const variantId = NFC_BOX[id] ? id : 'card';
-      return tuckBox({ kind: 'nfc-box', name: `NFC box, ${v.label}`, variantId, ...v, casing: { color: '#e9e4d8', roughness: 0.85 }, radiusMm: 0.8, marks: marksFor(v.w, v.h) });
+      return tuckBox({ kind: 'nfc-box', name: v.label, variantId, ...v, casing: { color: '#e9e4d8', roughness: 0.85 }, radiusMm: 0.8, marks: marksFor(v.w, v.h) });
     },
   },
   {
     kind: 'vinyl',
     name: 'Vinyl',
     group: 'Cases',
-    variants: Object.entries(VINYL).map(([id, v]) => ({ id, label: `${v.label} (${v.sizeMm} × ${v.sizeMm} mm)` })),
+    variants: Object.entries(VINYL).map(([id, v]) => ({ id, label: v.label })),
     build: (id) => {
       const v = VINYL[id] ?? VINYL['12inch'];
       const s = v.sizeMm;
       return wrap(
         'vinyl',
-        `Vinyl ${v.label}`,
+        v.label,
         VINYL[id] ? id : '12inch',
-        undefined,
         s,
         s,
         v.spine,
@@ -537,7 +544,8 @@ export const TEMPLATE_DEFS: TemplateDef[] = [
     build: (id) => {
       const v = GAME_CASE[id] ?? GAME_CASE['ps4'];
       const variantId = GAME_CASE[id] ? id : 'ps4';
-      return wrap('game-case', `Game case – ${v.label}`, variantId, undefined, v.w, v.h, v.spine,
+      if (v.jewel) return jewelCase('game-case', v.label, variantId);
+      return wrap('game-case', v.label, variantId, v.w, v.h, v.spine,
         wrapPreview(v.w, v.h, v.spine, { color: v.color, roughness: 0.3 }, true, 2));
     },
   },

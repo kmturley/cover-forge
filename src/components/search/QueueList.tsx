@@ -1,7 +1,10 @@
-import { useAppDispatch, useAppState } from '../../context/AppContext';
+import { templateIdOf, useAppDispatch, useAppState } from '../../context/AppContext';
+import { LIBRARY, LIBRARY_GROUPS, getEntry } from '../../templates/library';
+import { useMemo, useState } from 'react';
+import { TemplatePickerModal } from '../templates/TemplatePickerModal';
 import { itemHasOverrides } from '../../engine/resolve';
 import { srcOf } from '../../storage/localImages';
-import type { MediaType } from '../../types/media';
+import type { MediaItem } from '../../types/media';
 
 function OverrideIcon() {
   return (
@@ -13,11 +16,22 @@ function OverrideIcon() {
   );
 }
 
-/** The queued items of one media type (all of them when `filter` is 'all'), in alphabetical order. */
-export function QueueList({ filter }: { filter: MediaType | 'all' }) {
-  const { items, selectedItemId, designs } = useAppState();
+/** Every queued item, grouped by case (the order export lays out print sheets in), alphabetical within a group. */
+export function QueueList() {
+  const state = useAppState();
+  const { items, selectedItemId, designs } = state;
   const dispatch = useAppDispatch();
-  const shown = filter === 'all' ? items : items.filter((i) => i.type === filter);
+  const [picking, setPicking] = useState<string[] | null>(null);
+  const groups = useMemo(() => {
+    const byCase = new Map<string, MediaItem[]>();
+    for (const i of items) {
+      const id = templateIdOf(state, i);
+      byCase.set(id, [...(byCase.get(id) ?? []), i]);
+    }
+    // Like the library: games first, then films and TV, music, and the rest.
+    const order = (id: string) => LIBRARY_GROUPS.indexOf(getEntry(id)!.group) * 1000 + LIBRARY.findIndex((e) => e.id === id);
+    return [...byCase.entries()].sort(([a], [b]) => order(a) - order(b)).map(([id, members]) => ({ entry: getEntry(id), members }));
+  }, [items, state]);
 
   function resetOverrides(id: string, title: string) {
     if (window.confirm(`Remove all overrides for “${title}” and use the shared settings?`)) {
@@ -27,36 +41,49 @@ export function QueueList({ filter }: { filter: MediaType | 'all' }) {
 
   return (
     <section className="queue">
-      {!shown.length && <p className="muted">{filter === 'all' ? 'Pick a tab above, search, and click a result to add it here.' : 'Nothing here yet. Search above and click a result to add it.'}</p>}
-      <ul>
-        {shown.map((item) => (
-          <li key={item.id} className={item.id === selectedItemId ? 'selected' : ''}>
-            <button className="item" onClick={() => dispatch({ type: 'selectItem', id: item.id })}>
-              {item.assets.cover && <img src={srcOf(item.assets.cover)} alt="" loading="lazy" crossOrigin="anonymous" />}
-              <span>
-                {item.title}
-                {item.year && <small> · {item.year}</small>}
-                {item.designId && designs.some((d) => d.id === item.designId) && <small className="design-tag">{designs.find((d) => d.id === item.designId)!.name}</small>}
-              </span>
-            </button>
-            <span className="row-actions">
-              {itemHasOverrides(item) && (
-                <button
-                  className="override-badge"
-                  title="This item overrides the shared settings. Click to remove its overrides."
-                  aria-label={`Remove overrides for ${item.title}`}
-                  onClick={() => resetOverrides(item.id, item.title)}
-                >
-                  <OverrideIcon />
-                </button>
-              )}
-              <button aria-label={`Remove ${item.title}`} onClick={() => dispatch({ type: 'removeItem', id: item.id })}>
-                ✕
-              </button>
+      {!items.length && <p className="muted">Search above and click a result to add it here.</p>}
+      {groups.map(({ entry, members }) => (
+        <div key={entry?.id} className="queue-group">
+          <div className="queue-group-head">
+            <span>
+              {entry?.name} <small>· {members.length}</small>
             </span>
-          </li>
-        ))}
-      </ul>
+            <button title={`Change the case for these ${members.length === 1 ? 'item' : `${members.length} items`}`} onClick={() => setPicking(members.map((m) => m.id))}>
+              Change…
+            </button>
+          </div>
+          <ul>
+            {members.map((item) => (
+              <li key={item.id} className={item.id === selectedItemId ? 'selected' : ''}>
+                <button className="item" onClick={() => dispatch({ type: 'selectItem', id: item.id })}>
+                  {item.assets.cover && <img src={srcOf(item.assets.cover)} alt="" loading="lazy" crossOrigin="anonymous" />}
+                  <span>
+                    {item.title}
+                    {item.year && <small> · {item.year}</small>}
+                    {item.designId && designs.some((d) => d.id === item.designId) && <small className="design-tag">{designs.find((d) => d.id === item.designId)!.name}</small>}
+                  </span>
+                </button>
+                <span className="row-actions">
+                  {itemHasOverrides(item) && (
+                    <button
+                      className="override-badge"
+                      title="This item overrides the shared settings. Click to remove its overrides."
+                      aria-label={`Remove overrides for ${item.title}`}
+                      onClick={() => resetOverrides(item.id, item.title)}
+                    >
+                      <OverrideIcon />
+                    </button>
+                  )}
+                  <button aria-label={`Remove ${item.title}`} onClick={() => dispatch({ type: 'removeItem', id: item.id })}>
+                    ✕
+                  </button>
+                </span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      ))}
+      {picking && <TemplatePickerModal itemIds={picking} onClose={() => setPicking(null)} />}
     </section>
   );
 }

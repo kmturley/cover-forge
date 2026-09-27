@@ -1,9 +1,9 @@
 import type { MediaItem } from '../types/media';
 import type { TemplateConfig } from '../types/template';
-import type { Design, SharedSettings, StyleOverlay } from '../types/editor';
+import type { Design, SharedSettings } from '../types/editor';
 import { canvasSizePx } from '../templates';
 import { drawGuides } from './GuideOverlays';
-import { drawSpineText, defaultSpineText } from './SpineTypography';
+import { drawSpineText, spineText } from './SpineTypography';
 import { getCachedImage, loadImages } from './imageCache';
 import { BASE_BACKGROUND, PANEL_IDS, resolvePanel, resolveSpine } from './resolve';
 import { computePlacement, paintRect } from './placement';
@@ -12,9 +12,7 @@ import { drawLogo } from './logo';
 import { drawCode } from './code';
 import { drawBorder } from './border';
 import { getBrand } from '../brands';
-import { drawOfficial, spineCapMm } from './official';
-import { drawWear, planWear } from './wear';
-import { seedFrom } from './random';
+import { drawOfficial, spineTitleColor, spineTitleStartMm } from './official';
 
 export interface Scene {
   template: TemplateConfig;
@@ -22,8 +20,8 @@ export interface Scene {
   shared: SharedSettings;
   /** The designs items can use; an item's design sits between `shared` (Default) and its own overrides. */
   designs?: Design[];
-  /** Global aesthetic: clean artwork, official-style headers, or worn retro. */
-  style: StyleOverlay;
+  /** Draw the template's official banner (platform or format header) and spine cap. */
+  banner: boolean;
   showGuides: boolean;
 }
 
@@ -75,14 +73,15 @@ export function renderCover(
     drawBorder(ctx, panel, r.border, px);
   }
 
-  const digital = scene.style === 'digital';
+  const digital = scene.banner;
   if (digital) drawOfficial(ctx, t, px);
 
   if (item) {
-    const settings = resolveSpine(shared, item);
+    const chosen = resolveSpine(shared, item);
+    const settings = { ...chosen, color: spineTitleColor(t.kind, t.variantId, digital, chosen.color) };
     for (const p of t.panels) {
-      // With the Official style the spine has a cap at its start; keep the title clear of it.
-      if (p.text) drawSpineText(ctx, p, settings.text ?? defaultSpineText(item), settings, px, p.text, { start: spineCapMm(t.kind, digital, t.variantId, p.heightMm), end: 0 });
+      // Branded spines have a cap and marks at their start; keep the title clear of them.
+      if (p.text) drawSpineText(ctx, p, spineText(item, settings), settings, px, p.text, { start: spineTitleStartMm(t.kind, t.variantId, digital, p.text === 'vertical' ? p.heightMm : p.widthMm), end: 0 });
     }
   }
 
@@ -99,7 +98,6 @@ export function renderCover(
     if (item && code.kind !== 'none') drawCode(ctx, t, panel, code, item, px);
   }
 
-  if (scene.style === 'retro') drawWear(ctx, planWear(t, seedFrom(`${item?.id ?? ''}|${t.id}`)), px);
 
   if (scene.showGuides) drawGuides(ctx, t, px);
   ctx.restore();

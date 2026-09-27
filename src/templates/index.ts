@@ -1,4 +1,4 @@
-import type { Region, TemplateConfig, TemplateKind, TemplateVariant } from '../types/template';
+import type { TemplateConfig, TemplateKind, TemplateVariant } from '../types/template';
 import { TEMPLATE_DEFS, type TemplateDef } from './definitions';
 
 export { TEMPLATE_DEFS, type TemplateDef };
@@ -15,18 +15,12 @@ export function isTemplateKind(v: unknown): v is TemplateKind {
   return TEMPLATE_DEFS.some((d) => d.kind === v);
 }
 
-/** Regions a template's variants are tied to (only Blu-ray has them). */
-export function regionsOf(kind: TemplateKind): Region[] {
-  return [...new Set(getTemplateDef(kind).variants.flatMap((v) => (v.region ? [v.region] : [])))];
+export function variantsFor(kind: TemplateKind): TemplateVariant[] {
+  return getTemplateDef(kind).variants;
 }
 
-export function variantsFor(kind: TemplateKind, region?: Region): TemplateVariant[] {
-  const all = getTemplateDef(kind).variants;
-  return region && regionsOf(kind).length ? all.filter((v) => v.region === region) : all;
-}
-
-export function defaultVariantId(kind: TemplateKind, region?: Region): string {
-  return (variantsFor(kind, region)[0] ?? getTemplateDef(kind).variants[0]).id;
+export function defaultVariantId(kind: TemplateKind): string {
+  return variantsFor(kind)[0].id;
 }
 
 /** Builds a template; an unknown variant falls back to the kind's first. */
@@ -34,6 +28,22 @@ export function buildTemplate(kind: TemplateKind, variantId?: string): TemplateC
   const def = getTemplateDef(kind);
   const id = def.variants.some((v) => v.id === variantId) ? variantId! : def.variants[0].id;
   return def.build(id);
+}
+
+/** The template opened with an empty queue. */
+export const DEFAULT_TEMPLATE_ID = 'dvd-std-14';
+
+const built = new Map<string, TemplateConfig>();
+/** Builds a template from its library id (`${kind}-${variantId}`), once; an unknown id gets the default template. */
+export function buildTemplateById(id: string): TemplateConfig {
+  let t = built.get(id);
+  if (!t) {
+    const def = TEMPLATE_DEFS.find((d) => d.variants.some((v) => `${d.kind}-${v.id}` === id));
+    const variant = def?.variants.find((v) => `${def.kind}-${v.id}` === id);
+    if (!def || !variant) return id === DEFAULT_TEMPLATE_ID ? buildTemplate(DEFAULT_KIND) : buildTemplateById(DEFAULT_TEMPLATE_ID);
+    built.set(id, (t = def.build(variant.id)));
+  }
+  return t;
 }
 
 export function canvasSizePx(t: TemplateConfig): { width: number; height: number } {

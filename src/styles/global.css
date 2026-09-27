@@ -158,7 +158,7 @@ button.link.selected { color: var(--accent); text-decoration: none; cursor: defa
 .controls { display: flex; flex-direction: column; flex: 1; min-height: 0; }
 .controls-head { flex: none; padding-bottom: 8px; border-bottom: 1px solid var(--border); background: var(--panel); }
 .controls-body { padding-top: 4px; }
-.pane > h2, .pane > .provider-tabs, .pane > .search-area { flex: none; }
+.pane > h2, .pane > .search-area, .pane > .add-own { flex: none; }
 .pane > .search-area { margin-bottom: 6px; }
 .pane-scroll .queue ul { margin-top: 4px; }
 
@@ -213,3 +213,43 @@ button.link.selected { color: var(--accent); text-decoration: none; cursor: defa
 
 /* Separates the Movies tab's Settings from the search/queue list below it. */
 .pane > .design-section, .pane > .movie-key-setup { border-bottom: 1px solid var(--border); padding-bottom: 10px; margin-bottom: 10px; }
+
+/* Cases and the template library */
+.modal.wide .modal-actions { margin-top: 12px; }
+.case-row { grid-template-columns: auto 1fr; }
+.case-button { display: flex; align-items: center; gap: 8px; min-width: 0; text-align: left; padding: 4px 8px; }
+.case-button svg { flex: none; color: var(--muted); }
+.case-text { display: flex; flex-direction: column; flex: 1; min-width: 0; }
+.case-text small { color: var(--muted); font-size: 11px; }
+
+.toolbar .check { display: flex; align-items: center; gap: 6px; font-size: 12px; }
+.modal.wide { width: min(880px, 94vw); }
+.modal-title { font-size: 16px; text-transform: none; letter-spacing: 0; color: var(--text); margin: 12px 0 12px; }
+.picker-scope { margin-bottom: 10px; flex-wrap: wrap; }
+.library-search { display: flex; gap: 10px; align-items: center; margin-bottom: 8px; }
+.library-list { max-height: min(52vh, 480px); overflow-y: auto; padding-right: 4px; }
+.library-group { margin: 12px 0 6px; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }
+.library-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 6px; }
+.library-tile { display: flex; align-items: center; gap: 10px; text-align: left; padding: 8px 10px; border-width: 2px; border-radius: 8px; min-width: 0; }
+.library-tile svg { flex: none; color: var(--muted); }
+.library-tile:hover:not(.selected) { border-color: var(--muted); }
+.library-tile.selected { border-color: var(--accent); }
+.library-tile.selected svg { color: var(--accent); }
+.library-text { display: flex; flex-direction: column; min-width: 0; flex: 1; }
+.library-name { display: flex; align-items: center; gap: 6px; }
+.library-text small { color: var(--muted); font-size: 11px; }
+.design-row > :first-child { min-width: 44px; }
+.queue-group + .queue-group { margin-top: 10px; }
+.queue-group-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 4px 2px 4px 4px; font-size: 12px; font-weight: 600; color: var(--muted); border-bottom: 1px solid var(--border); margin-bottom: 4px; }
+.queue-group-head small { font-weight: 400; }
+.queue-group-head button { flex: none; font-size: 11px; font-weight: 400; padding: 1px 8px; background: none; color: var(--muted); }
+.queue-group-head button:hover { color: var(--text); }
+.branded-row { grid-template-columns: auto auto 1fr; }
+.branded-row input { margin: 0; }
+.spine-vars { display: flex; flex-wrap: wrap; gap: 4px; margin: -4px 0 4px; }
+.spine-vars code { font-size: 11px; padding: 1px 5px; border: 1px solid var(--border); border-radius: 4px; color: var(--muted); cursor: help; }
+.link-button { background: none; border: none; padding: 2px 0; color: var(--accent); font-size: 12px; }
+.link-button:hover:not(:disabled) { text-decoration: underline; }
+.add-own { align-self: flex-start; margin: 0 0 8px; }
+.search-dropdown .provider-tabs { flex-wrap: wrap; overflow-x: visible; position: sticky; top: -8px; z-index: 1; background: var(--panel); padding: 0 0 6px; margin-bottom: 6px; }
+.search-dropdown .provider-tabs button { flex: 0 1 auto; }

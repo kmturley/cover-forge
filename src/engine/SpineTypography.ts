@@ -35,9 +35,57 @@ export function defaultCapHeightMm(
   return Math.floor(Math.max(1.5, Math.min(MAX_AUTO_CAP_MM, fit, thicknessMm * MAX_THICKNESS_SHARE)) * 10) / 10;
 }
 
-/** Default spine text: "Artist · Title" when a subtitle is present, otherwise just the title. */
-export function defaultSpineText(item: MediaItem): string {
-  return item.subtitle ? `${item.subtitle} · ${item.title}` : item.title;
+/** The spine text a design starts with: "Artist · Title" for music, "Developer · Title" for games, else the title. */
+export const DEFAULT_SPINE_TEMPLATE = '{creator} · {title}';
+
+/** The variables spine text can use, with what each one is. */
+export const SPINE_VARIABLES: { name: string; label: string }[] = [
+  { name: 'title', label: 'Title' },
+  { name: 'creator', label: 'Artist or developer' },
+  { name: 'artist', label: 'Artist (music)' },
+  { name: 'developer', label: 'Developer (games)' },
+  { name: 'year', label: 'Year' },
+  { name: 'subtitle', label: 'Subtitle as found (TV: network and genres)' },
+];
+
+function variables(item: MediaItem): Record<string, string> {
+  const creator = item.type === 'music' || item.type === 'game' ? (item.subtitle ?? '') : '';
+  return {
+    title: item.title,
+    creator,
+    artist: item.type === 'music' ? creator : '',
+    developer: item.type === 'game' ? creator : '',
+    year: item.year ?? '',
+    subtitle: item.subtitle ?? '',
+  };
+}
+
+/** Text between variables that is only punctuation and spaces, e.g. " · " or " - ": dropped along with an empty variable. */
+const SEPARATOR = /^[\s·•|/,:;–—-]*$/;
+
+/**
+ * Fills `{name}` variables from the item. An empty variable takes a separator with it, so "{artist} · {title}" is just
+ * "Title" without an artist. Unknown variables are left as typed.
+ */
+export function fillSpineText(template: string, item: MediaItem): string {
+  const vars = variables(item);
+  const parts: { text: string; sep: boolean }[] = [];
+  for (const [i, piece] of template.split(/\{(\w+)\}/).entries()) {
+    if (i % 2 === 0) {
+      if (piece) parts.push({ text: piece, sep: SEPARATOR.test(piece) });
+    } else {
+      const value = piece in vars ? vars[piece] : `{${piece}}`;
+      if (value) parts.push({ text: value, sep: false });
+    }
+  }
+  // Separators only belong between two values: drop them at either end, and keep the first of any run.
+  const kept = parts.filter((p, i) => !p.sep || (i > 0 && !parts[i - 1].sep && parts.slice(i + 1).some((q) => !q.sep)));
+  return kept.map((p) => p.text).join('').trim();
+}
+
+/** The text on an item's spine: its own text if it has one, otherwise the design's, with the variables filled in. */
+export function spineText(item: MediaItem, s: Pick<SpineSettings, 'text' | 'textTemplate'>): string {
+  return fillSpineText(s.text ?? s.textTemplate ?? DEFAULT_SPINE_TEMPLATE, item);
 }
 
 /**

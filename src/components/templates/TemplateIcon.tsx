@@ -1,6 +1,4 @@
 import type { ReactNode } from 'react';
-import { useAppDispatch, useAppState } from '../../context/AppContext';
-import { TEMPLATE_DEFS } from '../../templates';
 import type { TemplateKind } from '../../types/template';
 
 const svg = (children: ReactNode) => (
@@ -92,34 +90,4 @@ const ICONS: Record<TemplateKind, ReactNode> = {
   ),
 };
 
-const GROUPS = ['Cases', 'Boxes', 'Labels & cards', 'Game cases'] as const;
-
-/** One button per template, grouped by type, so switching media is a single click. */
-export function TemplateTabs() {
-  const { templateKind } = useAppState();
-  const dispatch = useAppDispatch();
-  return (
-    <nav className="template-tabs" role="tablist" aria-label="Template">
-      {GROUPS.map((group) => (
-        <div className="template-group" key={group} role="presentation">
-          <span className="template-group-label">{group}</span>
-          <div className="template-group-tabs" role="presentation">
-            {TEMPLATE_DEFS.filter((d) => d.group === group).map((d) => (
-              <button
-                key={d.kind}
-                role="tab"
-                aria-selected={d.kind === templateKind}
-                className={d.kind === templateKind ? 'active' : ''}
-                title={d.name}
-                onClick={() => dispatch({ type: 'setTemplate', kind: d.kind })}
-              >
-                {ICONS[d.kind]}
-                <span>{d.name}</span>
-              </button>
-            ))}
-          </div>
-        </div>
-      ))}
-    </nav>
-  );
-}
+export const TemplateIcon = ({ kind }: { kind: TemplateKind }) => <>{ICONS[kind]}</>;

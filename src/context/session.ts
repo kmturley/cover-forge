@@ -1,9 +1,10 @@
 import type { MediaItem } from '../types/media';
-import type { Region } from '../types/template';
 import type { Design, PanelSettings, SharedSettings, StyleOverlay } from '../types/editor';
 import type { TemplateKind } from '../types/template';
-import { DEFAULT_KIND, buildTemplate, defaultVariantId, isTemplateKind, variantsFor } from '../templates';
+import { DEFAULT_KIND, defaultVariantId, isTemplateKind, variantsFor } from '../templates';
+import { entryFor, upgradeTemplateId, type LastTemplates } from '../templates/library';
 import { migrateItem, sortItems } from './items';
+import { syncTemplate } from './templateOf';
 import { TEMPLATE_DEFS } from '../templates';
 import { PANEL_IDS } from '../engine/resolve';
 import type { MediaType } from '../types/media';
@@ -20,13 +21,18 @@ export interface SessionV2 {
   items: MediaItem[];
   selectedItemId: string | null;
   options: {
-    /** Absent in older saves, which stored a Blu-ray `region` + `spineMm` instead. */
+    /** The empty-queue / last-picked template. Absent in older saves, which had one template for everything: */
+    templateId?: string;
+    /** Legacy: that one template's kind and variant (older still: a Blu-ray `region` + `spineMm`). */
     templateKind?: TemplateKind;
     variantId?: string;
-    region: Region;
-    /** Legacy (Blu-ray only); still read when `variantId` is missing. */
+    /** Legacy (Blu-ray only): 'US' or 'EU'. Only US cases are supported now. */
+    region?: string;
     spineMm?: number;
-    styleOverlay: StyleOverlay;
+    lastTemplates?: LastTemplates;
+    banner?: boolean;
+    /** Legacy: 'digital' meant with the banner. */
+    styleOverlay?: StyleOverlay;
     view: ViewMode;
   };
   /** Applies to every item; items may override any field via their own `panels` / `spineOverride`. */
@@ -46,10 +52,9 @@ export function serializeSession(s: AppState): SessionV2 {
     items: s.items,
     selectedItemId: s.selectedItemId,
     options: {
-      templateKind: s.templateKind,
-      variantId: s.variantId,
-      region: s.region,
-      styleOverlay: s.styleOverlay,
+      templateId: s.templateId,
+      lastTemplates: s.lastTemplates,
+      banner: s.banner,
       view: s.view,
     },
     shared: s.shared,
@@ -116,6 +121,22 @@ function migrateScopes(raw: unknown, items: MediaItem[], defaults: SharedSetting
   return { designs, items: next };
 }
 
+/** The one template a save from before per-item templates used, from its kind and variant (or Blu-ray region + spine). */
+function legacyTemplateId(o: Record<string, unknown>): string {
+  const region = o.region === 'EU' ? 'eu' : 'us';
+  // Saves from before other templates existed have no kind and were Blu-ray; an unrecognised kind gets today's default.
+  const kind: TemplateKind = isTemplateKind(o.templateKind) ? o.templateKind : o.templateKind === undefined ? 'bluray' : DEFAULT_KIND;
+  // Older saves only knew Blu-ray and stored the spine width; map it onto today's variant ids.
+  const legacyVariant = typeof o.spineMm === 'number' ? `${region}-${o.spineMm}` : undefined;
+  const wanted = typeof o.variantId === 'string' ? o.variantId : legacyVariant;
+  return upgradeTemplateId(`${kind}-${wanted}`) ?? entryFor(kind, variantsFor(kind).some((v) => v.id === wanted) ? (wanted as string) : defaultVariantId(kind)).id;
+}
+
+function restoreLastTemplates(raw: unknown): LastTemplates {
+  if (!isObj(raw)) return {};
+  return Object.fromEntries(Object.entries(raw).flatMap(([k, v]) => (MEDIA_TYPES.includes(k as MediaType) && upgradeTemplateId(v) ? [[k, upgradeTemplateId(v)]] : [])));
+}
+
 /**
  * Applies a parsed session on top of `defaults`, field by field. Anything missing or invalid falls back
  * to the default, so a corrupt or older document degrades gracefully instead of crashing the app.
@@ -126,18 +147,14 @@ export function restoreSession(raw: unknown, defaults: AppState): AppState {
   const o = isObj(raw.options) ? raw.options : {};
   const items = Array.isArray(raw.items) ? sortItems(raw.items.filter(isItem).map(migrateItem)) : [];
 
-  const region: Region = o.region === 'US' || o.region === 'EU' ? o.region : defaults.region;
-  // Saves from before other templates existed have no kind and were Blu-ray; an unrecognised kind gets today's default.
-  const kind: TemplateKind = isTemplateKind(o.templateKind) ? o.templateKind : o.templateKind === undefined ? 'bluray' : DEFAULT_KIND;
-  // Older saves only knew Blu-ray and stored the spine width; map it onto today's variant ids.
-  const legacyVariant = typeof o.spineMm === 'number' ? `${region.toLowerCase()}-${o.spineMm}` : undefined;
-  const wanted = typeof o.variantId === 'string' ? o.variantId : legacyVariant;
-  const variantId = variantsFor(kind, region).some((v) => v.id === wanted) ? (wanted as string) : defaultVariantId(kind, region);
+  const legacy = !('templateId' in o);
+  const templateId = upgradeTemplateId(o.templateId) ?? legacyTemplateId(o);
   const restored = raw.version === 2 ? restoreDesigns(raw.designs, defaults.shared) : [];
   const migrated = restored.length === 0 ? migrateScopes(raw.scopes, items, defaults.shared) : { designs: [], items };
   const designs = [...restored, ...migrated.designs];
   // An item can only use a design that exists.
-  const finalItems = migrated.items.map((i) => (i.designId && !designs.some((d) => d.id === i.designId) ? withoutDesign(i) : i));
+  // Before items had their own template every item used the session's one.
+  const finalItems = migrated.items.map((i) => (i.designId && !designs.some((d) => d.id === i.designId) ? withoutDesign(i) : i)).map((i) => ({ ...i, templateId: upgradeTemplateId(i.templateId) ?? templateId }));
   const selected = typeof raw.selectedItemId === 'string' && finalItems.some((i) => i.id === raw.selectedItemId);
 
   let shared = defaults.shared;
@@ -156,20 +173,20 @@ export function restoreSession(raw: unknown, defaults: AppState): AppState {
     };
   }
 
-  return {
+  return syncTemplate({
     ...defaults,
     items: finalItems,
     selectedItemId: selected ? (raw.selectedItemId as string) : (finalItems[0]?.id ?? null),
-    templateKind: kind,
-    region,
-    variantId,
-    template: buildTemplate(kind, variantId),
+    templateId,
+    // In a save from before per-item templates, new items kept getting its one template; they still do.
+    lastTemplates: legacy ? Object.fromEntries([...new Set(finalItems.map((i) => i.type))].map((t) => [t, templateId])) : restoreLastTemplates(o.lastTemplates),
+    template: defaults.template,
     selectedPanel: defaults.selectedPanel,
-    styleOverlay: o.styleOverlay === 'clean' || o.styleOverlay === 'digital' || o.styleOverlay === 'retro' ? o.styleOverlay : defaults.styleOverlay,
+    banner: typeof o.banner === 'boolean' ? o.banner : o.styleOverlay === undefined ? defaults.banner : o.styleOverlay === 'digital',
     view: o.view === '2d' || o.view === '3d' ? o.view : defaults.view,
     shared,
     designs,
-  };
+  });
 }
 
 /** Storage can be missing, full or blocked (private windows), so every access is guarded. */

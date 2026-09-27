@@ -1,31 +1,79 @@
 import { describe, expect, it } from 'vitest';
 import { TEMPLATE_DEFS, buildTemplate } from '../templates';
-import { GAME_CASE_HEADERS, OFFICIAL_HEADERS, resolveHeader, spineCapMm } from './official';
+import { FORMAT_BRANDING, GAME_CASE_BRANDING, arc, brandingFor, contrast, ease, slope, spineTitleColor, spineTitleStartMm, type FrontHeader } from './official';
 
-describe('official headers', () => {
-  it('has a banner for every template kind', () => {
-    for (const d of TEMPLATE_DEFS) expect(OFFICIAL_HEADERS[d.kind], d.kind).toBeDefined();
+const variantsOf = (kind: (typeof TEMPLATE_DEFS)[number]['kind']) => (kind === 'game-case' ? Object.keys(GAME_CASE_BRANDING) : [undefined]);
+
+/** The header's deepest point, as a fraction of H. */
+function deepest(f: FrontHeader): number {
+  if (f.shape === 'band') return Math.max(...Array.from({ length: 21 }, (_, i) => f.depth(i / 20) + (f.line?.size ?? 0)));
+  if (f.shape === 'tab') return f.h;
+  return 0;
+}
+
+describe('branding', () => {
+  it('has branding for every template kind and every game case', () => {
+    for (const d of TEMPLATE_DEFS) expect(FORMAT_BRANDING[d.kind], d.kind).toBeDefined();
+    const cases = TEMPLATE_DEFS.find((d) => d.kind === 'game-case')!.variants.map((v) => v.id);
+    for (const id of cases) expect(GAME_CASE_BRANDING[id], id).toBeDefined();
   });
 
-  it.each(TEMPLATE_DEFS.map((d) => [d.kind] as const))('%s: banner and spine cap fit their panels', (kind) => {
-    const variants = kind === 'game-case' ? Object.keys(GAME_CASE_HEADERS) : [undefined];
-    for (const variantId of variants) {
+  it.each(TEMPLATE_DEFS.map((d) => [d.kind] as const))('%s: headers and spine caps stay within their panels', (kind) => {
+    for (const variantId of variantsOf(kind)) {
       const t = buildTemplate(kind, variantId);
-      const spec = resolveHeader(kind, t.variantId);
-      const front = t.panels.find((p) => p.id === 'front')!;
-      expect(spec.heightMm).toBeLessThan(front.heightMm / 2);
-      for (const p of t.panels.filter((q) => q.text)) {
-        const run = p.text === 'vertical' ? p.heightMm : p.widthMm;
-        expect(spec.capMm, `${kind}/${t.variantId} ${p.id}`).toBeLessThan(run / 2);
+      const b = brandingFor(kind, t.variantId);
+      const name = `${kind}/${t.variantId}`;
+      expect(deepest(b.front), name).toBeLessThan(0.25);
+      if (b.front.shape === 'strip') expect(b.front.w, name).toBeLessThan(0.25);
+      for (const m of b.spine?.marks ?? []) {
+        expect(m.from, name).toBeGreaterThanOrEqual(0);
+        expect(m.to, name).toBeGreaterThan(m.from);
       }
-      if (!t.panels.some((p) => p.text)) expect(spec.capMm).toBe(0);
+      for (const p of t.panels.filter((q) => q.text)) {
+        expect(spineTitleStartMm(kind, t.variantId, true, p.heightMm), `${name} ${p.id}`).toBeLessThan(p.heightMm / 2);
+      }
     }
   });
 
-  it('only reserves cap room when the Official style is on', () => {
-    expect(spineCapMm('bluray', false)).toBe(0);
-    expect(spineCapMm('bluray', true)).toBe(15);
-    expect(spineCapMm('game-case', true, 'ps4')).toBe(14);
-    expect(spineCapMm('game-case', true, 'switch')).toBe(12);
+  it('only leaves room for the cap when Branded is on', () => {
+    expect(spineTitleStartMm('bluray', 'us-11', false, 148)).toBe(0);
+    expect(spineTitleStartMm('bluray', 'us-11', true, 148)).toBeCloseTo(0.12 * 148);
+    // PS4 caps the top 23% of the spine; the title starts past it.
+    expect(spineTitleStartMm('game-case', 'ps4', true, 160)).toBeCloseTo(0.25 * 160);
+    // Switch spines are red along their length; the title starts under the icon.
+    expect(spineTitleStartMm('game-case', 'switch', true, 161)).toBeCloseTo(0.08 * 161);
+  });
+
+  it('follows the measured header shapes', () => {
+    const band = (id: string) => GAME_CASE_BRANDING[id].front as Extract<FrontHeader, { shape: 'band' }>;
+    expect(band('ps4').depth(0.5)).toBeCloseTo(0.103);
+    expect(band('ps5').line).toEqual({ color: '#1b3a70', size: 0.006 });
+    expect(band('gamecube').depth(0)).toBeCloseTo(0.112);
+    expect(band('gamecube').depth(1)).toBeCloseTo(0.072);
+    expect(band('xbox-one').marks[0].align).toBe('center');
+    expect(GAME_CASE_BRANDING.switch.front).toMatchObject({ shape: 'tab', w: 0.224, h: 0.13 });
+    expect(GAME_CASE_BRANDING.ps1.front).toMatchObject({ shape: 'strip', w: 0.155 });
+    expect(FORMAT_BRANDING.dvd.front.shape).toBe('none');
+  });
+
+  it('draws curved and sloped lower edges', () => {
+    expect(arc(0.035, 0.095)(0)).toBeCloseTo(0.035);
+    expect(arc(0.035, 0.095)(0.5)).toBeCloseTo(0.095);
+    expect(arc(0.035, 0.095)(1)).toBeCloseTo(0.035);
+    expect(ease(0.017, 0.122)(0)).toBeCloseTo(0.017);
+    expect(ease(0.017, 0.122)(1)).toBeCloseTo(0.122);
+    const s = slope([[0, 0.1], [0.5, 0.1], [1, 0.05]]);
+    expect(s(0.25)).toBeCloseTo(0.1);
+    expect(s(0.75)).toBeCloseTo(0.075);
+  });
+});
+
+describe('spine title colour', () => {
+  it('keeps the chosen colour unless it would vanish on a Branded spine', () => {
+    expect(spineTitleColor('game-case', 'wii', true, '#ffffff')).toBe('#333333');
+    expect(spineTitleColor('game-case', 'wii', true, '#cc0000')).toBe('#cc0000');
+    expect(spineTitleColor('game-case', 'wii', false, '#ffffff')).toBe('#ffffff');
+    expect(spineTitleColor('game-case', 'switch', true, '#ffffff')).toBe('#ffffff');
+    expect(contrast('#000000', '#ffffff')).toBeCloseTo(21);
   });
 });

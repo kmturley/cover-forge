@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { TEMPLATE_DEFS, buildTemplate, canvasSizePx, defaultVariantId, regionsOf, variantsFor } from './index';
+import { TEMPLATE_DEFS, buildTemplate, canvasSizePx, defaultVariantId, variantsFor } from './index';
 import { edgeSegments, neighbour, paintRect } from './geometry';
 
 describe('blu-ray template', () => {
@@ -11,22 +11,41 @@ describe('blu-ray template', () => {
   });
 
   it('lays panels out contiguously, back | spine | front', () => {
-    const t = buildTemplate('bluray', 'eu-14');
+    const t = buildTemplate('bluray', 'us-12.5');
     const [back, spine, front] = t.panels;
     expect([back.id, spine.id, front.id]).toEqual(['back', 'spine', 'front']);
     expect(spine.xMm).toBe(back.xMm + back.widthMm);
     expect(front.xMm).toBe(spine.xMm + spine.widthMm);
-    expect(spine.widthMm).toBe(14);
+    expect(spine.widthMm).toBe(12.5);
   });
 
-  it('filters variants by region and falls back for unknown variants', () => {
-    expect(regionsOf('bluray')).toEqual(['US', 'EU']);
-    expect(variantsFor('bluray', 'US').map((v) => v.id)).toEqual(['us-11', 'us-12.5']);
-    expect(variantsFor('bluray', 'EU').map((v) => v.id)).toEqual(['eu-14']);
-    expect(defaultVariantId('bluray', 'EU')).toBe('eu-14');
-    expect(buildTemplate('bluray', 'nope').variantId).toBe('us-11');
-    expect(regionsOf('dvd')).toEqual([]);
-    expect(variantsFor('dvd', 'US')).toHaveLength(2); // regions don't filter templates that have none
+  it('offers the US cases only, and falls back for unknown variants', () => {
+    expect(variantsFor('bluray').map((v) => v.id)).toEqual(['us-11', 'us-12.5']);
+    expect(defaultVariantId('bluray')).toBe('us-11');
+    expect(buildTemplate('bluray', 'eu-14').variantId).toBe('us-11');
+  });
+});
+
+describe('game case sizes (see branding-spec.md)', () => {
+  const front = (v: string) => {
+    const t = buildTemplate('game-case', v);
+    const f = t.panels.find((p) => p.id === 'front')!;
+    const s = t.panels.find((p) => p.id === 'spine')!;
+    return [f.widthMm, f.heightMm, s.widthMm];
+  };
+
+  it('uses the real US insert sizes', () => {
+    expect(front('ps4')).toEqual([128, 160, 14]);
+    expect(front('ps3')).toEqual([128, 148, 14]);
+    expect(front('ps2')).toEqual([130, 184, 14]);
+    expect(front('switch')).toEqual([99, 161, 10]);
+    expect(front('xbox-one')).toEqual([128, 150, 11]);
+  });
+
+  it('prints PS1 covers for a CD jewel case', () => {
+    const t = buildTemplate('game-case', 'ps1');
+    expect(t.panels.map((p) => p.id)).toEqual(['front', 'spine', 'back', 'spineRight']);
+    expect(t.id).toBe('game-case-ps1');
   });
 });
 

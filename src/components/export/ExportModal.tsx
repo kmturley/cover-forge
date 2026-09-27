@@ -1,13 +1,15 @@
-import { useState } from 'react';
-import { useAppState, useSelectedItem } from '../../context/AppContext';
+import { useMemo, useState } from 'react';
+import { templateOf, useAppState, useSelectedItem } from '../../context/AppContext';
 import type { PaperSize } from '../../export/imposition';
 import type { ExportSettings } from '../../export/rasterExport';
 import { exportCurrent, exportSheetsPdf, exportZip } from '../../export/zipExport';
 import { PrintSheetPreview } from './PrintSheetPreview';
 import { fitsLabelSheet, getLabelSheet, labelSheetsFor } from '../../export/sheets';
+import type { MediaItem } from '../../types/media';
 
 export function ExportModal({ onClose }: { onClose: () => void }) {
-  const { items, template, shared, designs, styleOverlay } = useAppState();
+  const state = useAppState();
+  const { items, template, shared, designs, banner } = state;
   const selected = useSelectedItem();
   const [paper, setPaper] = useState<PaperSize>('A4');
   const [chosenSheet, setChosenSheet] = useState<string>('');
@@ -16,10 +18,13 @@ export function ExportModal({ onClose }: { onClose: () => void }) {
   const [progress, setProgress] = useState<{ done: number; total: number; label: string } | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  const base = { template, shared, designs, style: styleOverlay };
-  // A die-cut sheet only applies to the templates it was made for; otherwise fall back to plain paper.
-  const labelSheets = labelSheetsFor(template.kind).filter((s) => fitsLabelSheet(s, template));
-  const labelSheet = fitsLabelSheet(getLabelSheet(chosenSheet), template) ? chosenSheet : undefined;
+  const base = { shared, designs, banner, templateOf: (item: MediaItem) => templateOf(state, item) };
+  // Sheets are laid out per template; the preview shows the selected item's.
+  const used = useMemo(() => [...new Map(items.map((i) => templateOf(state, i)).map((t) => [t.id, t])).values()], [items, state]);
+  const templates = used.length ? used : [template];
+  // A die-cut sheet only applies to the templates it was made for; the others fall back to plain paper.
+  const labelSheets = [...new Map(templates.flatMap((t) => labelSheetsFor(t.kind).filter((s) => fitsLabelSheet(s, t))).map((s) => [s.id, s])).values()];
+  const labelSheet = labelSheets.some((s) => s.id === chosenSheet) ? chosenSheet : undefined;
   const chosen = getLabelSheet(labelSheet);
   const settings: ExportSettings = { paper: chosen?.paper ?? paper, labelSheet, format, guides: guides && !chosen, jpegQuality: 0.92 };
 
@@ -62,6 +67,7 @@ export function ExportModal({ onClose }: { onClose: () => void }) {
               </select>
             </label>
             {chosen?.note && <p className="muted">{chosen.note}</p>}
+            {used.length > 1 && <p className="muted">{used.length} templates in the queue: each gets its own print sheets{labelSheet ? ', and only the ones this label sheet fits use it' : ''}.</p>}
             <label className="field">
               <span>Format</span>
               <select value={format} onChange={(e) => setFormat(e.target.value as ExportSettings['format'])}>
@@ -83,7 +89,7 @@ export function ExportModal({ onClose }: { onClose: () => void }) {
                   : 'ZIP: one image per game, the print sheets as images, and each game’s original images.'}
             </p>
           </div>
-          <PrintSheetPreview template={template} paper={settings.paper} labelSheet={labelSheet} />
+          <PrintSheetPreview template={template} paper={settings.paper} labelSheet={fitsLabelSheet(chosen, template) ? labelSheet : undefined} />
         </div>
 
         {progress && (

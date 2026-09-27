@@ -1,4 +1,5 @@
 import type { MediaItem } from '../types/media';
+import type { TemplateConfig } from '../types/template';
 import type { Scene } from '../engine/CanvasRenderer';
 import { preloadItem, renderCover } from '../engine/CanvasRenderer';
 import { canvasSizePx } from '../templates';
@@ -19,6 +20,9 @@ export interface ExportSettings {
 }
 
 export type SceneBase = Omit<Scene, 'item' | 'showGuides'>;
+
+/** What an export needs besides the items: a scene without its template, and each item's template. */
+export type ExportBase = Omit<SceneBase, 'template'> & { templateOf: (item: MediaItem) => TemplateConfig };
 
 export function canvasToBlob(canvas: HTMLCanvasElement, format: RasterFormat, quality = 0.92): Promise<Blob> {
   return new Promise((resolve, reject) => {

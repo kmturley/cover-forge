@@ -26,13 +26,13 @@ describe('panelUvRange', () => {
 
 describe('createBodyGeometry', () => {
   it('sizes the box from the spec and maps the front face into the front UV range', () => {
-    const t = buildTemplate('bluray', 'eu-14');
+    const t = buildTemplate('bluray', 'us-11');
     const geo = createBodyGeometry(t, t.preview);
     geo.computeBoundingBox();
     const size = geo.boundingBox!.getSize(geo.boundingBox!.min.clone());
     expect(size.x).toBeCloseTo(128);
     expect(size.y).toBeCloseTo(148);
-    expect(size.z).toBeCloseTo(14);
+    expect(size.z).toBeCloseTo(11);
 
     const front = panelUvRange(t, 'front');
     const uv = geo.getAttribute('uv');

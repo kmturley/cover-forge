@@ -1,5 +1,6 @@
 import type { PanelId } from './template';
 
+/** The single style setting older saves and links used; 'digital' meant the official banner. */
 export type StyleOverlay = 'clean' | 'digital' | 'retro';
 
 /**
@@ -102,7 +103,10 @@ export const MAX_SCALE = 5;
 
 /** Spine text styling (per-item `text` only appears in overrides; it defaults to the title). */
 export interface SpineSettings {
+  /** This item's own spine text (variables allowed); replaces the design's `textTemplate`. Only ever set per item. */
   text?: string;
+  /** The spine text for every item using the design, with variables such as `{creator} · {title}` (see spineText). */
+  textTemplate?: string;
   fontFamily: string;
   /** Cap height of the spine text in mm; the text still shrinks if it's too long for the spine. */
   /** Cap height. Unset = automatic: as large as still lets a typical long title fit on one line (see SpineTypography). */
