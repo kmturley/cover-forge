@@ -264,12 +264,21 @@ const VINYL: Record<string, { label: string; sizeMm: number; spine: number }> = 
  * Variants with the same w/h share a physical case; the brand drives the Official-style banner only.
  */
 const GAME_CASE: Record<string, { label: string; w: number; h: number; spine: number; color: string }> = {
-  'ps4':         { label: 'PS4',               w: 135, h: 170, spine: 14.5, color: '#1a1a2e' },
-  'ps5':         { label: 'PS5',               w: 135, h: 170, spine: 14.5, color: '#ffffff' },
-  'xbox-one':    { label: 'Xbox One',           w: 135, h: 170, spine: 15,   color: '#107c10' },
-  'xbox-series': { label: 'Xbox Series X|S',    w: 135, h: 170, spine: 15,   color: '#107c10' },
-  'switch':      { label: 'Nintendo Switch',    w: 102, h: 184, spine: 12,   color: '#e4000f' },
-  'switch2':     { label: 'Nintendo Switch 2',  w: 102, h: 184, spine: 12,   color: '#e4000f' },
+  'ps1-pal':   { label: 'PS1 (PAL)',           w: 135, h: 170, spine: 14,   color: '#000000' },
+  'ps2':       { label: 'PS2',                 w: 135, h: 170, spine: 14,   color: '#000000' },
+  'ps3':       { label: 'PS3',                 w: 135, h: 170, spine: 14,   color: '#000000' },
+  'ps4':       { label: 'PS4',                 w: 135, h: 170, spine: 14.5, color: '#003791' },
+  'ps5':       { label: 'PS5',                 w: 135, h: 170, spine: 14.5, color: '#ffffff' },
+  'ps-vita':   { label: 'PS Vita',             w: 65,  h: 110, spine: 6,    color: '#003791' },
+  'switch':    { label: 'Nintendo Switch',     w: 102, h: 184, spine: 12,   color: '#e60012' },
+  'switch2':   { label: 'Nintendo Switch 2',   w: 102, h: 184, spine: 12,   color: '#e60012' },
+  'wii-u':     { label: 'Wii U',               w: 135, h: 170, spine: 14,   color: '#0096d6' },
+  'wii':       { label: 'Wii',                 w: 135, h: 190, spine: 16,   color: '#ffffff' },
+  'gamecube':  { label: 'GameCube',            w: 135, h: 190, spine: 16,   color: '#000000' },
+  'xbox':      { label: 'Xbox',                w: 135, h: 170, spine: 15,   color: '#000000' },
+  'xbox-360':  { label: 'Xbox 360',            w: 135, h: 170, spine: 15,   color: '#ffffff' },
+  'xbox-one':  { label: 'Xbox One',            w: 135, h: 170, spine: 15,   color: '#107c10' },
+  'xbox-series': { label: 'Xbox Series X|S',   w: 135, h: 170, spine: 15,   color: '#107c10' },
 };
 
 export const TEMPLATE_DEFS: TemplateDef[] = [
