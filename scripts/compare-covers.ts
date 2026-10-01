@@ -6,17 +6,22 @@
  * For every folder under `scans/` that matches a game-case template it writes, under `compare/` (git-ignored):
  *   <platform>/app.png        the app's render (Branded on, no artwork), cropped to trim, 300 DPI
  *   <platform>/app.json       where its back|spine and spine|front folds are, in pixels
- *   <platform>.png            header and spine area, stacked: app, template, each scan, then an overlay of the app
- *                             against the template (red = only the app prints it, cyan = only the template does,
- *                             yellow = both print but in different colours, e.g. a logo in the wrong place or size)
- *   <platform>-full.png       the whole wrap of each, in a grid
+ *   <platform>.png            header and spine area, stacked: app, template, then an overlay of the app against the
+ *                             template (red = only the app prints it, cyan = only the template does, yellow = both
+ *                             print but in different colours, e.g. a logo in the wrong place or size). With --scans,
+ *                             each scan follows too.
+ *   <platform>-full.png       the whole wrap of each of those, in a grid
  * then re-runs scripts/measure-covers.ts, which finds `compare/<platform>/app.json` and adds an `app (rendered)` row
  * and an `app − Mode` row to scans-report.md and branding-spec.md, measured with the same code as the scans.
  *
  * Usage:
  *   npm run compare:covers                  # every platform
  *   npm run compare:covers -- ps4 wii       # only these folders
+ *   npm run compare:covers -- --scans       # also put each real scan in the images (slower, larger files)
  *   npm run compare:covers -- --no-reports  # images only; don't refresh the two reports
+ *
+ * By default the images hold only the app render, the template and their overlay: that is what the app is meant to
+ * match, it is quick, and the files stay small. The reports still measure the app against the scans' Mode either way.
  *
  * The render is the app's real `renderCover`, run in Node with a Skia canvas (@napi-rs/canvas) rather than a browser.
  * Shapes, gradients and brand icons are exact; text (the "Wii U" / "NINTENDO" wordmarks and so on) is laid out by
@@ -110,12 +115,12 @@ async function strip(source: { label: string; png: Buffer }, width: number, heig
   return { label: source.label, img, rowH };
 }
 
-async function compare(folder: string): Promise<void> {
+async function compare(folder: string, includeScans: boolean): Promise<void> {
   const variant = FOLDER_TO_VARIANT[folder] ?? folder;
   const t = buildTemplateById(`game-case-${variant}`);
   const files = readdirSync(join(SCANS, folder)).filter((f) => IMAGE_EXTS.test(f));
   const templateFile = files.find((f) => /^template\./i.test(f));
-  const scanFiles = files.filter((f) => f !== templateFile).sort();
+  const scanFiles = includeScans ? files.filter((f) => f !== templateFile).sort() : [];
 
   const app = renderAppWrap(t);
   mkdirSync(join(OUT, folder), { recursive: true });
@@ -170,13 +175,14 @@ async function compare(folder: string): Promise<void> {
     fctx.drawImage(img, x, y + LABEL_H);
   }
   writeFileSync(join(OUT, `${folder}-full.png`), full.toBuffer('image/png'));
-  console.error(`${folder}: ${sources.length - 1} image(s) compared -> ${join(OUT, `${folder}.png`)}`);
+  console.error(`${folder}: app vs ${sources.length - 1} image(s) -> ${join(OUT, `${folder}.png`)}`);
 }
 
 async function main() {
   const args = process.argv.slice(2);
   const only = args.filter((a) => !a.startsWith('--'));
   const refresh = !args.includes('--no-reports');
+  const includeScans = args.includes('--scans');
   const known = new Set(variantsFor('game-case').map((v) => v.id));
   const folders = readdirSync(SCANS, { withFileTypes: true })
     .filter((d) => d.isDirectory() && (only.length === 0 || only.includes(d.name)))
@@ -189,7 +195,7 @@ async function main() {
       console.error(`${folder}: no matching game-case template in the app, skipped.`);
       continue;
     }
-    await compare(folder);
+    await compare(folder, includeScans);
   }
   if (refresh && existsSync(OUT)) execFileSync('node', ['scripts/measure-covers.ts'], { stdio: 'inherit' });
 }

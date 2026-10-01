@@ -50,6 +50,11 @@ describe('branding', () => {
     expect(band('ps5').line).toEqual({ color: '#1b3a70', size: 0.006 });
     expect(band('gamecube').depth(0)).toBeCloseTo(0.112);
     expect(band('gamecube').depth(1)).toBeCloseTo(0.072);
+    // Wii: shallow across the left half, an S down to a deep plateau on the right (measured on the fan template).
+    expect(band('wii').depth(0.3)).toBeCloseTo(0.024, 2);
+    expect(band('wii').depth(0.7)).toBeCloseTo(0.1, 2);
+    expect(band('wii').depth(0.9)).toBeCloseTo(0.126, 3);
+    expect(band('switch2').fill).toBe('#f20c0d');
     expect(band('xbox-one').marks[0].align).toBe('center');
     expect(GAME_CASE_BRANDING.switch.front).toMatchObject({ shape: 'tab', w: 0.224, h: 0.13 });
     expect(GAME_CASE_BRANDING.ps1.front).toMatchObject({ shape: 'strip', w: 0.15 });

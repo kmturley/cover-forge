@@ -113,10 +113,10 @@ Fold lines detected from the image in 1/4; estimated from a known spine width in
 | cyberpunk2077ultimateedition.jpg | 300 | 242.6 | 186.4 | 116.2 | 10.1 | — | 116.2 | estimated | 12.8 | gradient | #e12322 | #df0714 | 12.6 | Fold lines not detected; estimated from switch2's known 10 mm spine, assuming equal front/back width. |
 | donkeykongbananza.jpg | 300 | 208.7 | 160.0 | 99.3 | 10.1 | — | 99.3 | estimated | 12.8 | flat | #fb1606 | — | 12.8 | Fold lines not detected; estimated from switch2's known 10 mm spine, assuming equal front/back width. |
 | pacmanworld2.jpg | 300 | 242.6 | 187.2 | 114.6 | 11.9 | — | 116.1 | detected | 12.5 | flat | #e80113 | — | — |  |
-| template.png | 300 | 209.4 | 161.0 | 99.7 | 10.0 | — | 99.7 | detected | 13.1 | flat | #ff0000 | — | 13.1 |  |
-| **Mode** | | **242.6** | **173.7** | **107.2** | **10.1** | **—** | **107.9** | | **12.8** | | **#f20c0d** | **#df0714** | **12.8** | |
-| app (rendered) | 300 | 208.0 | 161.0 | 99.0 | 10.0 | — | 99.1 | known | 12.9 | flat | #e60012 | — | — |  |
-| *app − Mode* | | -34.5 | -12.7 | -8.2 | -0.1 | — | -8.8 | | +0.1 | = | 18 | — | — | |
+| template.png | 300 | 209.4 | 161.0 | 99.7 | 10.0 | — | 99.7 | detected | 13.1 | flat | #ff0000 | — | — |  |
+| **Mode** | | **242.6** | **173.7** | **107.2** | **10.1** | **—** | **107.9** | | **12.8** | | **#f20c0d** | **#df0714** | **12.7** | |
+| app (rendered) | 300 | 208.0 | 161.0 | 99.0 | 10.0 | — | 99.1 | known | 13.0 | flat | #f20c0d | — | — |  |
+| *app − Mode* | | -34.5 | -12.7 | -8.2 | -0.1 | — | -8.8 | | +0.2 | = | 0 | — | — | |
 
 Fold lines detected from the image in 2/4; estimated from a known spine width in 2/4.
 
@@ -129,8 +129,8 @@ Fold lines detected from the image in 2/4; estimated from a known spine width in
 | marioparty8.jpg | 300 | 273.1 | 182.5 | 129.5 | 14.0 | — | 129.5 | estimated | 12.7 | flat | #ecf0f3 | — | 8.1 | Fold lines not detected; estimated from wii's known 14 mm spine, assuming equal front/back width. |
 | template.png | 300 | 274.3 | 184.1 | 130.1 | 14.1 | — | 130.1 | estimated | 12.5 | flat | #ffffff | — | — | No symmetric spine strip found; estimated from wii's known 14 mm spine, assuming equal front/back width. |
 | **Mode** | | **273.1** | **182.5** | **129.5** | **14.0** | **—** | **129.5** | | **12.6** | | **#ffffff** | **—** | **20.0** | |
-| app (rendered) | 300 | 273.0 | 183.0 | 129.5 | 14.0 | — | 129.5 | known | 7.6 | flat | #ffffff | — | — |  |
-| *app − Mode* | | -0.1 | +0.4 | +0.0 | +0.0 | — | -0.1 | | -5.0 | = | 0 | — | — | |
+| app (rendered) | 300 | 273.0 | 183.0 | 129.5 | 14.0 | — | 129.5 | known | 12.6 | flat | #ffffff | — | — |  |
+| *app − Mode* | | -0.1 | +0.4 | +0.0 | +0.0 | — | -0.1 | | -0.0 | = | 0 | — | — | |
 
 Fold lines detected from the image in 0/4; estimated from a known spine width in 4/4.
 

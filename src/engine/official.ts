@@ -61,7 +61,7 @@ export interface SpanMark extends Lockup {
 export type Depth = (x: number) => number;
 
 export const flat = (h: number): Depth => () => h;
-/** Straight lines between [x, depth] points (GameCube's slope). */
+/** Straight lines between [x, depth] points (GameCube's slope, Wii's S-curve). */
 export const slope = (points: [number, number][]): Depth => (x) => {
   const i = points.findIndex(([px]) => px >= x);
   if (i <= 0) return points[Math.max(i, 0)][1];
@@ -71,7 +71,7 @@ export const slope = (points: [number, number][]): Depth => (x) => {
 };
 /** A single convex arc, `edge` deep at both sides and `centre` in the middle (Wii U). */
 export const arc = (edge: number, centre: number): Depth => (x) => edge + (centre - edge) * (1 - (2 * x - 1) ** 2);
-/** A curve deepening from `left` to `right`, slowly at first (Wii). */
+/** A curve deepening from `left` to `right`, slowly at first. */
 export const ease = (left: number, right: number): Depth => (x) => left + (right - left) * x * x;
 
 export type FrontHeader =
@@ -108,6 +108,8 @@ const W = '#ffffff';
 const K = '#000000';
 const PS = { brand: 'playstation' } as const;
 const NINTENDO_RED = '#e60012';
+/** Switch 2 covers print a brighter red than the Switch's (measured on three covers and the fan template). */
+const SWITCH2_RED = '#f20c0d';
 const XBOX_GREEN = '#107c10';
 
 const PS4_BLUE: Paint = { x: [[0, '#003ca5'], [0.45, '#0162b8'], [0.85, '#1aa0e0'], [1, '#048fd2']] };
@@ -250,13 +252,13 @@ export const GAME_CASE_BRANDING: Record<string, Branding> = {
     },
     spine: { fill: NINTENDO_RED, marks: [{ parts: [{ icon: 'joycon', accent: NINTENDO_RED }], color: W, from: 0.02, to: 0.045, rotate: 0 }], titleFrom: 0.08 },
   },
-  // Switch 2: a full-width red band, the icon and "2" over "NINTENDO SWITCH", centred; a red spine.
+  // Switch 2: a full-width red band, the icon and "2" over a small "NINTENDO" and "SWITCH", centred; a red spine.
   switch2: {
     front: {
-      shape: 'band', depth: flat(0.129), fill: NINTENDO_RED,
-      marks: [{ parts: [{ stack: [{ row: [{ icon: 'joycon', accent: NINTENDO_RED }, { text: '2', weight: 800, h: 0.8 }] }, { text: 'NINTENDO SWITCH', weight: 700, h: 0.3, spacing: 0.1 }] }], color: W, h: 0.09, align: 'center', gap: 0.15 }],
+      shape: 'band', depth: flat(0.13), fill: SWITCH2_RED,
+      marks: [{ parts: [{ stack: [{ row: [{ icon: 'joycon', accent: SWITCH2_RED }, { text: '2', weight: 800, h: 0.8 }], h: 0.6 }, { text: 'NINTENDO', weight: 500, h: 0.1, spacing: 0.3 }, { text: 'SWITCH', weight: 500, h: 0.16, spacing: 0.05 }] }], color: W, h: 0.077, align: 'center', gap: 0.15 }],
     },
-    spine: { fill: NINTENDO_RED, marks: [{ parts: [{ stack: [{ icon: 'joycon', accent: NINTENDO_RED }, { text: '2', weight: 800, h: 0.7 }] }], color: W, from: 0.015, to: 0.09, across: 0.7, rotate: 0 }], titleFrom: 0.12 },
+    spine: { fill: SWITCH2_RED, marks: [{ parts: [{ stack: [{ icon: 'joycon', accent: SWITCH2_RED }, { text: '2', weight: 800, h: 0.7 }] }], color: W, from: 0.028, to: 0.101, across: 0.55, rotate: 0 }], titleFrom: 0.12 },
   },
   // Wii U: a cyan band with a convex lower edge and a yellow-green line, "Wii U" centred; a white spine.
   'wii-u': {
@@ -270,13 +272,14 @@ export const GAME_CASE_BRANDING: Record<string, Branding> = {
       marks: [{ parts: [{ text: 'Wii', weight: 700, color: '#8c8c8c' }, { text: 'U', weight: 700, color: '#009ac7' }], color: '#8c8c8c', from: 0.03, to: 0.15, gap: 0.12, rotate: 90 }],
     },
   },
-  // Wii: a white header deepening to the right along a curve, a grey line, "Wii" right; a white spine.
+  // Wii: a white header that stays shallow across the left half, then curves down in an S to a deep plateau on the right,
+  // with a grey line along it and "Wii" at the right; a white spine. (Depths are the band alone: the line is drawn below.)
   wii: {
     front: {
-      shape: 'band', depth: ease(0.017, 0.122), fill: W, line: { color: '#a5a5a6', size: 0.005 },
-      marks: [{ parts: [{ text: 'Wii', weight: 700 }], color: '#8c8c8c', h: 0.05, align: 'right', inset: 0.03 }],
+      shape: 'band', depth: slope([[0, 0.022], [0.45, 0.024], [0.5, 0.028], [0.55, 0.036], [0.6, 0.05], [0.65, 0.072], [0.7, 0.1], [0.75, 0.119], [0.8, 0.126], [1, 0.126]]), fill: W, line: { color: '#9f9fa7', size: 0.005 },
+      marks: [{ parts: [{ text: 'Wii', weight: 800, spacing: 0.12 }], color: '#838488', h: 0.06, align: 'right', inset: 0.03 }],
     },
-    spine: { fill: W, titleColor: '#333333', marks: [{ parts: [{ text: 'Wii', weight: 700 }], color: '#8c8c8c', from: 0.03, to: 0.12, rotate: 90 }] },
+    spine: { fill: W, titleColor: '#333333', marks: [{ parts: [{ text: 'Wii', weight: 800, spacing: 0.12 }], color: '#838488', from: 0.038, to: 0.133, across: 0.52, rotate: 90 }] },
   },
   // GameCube: a black band sloping up at the right with a white line, the cube and wordmark centred; a black spine cap.
   gamecube: {
