@@ -38,8 +38,9 @@
  *     (Wii, GameCube, Wii U) will misdetect or report low confidence — noted in
  *     the output, not silently treated as correct.
  */
-import { statSync, globSync, writeFileSync } from 'node:fs';
-import { basename, dirname, join } from 'node:path';
+import { existsSync, globSync, readdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
+import { basename, dirname, join, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import sharp from 'sharp';
 
 const IMAGE_EXTS = new Set(['.jpg', '.jpeg', '.png', '.tif', '.tiff', '.webp']);
@@ -47,6 +48,8 @@ const MM_PER_INCH = 25.4;
 const DEFAULT_SOURCE = './scans';
 const DEFAULT_OUT = 'scans-report.md';
 const DEFAULT_BRANDING_OUT = 'branding-spec.md';
+/** Where scripts/compare-covers.ts writes `<platform>/app.png` (and its fold positions), if it has been run. */
+const DEFAULT_APP_DIR = 'compare';
 /** Print-ready covers are supplied at 300 DPI; anything else (72/96 dpi web images, a phone photo, metadata
  * lost on a re-save) is rejected rather than trusted. */
 const REQUIRED_DPI = 300;
@@ -122,8 +125,10 @@ type DpiConfidence = 'ok' | 'wrong' | 'missing';
 
 interface ImageResult {
   file: string;
-  /** 'template' = fan-made transparent template, measured from its alpha channel. */
-  kind: 'scan' | 'template';
+  /** 'template' = fan-made transparent template, measured from its alpha channel. 'app' = the app's own render of
+   * this case (scripts/compare-covers.ts), measured with its fold positions known; it is reported beside the folder's
+   * Mode row and never counted in it. */
+  kind: 'scan' | 'template' | 'app';
   widthPx: number;
   heightPx: number;
   dpi: number | null;
@@ -136,7 +141,7 @@ interface ImageResult {
   /** The second spine flap, jewel cases only (see JEWEL_CASE_GROUPS) — null for every other case shape. */
   spine2Mm: number | null;
   /** 'detected' from the image itself, 'estimated' from a known spine width, or 'none' (neither worked). */
-  spineSource: 'detected' | 'estimated' | 'none';
+  spineSource: 'detected' | 'estimated' | 'known' | 'none';
   bandHeightPct: number | null;
   bandShape: 'flat' | 'gradient' | 'none';
   bandColorHex: string | null;
@@ -421,7 +426,8 @@ function findHeaderBand(
       Boolean,
     );
     if (holds) {
-      const bottomColor = rowMedianColor(img, x0, x1, row - 1);
+      // A little inside the band, not its last row: a border thinner than the persistence window sits at the foot.
+      const bottomColor = rowMedianColor(img, x0, x1, Math.max(refRow + 1, Math.floor(row * 0.85)));
       const shape = colorDistance(topColor, bottomColor) > GRADIENT_DRIFT_THRESHOLD ? 'gradient' : 'flat';
       return { row, shape, colorHex: colorToHex(topColor), endColorHex: colorToHex(bottomColor) };
     }
@@ -551,15 +557,6 @@ function columnBandDepths(img: RawImage, x0: number, x1: number, maxFrac = 0.35)
   return { xs, depths };
 }
 
-/** Deepest sampled value within ±`radius` px of each sample: a logo cuts a column short, never longer. */
-function envelope(xs: number[], depths: number[], radius: number): number[] {
-  return xs.map((x) => {
-    let best = 0;
-    for (let i = 0; i < xs.length; i++) if (Math.abs(xs[i] - x) <= radius && depths[i] > best) best = depths[i];
-    return best;
-  });
-}
-
 /** The thin line under a header: rows after the band's lower edge that keep one colour, if that run is short
  * enough (≤2.5% H) to be a line rather than the start of the artwork. */
 function findEdgeLine(img: RawImage, x0: number, x1: number, bandRow: number): { thicknessPct: number; hex: string } | null {
@@ -598,16 +595,143 @@ function insideBand(img: RawImage, x0: number, x1: number, band: HeaderBand): He
   return { ...band, endColorHex: colorToHex(rowMedianColor(img, x0, x1, Math.max(2, Math.floor(band.row * 0.85)))) };
 }
 
+/** Which columns of the front hold the band, found from the top row's colour: inside a band (flat, or a gradient) it
+ * changes smoothly from column to column, while a tab's edge or the artwork beside it is an abrupt change. Splits the
+ * row at abrupt changes, merges across a tiny segment (a logo touching the top edge) when its two neighbours match,
+ * and returns the segment holding the most columns deep enough to be a band. */
+function pickBandSegment(tops: [number, number, number][], deep: boolean[], tinyColumns: number): [number, number] | null {
+  const segs: [number, number][] = [];
+  let start = 0;
+  for (let i = 1; i < tops.length; i++) {
+    if (colorDistance(tops[i], tops[i - 1]) > 60) {
+      segs.push([start, i - 1]);
+      start = i;
+    }
+  }
+  segs.push([start, tops.length - 1]);
+  for (let merged = true; merged; ) {
+    merged = false;
+    for (let k = 1; k < segs.length - 1; k++) {
+      const [a, b] = segs[k];
+      if (b - a + 1 <= tinyColumns && colorDistance(tops[segs[k - 1][1]], tops[segs[k + 1][0]]) <= 60) {
+        segs.splice(k - 1, 3, [segs[k - 1][0], segs[k + 1][1]]);
+        merged = true;
+        break;
+      }
+    }
+  }
+  const countDeep = (a: number, b: number) => deep.slice(a, b + 1).filter(Boolean).length;
+  // A header sits against the front's left edge (a band spans the width, a tab starts in the corner), so a
+  // substantial segment there wins over a larger one in the artwork.
+  const first = segs.find(([a, b]) => b - a + 1 > tinyColumns);
+  if (first && countDeep(first[0], first[1]) >= (first[1] - first[0] + 1) * 0.3) return first;
+  let best: [number, number] | null = null;
+  let bestCount = 0;
+  for (const [a, b] of segs) {
+    const count = countDeep(a, b);
+    if (count > bestCount) {
+      bestCount = count;
+      best = [a, b];
+    }
+  }
+  return best;
+}
+
+/** The band's lower edge in each column, steadied against logos: an upper quantile of the nearby columns that reach
+ * almost as deep as the deepest of them. A logo cuts a column short, so those are dropped; a sloped or arched edge
+ * is not, because the window is small (±4% of the front). If a logo fills the whole window, fall back to the
+ * deepest column within a wider one. */
+function edgeDepths(xs: number[], depths: number[], frontW: number): number[] {
+  const near = frontW * 0.04;
+  const far = frontW * 0.12;
+  return xs.map((x) => {
+    const inNear = depths.filter((_, i) => Math.abs(xs[i] - x) <= near);
+    const deepest = Math.max(...inNear);
+    const kept = inNear.filter((d) => d >= deepest * 0.6).sort((a, b) => a - b);
+    // The 80th percentile of the columns that reach nearly full depth: logos pull the middle down, a slope only
+    // moves the top by a fraction of a percent inside a window this small.
+    if (kept.length >= 2) return kept[Math.min(kept.length - 1, Math.floor(kept.length * 0.8))];
+    return Math.max(...depths.filter((_, i) => Math.abs(xs[i] - x) <= far));
+  });
+}
+
+/** The thin border along the band's lower edge, read in each column at that column's own edge (so a curved or sloped
+ * band is followed, not sampled at one row) and combined across the front. Checks both the rows just above the
+ * edge (a border thinner than the edge search's persistence window gets absorbed into the band) and just below. */
+function findBorderAlongEdge(img: RawImage, xs: number[], rawDepths: number[], cleanDepths: number[]): { thicknessPct: number; hex: string } | null {
+  const maxRun = Math.round(img.height * 0.025);
+  const minRun = img.height * 0.0025;
+  const runs: number[] = [];
+  const colors: [number, number, number][] = [];
+  let candidates = 0;
+  for (let i = 0; i < xs.length; i++) {
+    const d = rawDepths[i];
+    if (d < 8 || d < cleanDepths[i] * 0.9 || d + maxRun + 4 >= img.height) continue; // logo-shortened columns have no edge
+    candidates++;
+    const x = xs[i];
+    const body = meanAround(img, x, 2);
+    const above = meanAround(img, x, d - 1);
+    let run = 0;
+    let color: [number, number, number] | null = null;
+    if (colorDistance(above, body) > 40) {
+      color = above;
+      for (let y = d - 1; y >= Math.max(0, d - 1 - maxRun - 4); y--) {
+        if (colorDistance(meanAround(img, x, y), above) > 30) break;
+        run++;
+      }
+    } else {
+      const below = meanAround(img, x, d + 1);
+      if (colorDistance(below, body) > 40) {
+        color = below;
+        for (let y = d + 1; y < d + 1 + maxRun + 4; y++) {
+          if (colorDistance(meanAround(img, x, y), below) > 30) break;
+          run++;
+        }
+      }
+    }
+    if (color && run >= minRun && run <= maxRun) {
+      runs.push(run);
+      colors.push(color);
+    }
+  }
+  if (candidates === 0 || runs.length < 3 || runs.length < candidates * 0.25) return null;
+  return { thicknessPct: (100 * median(runs)) / img.height, hex: medianColor(colors) ?? '#000000' };
+}
+
+/** How many columns at the front's left edge are really still the spine. A fold found a few millimetres too far left
+ * leaves the spine's own mark (PS2's white square) showing there, where it merges with the front's logo. Such a mark
+ * is visible in the spine's last column, and the leaked columns stay identical to it; a plain spine edge has no mark,
+ * so nothing is trimmed (which also keeps a plain band's left edge where it is). */
+function spineLeakColumns(img: RawImage, x2: number): number {
+  const rows = Math.round(img.height * 0.12);
+  // A little inside the spine, not its very edge, where scanner shading and the fold's own shadow differ from the face.
+  const ref = Math.max(0, x2 - 8);
+  const bg = meanAround(img, ref, 2);
+  let marks = 0;
+  for (let y = 4; y < rows; y++) if (colorDistance(pixelAt(img, ref, y), bg) > MARK_DISTANCE) marks++;
+  // A real mark (PS2's square) covers a sizeable share of the column; a few stray pixels at the spine's edge do not.
+  if (marks < (rows - 4) * 0.15) return 0;
+  const limit = Math.round((img.width - x2) * 0.08);
+  let k = 0;
+  for (; k < limit; k++) {
+    let diff = 0;
+    for (let y = 4; y < rows; y++) diff += colorDistance(pixelAt(img, x2 + k, y), pixelAt(img, ref, y));
+    if (diff / (rows - 4) > 30) break;
+  }
+  return k;
+}
+
 /** Marks on the header: runs of pixels that differ from the column's own background (its top rows), grouped
  * left-to-right so "PS symbol + PS4 wordmark" is one lockup. */
-function findFrontLogos(img: RawImage, x0: number, x1: number, depthAt: (x: number) => number): Logo[] {
+function findFrontLogos(img: RawImage, x0: number, x1: number, depthAt: (x: number) => number, edgeMarginPct: number): Logo[] {
   const frontW = x1 - x0;
   const flags: boolean[] = new Array(frontW).fill(false);
   const colTop = new Int32Array(frontW).fill(-1);
   const colBottom = new Int32Array(frontW).fill(-1);
   const samples: [number, number, number][][] = Array.from({ length: frontW }, () => []);
   for (let x = x0; x < x1; x++) {
-    const depth = depthAt(x) - 2; // stay clear of the border
+    // Stay clear of the border and of a curved edge's own line, which would otherwise read as a logo.
+    const depth = depthAt(x) - Math.max(3, Math.round((img.height * edgeMarginPct) / 100));
     if (depth < 8) continue;
     const bg = meanAround(img, x, 2);
     let count = 0;
@@ -690,41 +814,43 @@ function hexToColor(hex: string): [number, number, number] {
  * Front band, front logos, spine band and spine logos for a standard back | spine | front wrap. `band` is the header
  * pass the case measurements already ran on the right-hand slice of the front, or null if it found nothing.
  */
-function measureBranding(img: RawImage, x1: number, x2: number, band: HeaderBand | null, bandSlice: [number, number]): Branding {
+function measureBranding(img: RawImage, x1: number, x2: number, band: HeaderBand | null): Branding {
   const out = emptyBranding();
   const { height } = img;
 
   // ── Front band: per-column depth across the whole front, not just the slice used for colour.
-  const raw = columnBandDepths(img, x2, img.width);
+  const frontStart = x2 + spineLeakColumns(img, x2);
+  const raw = columnBandDepths(img, frontStart, img.width);
   // With an estimated fold, the first columns can still be the spine's cap, which is deeper than any header;
   // drop leading columns that are much deeper than the typical column so they aren't read as front branding.
-  const typical = median(raw.depths.filter((d) => d > 0)) || 0;
+  // Logos shorten many columns, so use a high percentile (the band's own depth), not the median.
+  const positive = raw.depths.filter((d) => d > 0).sort((a, b) => a - b);
+  const typical = positive.length ? positive[Math.floor(positive.length * 0.75)] : 0;
   let skip = 0;
   while (skip < raw.depths.length - 1 && typical > 0 && raw.depths[skip] > typical * 1.5) skip++;
   const xs = raw.xs.slice(skip);
-  const depths = raw.depths.slice(skip);
-  const frontX0 = xs[0] ?? x2;
+  const frontX0 = xs[0] ?? frontStart;
   const frontW = img.width - frontX0;
   const minDepth = (MIN_HEADER_DEPTH_PCT / 100) * height;
-  const wide = envelope(xs, depths, frontW * 0.12);
-  // A logo cuts a column short but never longer, so a small window recovers the band's true depth there
-  // without dragging a sloped edge far from its real position.
-  const narrowR = frontW * 0.05;
-  const narrow = envelope(xs, depths, narrowR);
+  // Only columns inside the band's own colour count: beside a tab, the artwork's jumps are not a band's edge.
+  const step = xs.length > 1 ? xs[1] - xs[0] : 1;
+  const tops = xs.map((x) => meanAround(img, x, 2));
+  const segment = pickBandSegment(tops, raw.depths.slice(skip).map((d) => d >= minDepth), Math.max(1, Math.round((frontW * 0.03) / step)));
+  const depths = raw.depths.slice(skip).map((d, i) => (segment && i >= segment[0] && i <= segment[1] ? d : 0));
+  const edge = edgeDepths(xs, depths, frontW);
   const nearest = (values: number[], x: number) => {
     let best = 0;
     for (let i = 1; i < xs.length; i++) if (Math.abs(xs[i] - x) < Math.abs(xs[best] - x)) best = i;
     return values[best] ?? 0;
   };
-  const coverage = narrow.filter((d) => d >= minDepth).length / narrow.length;
+  const coverage = segment ? (segment[1] - segment[0] + 1) / xs.length : 0;
   const pctH = (px: number) => (100 * px) / height;
   if (band && coverage >= 0.6) {
-    const [l, c, r] = [0.05, 0.5, 0.95].map((f) => pctH(nearest(wide, frontX0 + f * frontW))) as [number, number, number];
+    const [l, c, r] = [0.05, 0.5, 0.95].map((f) => pctH(nearest(edge, frontX0 + f * frontW))) as [number, number, number];
     const spread = Math.max(l, c, r) - Math.min(l, c, r);
     const shape = spread <= 1.5 ? 'flat' : c > Math.max(l, r) + 1 ? 'arched' : c < Math.min(l, r) - 1 ? 'dipped' : 'sloped';
-    const inner = insideBand(img, bandSlice[0], bandSlice[1], band);
-    const colors = bandGradient(meanAround(img, frontX0 + Math.round(frontW * 0.03), 2), meanAround(img, frontX0 + Math.round(frontW * 0.97), 2), inner);
-    const border = findTrailingLine(img, bandSlice[0], bandSlice[1], band.row) ?? findEdgeLine(img, bandSlice[0], bandSlice[1], band.row);
+    const colors = bandGradient(meanAround(img, frontX0 + Math.round(frontW * 0.03), 2), meanAround(img, frontX0 + Math.round(frontW * 0.97), 2), band);
+    const border = findBorderAlongEdge(img, xs, depths, edge);
     out.frontBand = {
       shape,
       widthPct: 100,
@@ -736,18 +862,18 @@ function measureBranding(img: RawImage, x1: number, x2: number, band: HeaderBand
       borderPct: border?.thicknessPct ?? null,
       borderHex: border?.hex ?? null,
     };
-  } else if (coverage > 0.03 && coverage < 0.6) {
-    // The narrow window widens a tab by up to its radius on each side that isn't the trim edge.
-    const runs = runsOf(narrow.map((d) => d >= minDepth), 1).sort((p, q) => q[1] - q[0] - (p[1] - p[0]));
-    const [r0, r1] = runs[0];
-    const step = xs.length > 1 ? xs[1] - xs[0] : 1;
-    const leftInterior = r0 > 0 ? narrowR : 0;
-    const rightInterior = r1 < xs.length - 1 ? narrowR : 0;
-    const tabX0 = xs[r0] + leftInterior;
-    const tabX1 = xs[r1] + step - rightInterior;
-    const deepest = pctH(Math.max(...narrow));
+  } else if (segment && coverage > 0.03 && coverage < 0.6) {
+    // A block covering part of the width. Its edge comes straight from where the band's colour stops.
+    const tabX0 = xs[segment[0]];
+    const tabX1 = xs[segment[1]] + step;
+    const deepest = pctH(Math.max(...edge));
     const mid = Math.round((tabX0 + tabX1) / 2);
-    const tabBand = band ?? { row: 0, shape: 'flat' as const, colorHex: colorToHex(meanAround(img, mid, 2)), endColorHex: colorToHex(meanAround(img, mid, 2)) };
+    // The band the case pass found is on the artwork when the header is only a tab, so read the tab on its own.
+    const tabSpan = tabX1 - tabX0;
+    const tabBand =
+      findHeaderBand(img, Math.round(tabX0 + tabSpan * 0.6), Math.round(tabX1)) ??
+      { row: 0, shape: 'flat' as const, colorHex: colorToHex(meanAround(img, mid, 2)), endColorHex: colorToHex(meanAround(img, mid, 2)) };
+    const border = findBorderAlongEdge(img, xs, depths, edge);
     out.frontBand = {
       shape: 'tab',
       widthPct: (100 * Math.max(0, tabX1 - tabX0)) / frontW,
@@ -756,11 +882,13 @@ function measureBranding(img: RawImage, x1: number, x2: number, band: HeaderBand
       xPct: (100 * (tabX0 - frontX0)) / frontW,
       yPct: 0,
       ...bandGradient(meanAround(img, Math.round(tabX0) + 3, 2), meanAround(img, Math.round(tabX1) - 3, 2), tabBand),
-      borderPct: null,
-      borderHex: null,
+      borderPct: border?.thicknessPct ?? null,
+      borderHex: border?.hex ?? null,
     };
   }
-  if (out.frontBand) out.frontLogos = findFrontLogos(img, frontX0, img.width, (x) => nearest(narrow, x));
+  // A curved or sloped edge moves between samples, so keep further from it than from a flat one.
+  const curved = out.frontBand !== null && out.frontBand.heightPct - out.frontBand.heightMinPct > 1.5;
+  if (out.frontBand) out.frontLogos = findFrontLogos(img, frontX0, img.width, (x) => nearest(edge, x), curved ? 3 : 1.2);
 
   // ── Spine band: sample a strip near the spine's left edge, clear of a centred logo, to find where its colour stops.
   const spineW = x2 - x1;
@@ -825,7 +953,9 @@ function measureBranding(img: RawImage, x1: number, x2: number, band: HeaderBand
       }
       flags[y] = count >= 2;
     }
-    for (const [a, b] of runsOf(flags, Math.round(height * LOGO_GAP_FRACTION * 0.4))) {
+    // On a spine whose colour runs its whole length the title sits on the band too, so group tightly and (below) keep
+    // only the first logo: anything after it is the title.
+    for (const [a, b] of runsOf(flags, Math.round(height * (cap ? LOGO_GAP_FRACTION * 0.4 : 0.015)))) {
       const heightPct = pctH(b - a + 1);
       if (heightPct < 0.6) continue;
       let xMin = innerX1;
@@ -843,10 +973,33 @@ function measureBranding(img: RawImage, x1: number, x2: number, band: HeaderBand
       });
     }
   }
+  if (!cap) out.spineLogos = out.spineLogos.slice(0, 1);
   return out;
 }
 
-async function measure(file: string, group: string): Promise<ImageResult> {
+/** The front band for the case report, from the same reading the branding report uses: a tab's own height (the
+ * right-hand slice the case pass samples is artwork beside a tab), colours that ignore a thin border at the band's foot
+ * and see a left-to-right gradient. Falls back to the header pass alone. Returns false when there is no band. */
+function applyFrontBand(result: ImageResult, band: HeaderBand | null, heightPx: number): boolean {
+  const front = result.branding?.frontBand;
+  if (front?.shape === 'tab') result.bandHeightPct = front.heightPct;
+  else if (band) result.bandHeightPct = (100 * band.row) / heightPx;
+  if (front) {
+    result.bandShape = front.gradient ? 'gradient' : 'flat';
+    result.bandColorHex = front.hex;
+    result.bandEndColorHex = front.hex2;
+    return true;
+  }
+  if (!band) return false;
+  result.bandShape = band.shape;
+  result.bandColorHex = band.colorHex;
+  result.bandEndColorHex = band.shape === 'gradient' ? band.endColorHex : null;
+  return true;
+}
+
+/** `knownFold`: where the seams are, when the layout is known rather than found — two x positions (back|spine, spine|front)
+ * or, for a jewel case, three (spine | back | spine | front). */
+async function measure(file: string, group: string, knownFold?: number[], kind: 'scan' | 'app' = 'scan'): Promise<ImageResult> {
   const image = sharp(file);
   const meta = await image.metadata();
   const widthPx = meta.width!;
@@ -863,7 +1016,7 @@ async function measure(file: string, group: string): Promise<ImageResult> {
   const toMm = (px: number) => (dpi ? (px / dpi) * MM_PER_INCH : null);
   const result: ImageResult = {
     file,
-    kind: 'scan',
+    kind,
     widthPx,
     heightPx,
     dpi,
@@ -900,11 +1053,15 @@ async function measure(file: string, group: string): Promise<ImageResult> {
   if (JEWEL_CASE_GROUPS.has(group.toLowerCase())) {
     if (!dpi) return result;
     const gray = toGray(img);
-    const [x1, x2, x3] = findJewelCaseSeams(gray, img.width, img.height, dpi);
-    result.spineSource = 'estimated';
-    notes.push(
-      `Jewel case (spine | back | spine | front): seams refined from ${group}'s known CD/PS1 tray-card proportions (case-research.md) by searching nearby for the nearest real edge, not detected outright.`,
-    );
+    const [x1, x2, x3] = knownFold && knownFold.length === 3 ? knownFold : findJewelCaseSeams(gray, img.width, img.height, dpi);
+    if (knownFold && knownFold.length === 3) {
+      result.spineSource = 'known';
+    } else {
+      result.spineSource = 'estimated';
+      notes.push(
+        `Jewel case (spine | back | spine | front): seams refined from ${group}'s known CD/PS1 tray-card proportions (case-research.md) by searching nearby for the nearest real edge, not detected outright.`,
+      );
+    }
     result.spineMm = toMm(x1);
     result.backMm = toMm(x2 - x1);
     result.spine2Mm = toMm(x3 - x2);
@@ -921,7 +1078,10 @@ async function measure(file: string, group: string): Promise<ImageResult> {
 
   const gray = toGray(img);
   let fold = findFoldLines(gray, img.width, img.height);
-  if (fold) {
+  if (knownFold) {
+    fold = [knownFold[0], knownFold[1]];
+    result.spineSource = 'known';
+  } else if (fold) {
     result.spineSource = 'detected';
   } else {
     const knownSpineMm = KNOWN_SPINE_MM[group.toLowerCase()];
@@ -948,13 +1108,8 @@ async function measure(file: string, group: string): Promise<ImageResult> {
   // PS4's wordmark did exactly this across ~45% of the front width).
   const bandSlice: [number, number] = [x2 + Math.round((img.width - x2) * 0.6), img.width];
   const band = findHeaderBand(img, bandSlice[0], bandSlice[1]);
-  result.branding = measureBranding(img, x1, x2, band, bandSlice);
-  if (band) {
-    result.bandHeightPct = (100 * band.row) / img.height;
-    result.bandShape = band.shape;
-    result.bandColorHex = band.colorHex;
-    result.bandEndColorHex = band.shape === 'gradient' ? band.endColorHex : null;
-  } else {
+  result.branding = measureBranding(img, x1, x2, band);
+  if (!applyFrontBand(result, band, img.height)) {
     notes.push('No header band detected on the front panel (may be sloped/curved, or none).');
   }
 
@@ -1028,7 +1183,7 @@ async function measureTemplate(file: string, group: string, scanWidthMm: number 
   if (profileNote) notes.push(profileNote);
 
   let dpi = REQUIRED_DPI;
-  let widthMm = (widthPx / dpi) * MM_PER_INCH;
+  const widthMm = (widthPx / dpi) * MM_PER_INCH;
   let usable = true;
   if (widthMm < PLAUSIBLE_WRAP_WIDTH_MM[0] || widthMm > PLAUSIBLE_WRAP_WIDTH_MM[1]) {
     if (scanWidthMm) {
@@ -1036,7 +1191,6 @@ async function measureTemplate(file: string, group: string, scanWidthMm: number 
       notes.push(
         `Implausible width at ${REQUIRED_DPI} DPI (${widthMm.toFixed(0)} mm); rescaled to ${group}'s scan summary width ${scanWidthMm.toFixed(1)} mm (effective ${dpi.toFixed(0)} DPI). Percentages are unaffected; mm values assume the template is a full wrap at scan size.`,
       );
-      widthMm = scanWidthMm;
     } else {
       notes.push(`Implausible width at ${REQUIRED_DPI} DPI (${widthMm.toFixed(0)} mm) and no ${group} scans to rescale from; skipped.`);
       usable = false;
@@ -1157,14 +1311,9 @@ async function measureTemplate(file: string, group: string, scanWidthMm: number 
   const [f0, f1] = frontPrinted;
   const bandSlice: [number, number] = [f0 + Math.round((f1 - f0) * 0.6), f1 + 1];
   const band = findHeaderBand(img, bandSlice[0], bandSlice[1]);
-  result.branding = measureBranding(img, x1, x2, band, bandSlice);
+  result.branding = measureBranding(img, x1, x2, band);
   result.spineCapPct = result.branding.spineBand && result.branding.spineBand.heightPct < 100 ? result.branding.spineBand.heightPct : null;
-  if (band) {
-    result.bandHeightPct = (100 * band.row) / height;
-    result.bandShape = band.shape;
-    result.bandColorHex = band.colorHex;
-    result.bandEndColorHex = band.shape === 'gradient' ? band.endColorHex : null;
-  } else {
+  if (!applyFrontBand(result, band, height)) {
     notes.push('No header band detected on the front panel.');
   }
   return result;
@@ -1183,6 +1332,12 @@ const modeOrMedianOrNull = (values: (number | null)[]) => {
   return present.length ? modeOrMedian(present) : null;
 };
 
+const appLabel = (r: ImageResult) => (r.kind === 'app' ? 'app (rendered)' : basename(r.file));
+const deltaNum = (a: number | null, b: number | null) => (a === null || b === null ? '—' : `${a - b >= 0 ? '+' : ''}${(a - b).toFixed(1)}`);
+const deltaStr = (a: string | null, b: string | null) => (a === null || b === null ? '—' : a === b ? '=' : '≠');
+/** How far apart two colours are (0 = identical, 441 = black vs white). */
+const deltaHex = (a: string | null, b: string | null) => (a && b ? String(Math.round(colorDistance(hexToColor(a), hexToColor(b)))) : '—');
+
 function buildReport(groups: Map<string, ImageResult[]>): string {
   const lines: string[] = ['# Cover scan measurements', ''];
   lines.push(
@@ -1194,25 +1349,26 @@ function buildReport(groups: Map<string, ImageResult[]>): string {
       'All colours are sRGB: an embedded ICC profile is converted to sRGB when the image is read (flagged in Notes), and an image with no profile is assumed to be sRGB already. ' +
       `Scans and templates whose embedded DPI isn't exactly ${REQUIRED_DPI} are rejected outright and don't appear below (see stderr). ` +
       'Rows named `template.*` are fan-made transparent templates: their layout is read from the alpha channel and ' +
-      'their header band/colours with the same code as the scans. Each table has one summary row across every row in it, template included: the mode (most frequent exact value) where one value repeats and wins outright, otherwise the median.',
+      'their header band/colours with the same code as the scans. Each table has one summary row across every row in it, template included: the mode (most frequent exact value) where one value repeats and wins outright, otherwise the median. ' +
+      'If `npm run compare:covers` has been run, a table also shows `app (rendered)`, the app\'s own render of that case measured with its fold positions known, and `app − Mode` (mm or percentage points; `=`/`≠` for shapes; a colour distance, 0 to 441, for colours). It is never part of the Mode.',
   );
   lines.push('');
 
   for (const name of [...groups.keys()].sort()) {
-    const results = groups.get(name)!;
+    const results = groups.get(name)!.filter((r) => r.kind !== 'app');
+    const app = groups.get(name)!.find((r) => r.kind === 'app');
+    if (!results.length && !app) continue;
     lines.push(`## ${name}  (n=${results.length})`);
     lines.push('');
     lines.push(
       '| File | DPI | Width mm | Height mm | Back mm | Spine mm | Spine 2 mm | Front mm | Spine source | Band % H | Band shape | Band colour | Band end colour | Spine cap % L | Notes |',
     );
     lines.push('| :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- |');
-    for (const r of results) {
-      lines.push(
-        `| ${basename(r.file)} | ${r.dpi ? r.dpi.toFixed(0) : '—'} | ${fmt(r.widthMm)} | ${fmt(r.heightMm)} ` +
-          `| ${fmt(r.backMm)} | ${fmt(r.spineMm)} | ${fmt(r.spine2Mm)} | ${fmt(r.frontMm)} | ${r.spineSource} | ${fmt(r.bandHeightPct)} ` +
-          `| ${r.bandShape} | ${r.bandColorHex ?? '—'} | ${r.bandEndColorHex ?? '—'} | ${fmt(r.spineCapPct)} | ${r.notes.join('; ')} |`,
-      );
-    }
+    const rowFor = (r: ImageResult) =>
+      `| ${appLabel(r)} | ${r.dpi ? r.dpi.toFixed(0) : '—'} | ${fmt(r.widthMm)} | ${fmt(r.heightMm)} ` +
+      `| ${fmt(r.backMm)} | ${fmt(r.spineMm)} | ${fmt(r.spine2Mm)} | ${fmt(r.frontMm)} | ${r.spineSource} | ${fmt(r.bandHeightPct)} ` +
+      `| ${r.bandShape} | ${r.bandColorHex ?? '—'} | ${r.bandEndColorHex ?? '—'} | ${fmt(r.spineCapPct)} | ${r.notes.join('; ')} |`;
+    for (const r of results) lines.push(rowFor(r));
     lines.push(
       `| **Mode** | | **${fmt(modeOrMedianOrNull(results.map((r) => r.widthMm)))}** ` +
         `| **${fmt(modeOrMedianOrNull(results.map((r) => r.heightMm)))}** ` +
@@ -1225,6 +1381,19 @@ function buildReport(groups: Map<string, ImageResult[]>): string {
         `| **${modeOrMedianHexColor(results.map((r) => r.bandEndColorHex)) ?? '—'}** ` +
         `| **${fmt(modeOrMedianOrNull(results.map((r) => r.spineCapPct)))}** | |`,
     );
+    if (app && results.length) {
+      lines.push(rowFor(app));
+      const m = (pick: (r: ImageResult) => number | null) => modeOrMedianOrNull(results.map(pick));
+      lines.push(
+        `| *app − Mode* | | ${deltaNum(app.widthMm, m((r) => r.widthMm))} | ${deltaNum(app.heightMm, m((r) => r.heightMm))} ` +
+          `| ${deltaNum(app.backMm, m((r) => r.backMm))} | ${deltaNum(app.spineMm, m((r) => r.spineMm))} | ${deltaNum(app.spine2Mm, m((r) => r.spine2Mm))} ` +
+          `| ${deltaNum(app.frontMm, m((r) => r.frontMm))} | | ${deltaNum(app.bandHeightPct, m((r) => r.bandHeightPct))} ` +
+          `| ${deltaStr(app.bandShape, modeString(results.map((r) => r.bandShape)))} | ${deltaHex(app.bandColorHex, modeOrMedianHexColor(results.map((r) => r.bandColorHex)))} ` +
+          `| ${deltaHex(app.bandEndColorHex, modeOrMedianHexColor(results.map((r) => r.bandEndColorHex)))} | ${deltaNum(app.spineCapPct, m((r) => r.spineCapPct))} | |`,
+      );
+    } else if (app) {
+      lines.push(rowFor(app));
+    }
     const detected = results.filter((r) => r.spineSource === 'detected').length;
     const estimated = results.filter((r) => r.spineSource === 'estimated').length;
     lines.push('');
@@ -1337,31 +1506,47 @@ function buildBrandingReport(groups: Map<string, ImageResult[]>): string {
       'one value repeats and wins outright, otherwise the median. Detection is approximate: a logo touching the band\'s ' +
       "edge, a fold line that was estimated instead of detected (see Spine source), or artwork close to the band colour " +
       'can move a number. All colours are sRGB: an embedded ICC profile is converted to sRGB when the image is read (flagged in Notes), and an image with no profile is assumed to be sRGB already. ' +
-      `Scans and templates whose DPI isn't exactly ${REQUIRED_DPI} are rejected, and images whose layout wasn't located have no row.`,
+      `Scans and templates whose DPI isn't exactly ${REQUIRED_DPI} are rejected, and images whose layout wasn't located have no row. ` +
+      'If `npm run compare:covers` has been run, a table also shows `app (rendered)`, the app\'s own render of that case, and `app − Mode` (percentage points; `=`/`≠` for text; a colour distance, 0 to 441, for colours). It is never part of the Mode.',
   );
   lines.push('');
 
   const fmtCell = (v: number | string | null) => (v === null ? '—' : typeof v === 'number' ? v.toFixed(1) : v);
   for (const name of [...groups.keys()].sort()) {
-    const rows = groups.get(name)!.filter((r) => r.branding);
-    if (!rows.length) continue;
+    const rows = groups.get(name)!.filter((r) => r.branding && r.kind !== 'app');
+    const app = groups.get(name)!.find((r) => r.kind === 'app' && r.branding);
+    if (!rows.length && !app) continue;
     lines.push(`## ${name}  (n=${rows.length})`, '');
     lines.push(`| File | ${BRANDING_COLUMNS.map((c) => c.header).join(' | ')} | Notes |`);
     lines.push(`| :--- | ${BRANDING_COLUMNS.map(() => ':---').join(' | ')} | :--- |`);
-    for (const r of rows) {
+    const brandingRow = (r: ImageResult) => {
       const b = r.branding!;
       const extra: string[] = r.notes.filter((n) => n.startsWith('Colour profile'));
       if (b.frontLogos.length > LOGO_COLUMNS) extra.push(`${b.frontLogos.length - LOGO_COLUMNS} more front logo(s) not shown`);
       if (b.spineLogos.length > LOGO_COLUMNS) extra.push(`${b.spineLogos.length - LOGO_COLUMNS} more spine logo(s) not shown`);
-      lines.push(`| ${basename(r.file)} | ${BRANDING_COLUMNS.map((c) => fmtCell(c.get(r, b))).join(' | ')} | ${extra.join('; ')} |`);
-    }
+      return `| ${appLabel(r)} | ${BRANDING_COLUMNS.map((c) => fmtCell(c.get(r, b))).join(' | ')} | ${extra.join('; ')} |`;
+    };
+    for (const r of rows) lines.push(brandingRow(r));
     const summary = BRANDING_COLUMNS.map((c) => {
       const values = rows.map((r) => c.get(r, r.branding!));
       if (c.kind === 'num') return fmtCell(modeOrMedianOrNull(values as (number | null)[]));
       if (c.kind === 'hex') return modeOrMedianHexColor(values as (string | null)[]) ?? '—';
       return modeString(values as (string | null)[]) ?? '—';
     });
-    lines.push(`| **Mode** | ${summary.map((v) => `**${v}**`).join(' | ')} | |`);
+    if (rows.length) lines.push(`| **Mode** | ${summary.map((v) => `**${v}**`).join(' | ')} | |`);
+    if (app) {
+      lines.push(brandingRow(app));
+      if (rows.length) {
+        const delta = BRANDING_COLUMNS.map((c, i) => {
+          const a = c.get(app, app.branding!);
+          const m = summary[i] === '—' ? null : summary[i];
+          if (c.kind === 'num') return deltaNum(a as number | null, m === null ? null : Number(m));
+          if (c.kind === 'hex') return deltaHex(a as string | null, m);
+          return deltaStr(a as string | null, m);
+        });
+        lines.push(`| *app − Mode* | ${delta.join(' | ')} | |`);
+      }
+    }
     lines.push('');
   }
   return lines.join('\n');
@@ -1420,6 +1605,17 @@ async function main() {
 
   if (rejected) console.error(`Rejected ${rejected}/${files.length} file(s) for not being ${REQUIRED_DPI} DPI; left out of the report.`);
 
+  // The app's own renders (scripts/compare-covers.ts), measured with their fold positions known.
+  const appDir = flags.get('--app-dir') ?? DEFAULT_APP_DIR;
+  const appGroups = existsSync(appDir) ? readdirSync(appDir, { withFileTypes: true }).filter((d) => d.isDirectory()).map((d) => d.name) : [];
+  for (const group of appGroups) {
+    const png = join(appDir, group, 'app.png');
+    const meta = join(appDir, group, 'app.json');
+    if (!existsSync(png) || !existsSync(meta)) continue;
+    const { x1, x2, x3 } = JSON.parse(readFileSync(meta, 'utf8')) as { x1: number; x2: number; x3?: number };
+    add(group, await measure(png, group, x3 === undefined ? [x1, x2] : [x1, x2, x3], 'app'));
+  }
+
   const report = buildReport(groups);
   writeFileSync(out, report);
   console.error(`Wrote ${out}`);
@@ -1427,4 +1623,7 @@ async function main() {
   console.error(`Wrote ${brandingOut}`);
 }
 
-main();
+export { measure, findImages };
+
+// Run only when invoked directly, so scripts/compare-covers.ts can import measure().
+if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) await main();
