@@ -1,7 +1,6 @@
 # Case size research
 
-Raw research behind the sizes in `definitions.ts` and `branding-spec.md`. For each physical case, every source found
-is listed with a link, so no single page is treated as ground truth. All measurements are in millimetres — no inches.
+For each physical case, every source found is listed with a link, so no single page is treated as ground truth. All measurements are in millimetres — no inches.
 **Mode is computed per column independently** (the most frequent width across sources, the most frequent height
 across sources, the most frequent depth across sources) — not as one source's whole row. Every table below carries a
 Mode row. Where a column had no repeated value, more sources were specifically sought out for it (see the "Additional
@@ -346,4 +345,3 @@ Note: a rectangular alternative (~68 × 51 mm, sold as "2 11/16 × 2 in" diskett
 | VHS width/depth, DVD Slim insert, cassette back flap | Improved but not fully resolved this round | Plausible, minor/no priority to change |
 | Cassette case exterior, floppy shell | Not researched — not needed for what our templates print | N/A by design |
 
-No code has been changed.
