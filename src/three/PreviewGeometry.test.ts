@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { TEMPLATE_DEFS, buildTemplate } from '../templates';
-import { FACE_ORDER, TARGET_SIZE_UNITS, createBodyGeometry, createLabelGeometry, createLabelSliceGeometry, createSlabBodyGeometry, createSlabFaceGeometry, insetFaces, labelWrap, modelSizeMm, panelUvRange, previewScale, printedFaces, slabOutline } from './PreviewGeometry';
+import { FACE_ORDER, TARGET_SIZE_UNITS, createBodyGeometry, createInsetGeometry, createLabelGeometry, createLabelSliceGeometry, createSlabBodyGeometry, createSlabFaceGeometry, insetFaces, labelWrap, modelSizeMm, panelUvRange, previewScale, printedFaces, slabOutline } from './PreviewGeometry';
 
 describe('panelUvRange', () => {
   it('excludes bleed and splits the texture back | spine | front', () => {
@@ -152,5 +152,21 @@ describe('inset faces', () => {
       const t = buildTemplate(kind, id);
       expect(insetFaces(t, t.preview), `${kind}/${id}`).toEqual([]);
     }
+  });
+
+  it('draws an inset plane at the panel\'s own true height, not stretched or squeezed to the body\'s', () => {
+    // The CD tray card (118 mm) is genuinely shorter than the modelled case (120 mm) — the disc-tray
+    // mechanism trims its usable height (see jewelCase()'s comment in definitions.ts). It's drawn at its
+    // own true height, centred, the same way its 6.5 mm width already reads true against the 10 mm depth
+    // (see createInsetGeometry's comment) — not stretched or squeezed to chase alignment with faces it
+    // doesn't actually share an edge with in real life.
+    const t = buildTemplate('cd', 'jewel');
+    const spine = t.panels.find((p) => p.id === 'spine')!;
+    const spec = t.preview as Extract<typeof t.preview, { kind: 'box' }>;
+    expect(spine.heightMm).toBeLessThan(spec.heightMm);
+    const geo = createInsetGeometry(t, 'spine');
+    const pos = geo.getAttribute('position');
+    const ys = Array.from({ length: pos.count }, (_, i) => pos.getY(i));
+    expect(Math.max(...ys) - Math.min(...ys)).toBeCloseTo(spine.heightMm);
   });
 });

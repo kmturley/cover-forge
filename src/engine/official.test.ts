@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { TEMPLATE_DEFS, buildTemplate } from '../templates';
-import { FORMAT_BRANDING, GAME_CASE_BRANDING, arc, brandingFor, contrast, ease, slope, spineTitleColor, spineTitleStartMm, type FrontHeader } from './official';
+import { FORMAT_BRANDING, GAME_CASE_BRANDING, arc, brandingFor, contrast, ease, slope, spineTitleCase, spineTitleColor, spineTitleStartMm, type FrontHeader } from './official';
 
 const variantsOf = (kind: (typeof TEMPLATE_DEFS)[number]['kind']) => (kind === 'game-case' ? Object.keys(GAME_CASE_BRANDING) : [undefined]);
 
@@ -52,7 +52,7 @@ describe('branding', () => {
     expect(band('gamecube').depth(1)).toBeCloseTo(0.072);
     expect(band('xbox-one').marks[0].align).toBe('center');
     expect(GAME_CASE_BRANDING.switch.front).toMatchObject({ shape: 'tab', w: 0.224, h: 0.13 });
-    expect(GAME_CASE_BRANDING.ps1.front).toMatchObject({ shape: 'strip', w: 0.155 });
+    expect(GAME_CASE_BRANDING.ps1.front).toMatchObject({ shape: 'strip', w: 0.15 });
     expect(FORMAT_BRANDING.dvd.front.shape).toBe('none');
   });
 
@@ -75,5 +75,13 @@ describe('spine title colour', () => {
     expect(spineTitleColor('game-case', 'wii', false, '#ffffff')).toBe('#ffffff');
     expect(spineTitleColor('game-case', 'switch', true, '#ffffff')).toBe('#ffffff');
     expect(contrast('#000000', '#ffffff')).toBeCloseTo(21);
+  });
+});
+
+describe('spine title case', () => {
+  it('forces PS1 spine titles to caps only when Branded', () => {
+    expect(spineTitleCase('game-case', 'ps1', true, 'Crash Bandicoot')).toBe('CRASH BANDICOOT');
+    expect(spineTitleCase('game-case', 'ps1', false, 'Crash Bandicoot')).toBe('Crash Bandicoot');
+    expect(spineTitleCase('game-case', 'ps4', true, 'Crash Bandicoot')).toBe('Crash Bandicoot');
   });
 });

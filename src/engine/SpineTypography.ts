@@ -35,8 +35,10 @@ export function defaultCapHeightMm(
   return Math.floor(Math.max(1.5, Math.min(MAX_AUTO_CAP_MM, fit, thicknessMm * MAX_THICKNESS_SHARE)) * 10) / 10;
 }
 
-/** The spine text a design starts with: "Artist · Title" for music, "Developer · Title" for games, else the title. */
-export const DEFAULT_SPINE_TEMPLATE = '{creator} · {title}';
+/** The template a design starts with when the user hasn't set one: "Artist · Title" for music, just the title for everything else — a game or movie spine naming the publisher isn't a convention, unlike a music spine naming the artist. */
+export function defaultSpineTemplate(item: MediaItem): string {
+  return item.type === 'music' ? '{creator} · {title}' : '{title}';
+}
 
 /** The variables spine text can use, with what each one is. */
 export const SPINE_VARIABLES: { name: string; label: string }[] = [
@@ -85,7 +87,7 @@ export function fillSpineText(template: string, item: MediaItem): string {
 
 /** The text on an item's spine: its own text if it has one, otherwise the design's, with the variables filled in. */
 export function spineText(item: MediaItem, s: Pick<SpineSettings, 'text' | 'textTemplate'>): string {
-  return fillSpineText(s.text ?? s.textTemplate ?? DEFAULT_SPINE_TEMPLATE, item);
+  return fillSpineText(s.text ?? s.textTemplate ?? defaultSpineTemplate(item), item);
 }
 
 /**

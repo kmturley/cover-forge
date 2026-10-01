@@ -93,6 +93,8 @@ export interface SpineBranding {
   titleFrom?: number;
   /** The title's colour when the chosen one wouldn't show on `fill` (dark grey on Wii's white spine). */
   titleColor?: string;
+  /** Forces the title's letter case on this spine (PS1's is always printed in caps). */
+  titleCase?: 'upper';
 }
 
 export interface Branding {
@@ -161,13 +163,17 @@ export const GAME_CASE_BRANDING: Record<string, Branding> = {
   // PS1 (jewel case): a black strip down the left, the PS symbol at its top and "PlayStation" reading upwards.
   ps1: {
     front: {
-      shape: 'strip', w: 0.155, fill: K,
+      shape: 'strip', w: 0.15, fill: K,
       marks: [
-        { parts: [PS], color: W, from: 0.02, to: 0.14, across: 0.8, rotate: 0 },
-        { parts: [{ text: 'PlayStation', weight: 700 }], color: W, from: 0.2, to: 0.75, across: 0.5, rotate: -90 },
+        { parts: [PS], color: W, from: 0.02, to: 0.14, across: 0.7, rotate: 0 },
+        { parts: [{ text: 'PlayStation', weight: 500 }], color: W, from: 0.17, to: 0.78, across: 0.6, rotate: -90 },
       ],
     },
-    spine: { cap: { length: 0.12, fill: K }, marks: [{ parts: [PS], color: W, from: 0.02, to: 0.1, across: 0.75, rotate: 0 }] },
+    spine: {
+      fill: K,
+      marks: [{ parts: [{ text: 'PlayStation®', weight: 500 }], color: W, from: 0.02, to: 0.17, rotate: 90 }],
+      titleCase: 'upper',
+    },
   },
   // PS2: a black band, the wordmark left and the PS symbol right; a black spine with the symbol on a white square.
   ps2: {
@@ -382,6 +388,12 @@ export function spineTitleColor(kind: TemplateKind, variantId: string, branded: 
   return contrast(color, spine.fill) < 2 ? spine.titleColor : color;
 }
 
+/** Forces the spine title's letter case on platforms that always print it one way (PS1's is always caps). */
+export function spineTitleCase(kind: TemplateKind, variantId: string, branded: boolean, text: string): string {
+  const spine = branded ? brandingFor(kind, variantId).spine : undefined;
+  return spine?.titleCase === 'upper' ? text.toUpperCase() : text;
+}
+
 // ——— Drawing ———
 
 const FONT = 'Helvetica, Arial, sans-serif';
@@ -481,61 +493,75 @@ function drawIcon(ctx: Ctx, icon: Icon, x: number, y: number, w: number, h: numb
   ctx.fillStyle = color;
   ctx.strokeStyle = color;
   if (icon === 'joycon') {
-    // Two Joy-Con halves: the left outlined with a stick, the right solid with a button.
+    // Two Joy-Con halves: the left outlined with a stick, the right solid with four face buttons.
     const half = w * 0.47;
     const line = w * 0.09;
     ctx.lineWidth = line;
     roundRect(ctx, x + line / 2, y + line / 2, half - line, h - line, [half / 2, 0, 0, half / 2]);
     ctx.stroke();
     ctx.beginPath();
-    ctx.arc(x + half / 2, y + h * 0.3, half * 0.2, 0, Math.PI * 2);
+    ctx.arc(x + half / 2, y + h * 0.28, half * 0.19, 0, Math.PI * 2);
     ctx.fill();
     roundRect(ctx, x + w - half, y, half, h, [0, half / 2, half / 2, 0]);
     ctx.fill();
-    // The button is a hole showing the background behind the icon.
+    // The four face buttons (ABXY layout) are holes showing the background behind the icon.
     ctx.fillStyle = accent;
-    ctx.beginPath();
-    ctx.arc(x + w - half / 2, y + h * 0.62, half * 0.2, 0, Math.PI * 2);
-    ctx.fill();
+    const bx = x + w - half / 2;
+    const by = y + h * 0.62;
+    const spread = half * 0.19;
+    const dotR = half * 0.085;
+    ([[0, -spread], [0, spread], [-spread, 0], [spread, 0]] as [number, number][]).forEach(([dx, dy]) => {
+      ctx.beginPath();
+      ctx.arc(bx + dx, by + dy, dotR, 0, Math.PI * 2);
+      ctx.fill();
+    });
   } else if (icon === 'xsphere') {
-    // A sphere with an X across it.
+    // A sphere with a soft diagonal swoosh across its upper half.
     const r = h / 2;
     ctx.beginPath();
     ctx.arc(x + r, y + r, r, 0, Math.PI * 2);
     ctx.fill();
+    ctx.save();
+    ctx.beginPath();
+    ctx.arc(x + r, y + r, r, 0, Math.PI * 2);
+    ctx.clip();
     ctx.strokeStyle = accent;
-    ctx.lineWidth = r * 0.34;
+    ctx.globalAlpha = 0.8;
+    ctx.lineWidth = r * 0.3;
     ctx.lineCap = 'round';
     ctx.beginPath();
-    const d = r * 0.5;
-    ctx.moveTo(x + r - d, y + r - d);
-    ctx.lineTo(x + r + d, y + r + d);
-    ctx.moveTo(x + r + d, y + r - d);
-    ctx.lineTo(x + r - d, y + r + d);
+    ctx.moveTo(x + r * 0.15, y + r * 1.15);
+    ctx.quadraticCurveTo(x + r * 1.0, y + r * 0.25, x + r * 1.9, y + r * 0.85);
     ctx.stroke();
+    ctx.restore();
   } else if (icon === 'cube') {
-    // An isometric cube: three faces of one colour at different strengths.
+    // An isometric cube: three faces of one colour at different strengths, with a faint seam between them.
     const cx = x + w / 2;
     const s = h / 2;
+    ctx.strokeStyle = 'rgba(0,0,0,0.25)';
+    ctx.lineWidth = Math.max(1, h * 0.012);
     const face = (pts: [number, number][], alpha: number) => {
       ctx.globalAlpha = alpha;
       ctx.beginPath();
       pts.forEach(([px, py], i) => (i ? ctx.lineTo(px, py) : ctx.moveTo(px, py)));
       ctx.closePath();
       ctx.fill();
+      ctx.stroke();
     };
     const dx = s * 0.87;
     face([[cx, y], [cx + dx, y + s / 2], [cx, y + s], [cx - dx, y + s / 2]], 1);
     face([[cx - dx, y + s / 2], [cx, y + s], [cx, y + h], [cx - dx, y + h - s / 2]], 0.75);
     face([[cx + dx, y + s / 2], [cx, y + s], [cx, y + h], [cx + dx, y + h - s / 2]], 0.55);
   } else {
-    // The four-colour Windows flag.
-    const g = w * 0.06;
+    // The four-colour Windows flag, panes slightly rounded.
+    const g = w * 0.07;
     const q = (w - g) / 2;
     const qh = (h - g) / 2;
+    const rad = w * 0.015;
     [['#f25022', 0, 0], ['#7fba00', 1, 0], ['#00a4ef', 0, 1], ['#ffb900', 1, 1]].forEach(([c, i, j]) => {
       ctx.fillStyle = c as string;
-      ctx.fillRect(x + (i as number) * (q + g), y + (j as number) * (qh + g), q, qh);
+      roundRect(ctx, x + (i as number) * (q + g), y + (j as number) * (qh + g), q, qh, [rad]);
+      ctx.fill();
     });
   }
   ctx.restore();

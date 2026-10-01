@@ -93,6 +93,29 @@ export function bodyPrintedFaces(t: TemplateConfig, spec: PreviewSpec): Partial<
   return Object.fromEntries(Object.entries(printedFaces(spec)).filter(([f]) => !insets.has(f as BoxFace)));
 }
 
+/**
+ * An inset plane's geometry, drawn at the panel's own true size on both axes — the same real mm dimensions as the
+ * printed piece — centred on the face. A CD's 6.5 mm spine card reads at true size on the case's 10 mm depth, case
+ * showing either side; its 118 mm height similarly reads at true size against the case's 120 mm modelled height,
+ * case showing top and bottom. This isn't a bug to engineer away: the tray card and the front booklet are genuinely
+ * different real-world pieces (see jewelCase()'s comment in definitions.ts) that don't share an edge when assembled,
+ * so there's no "correct" stretch or squeeze that would make their guide lines meet — trying to force that only
+ * substitutes an invented number for the real one. Showing the true size, consistently on every axis, is what an
+ * actual assembled case looks like.
+ */
+export function createInsetGeometry(t: TemplateConfig, id: PanelId): PlaneGeometry {
+  const p = t.panels.find((q) => q.id === id);
+  if (!p) throw new Error(`Template has no ${id} panel`);
+  const range = panelUvRange(t, id);
+  const geo = new PlaneGeometry(p.widthMm, p.heightMm);
+  const uv = geo.getAttribute('uv') as BufferAttribute;
+  for (let i = 0; i < uv.count; i++) {
+    uv.setXY(i, range.u0 + uv.getX(i) * (range.u1 - range.u0), range.v0 + uv.getY(i) * (range.v1 - range.v0));
+  }
+  uv.needsUpdate = true;
+  return geo;
+}
+
 /** Where the plane for an inset face sits (just proud of the surface) and how it is turned to face outwards. */
 export function insetPlacement(spec: Extract<PreviewSpec, { kind: 'box' }>, face: BoxFace): { position: [number, number, number]; rotation: [number, number, number] } {
   const off = 0.05;

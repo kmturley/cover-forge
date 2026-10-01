@@ -104,10 +104,10 @@ describe('spine text rotation', () => {
 describe('spine text', () => {
   const item = (type: MediaItem['type'], subtitle?: string, year?: string): MediaItem => ({ id: 'x', type, title: 'Title', subtitle, year, assets: { cover: null, hero: null, logo: null, screenshots: [] } });
 
-  it('defaults to the artist or developer, then the title', () => {
+  it('defaults to "artist · title" for music, and just the title for everything else', () => {
     expect(spineText(item('music', 'Artist'), {})).toBe('Artist · Title');
-    expect(spineText(item('game', 'Valve'), {})).toBe('Valve · Title');
-    expect(spineText(item('tv', 'HBO · Drama/Crime'), {})).toBe('Title'); // no network or genres
+    expect(spineText(item('game', 'Valve'), {})).toBe('Title'); // no publisher/developer by default
+    expect(spineText(item('tv', 'HBO · Drama/Crime'), {})).toBe('Title');
     expect(spineText(item('movie', 'Titre'), {})).toBe('Title');
   });
 

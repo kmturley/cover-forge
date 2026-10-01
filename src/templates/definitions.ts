@@ -248,6 +248,13 @@ function wallet(name: string, w: number, h: number, marks: (panels: PanelRect[])
  * A CD jewel case: the rear tray card [spine | back | spine], whose two spine flaps both carry the title,
  * then the front booklet — front last/rightmost, same convention as every other case (`wrap()`'s
  * back | spine | front). Music CDs and PS1 games both use it.
+ *
+ * The tray card is genuinely 2 mm shorter than the front booklet (118 mm vs 120 mm) — this isn't a rounding
+ * difference to fix, it's how real jewel cases are built: the front cover sits flat behind the clear front
+ * panel with nothing else in the way, while the tray card wraps around the rotating disc-tray mechanism,
+ * whose hinge/teeth along the top edge trims the card's usable height. See case-research.md's CD section
+ * for the sources. The 3D preview reconciles this on its own (`createInsetGeometry` stretches the tray
+ * card's texture to the modelled case height only for rendering) without needing the print dimensions to match.
  */
 function jewelCase(kind: TemplateKind, name: string, variantId: string): TemplateConfig {
   return assemble({

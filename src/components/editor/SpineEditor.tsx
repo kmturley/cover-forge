@@ -1,6 +1,6 @@
 import { useAppDispatch, useAppState, useSelectedItem } from '../../context/AppContext';
 import { useEditView } from './useEditView';
-import { DEFAULT_SPINE_TEMPLATE, SPINE_VARIABLES, defaultCapHeightMm, spineText } from '../../engine/SpineTypography';
+import { SPINE_VARIABLES, defaultCapHeightMm, defaultSpineTemplate, spineText } from '../../engine/SpineTypography';
 import type { SpineSettings } from '../../types/editor';
 import { NumberSlider } from './NumberSlider';
 
@@ -12,8 +12,9 @@ export const FONTS = [
 ];
 
 /**
- * Spine text controls. The design holds the text with variables (`{creator} · {title}`) for all its items; "This item"
- * replaces it with the item's own text (variables still work). Font, colour and height follow the edit mode too.
+ * Spine text controls. The design holds the text with variables (`{title}`, or `{creator} · {title}` by default for
+ * music) for all its items; "This item" replaces it with the item's own text (variables still work). Font, colour
+ * and height follow the edit mode too.
  */
 export function SpineTextControls({ target }: { target: string | null }) {
   const { editMode, template, selectedPanel } = useAppState();
@@ -32,14 +33,14 @@ export function SpineTextControls({ target }: { target: string | null }) {
         <>
           <label className="field">
             <span>Text (this item)</span>
-            <input type="text" value={eff.text ?? eff.textTemplate ?? DEFAULT_SPINE_TEMPLATE} onChange={(e) => patch({ text: e.target.value })} />
+            <input type="text" value={eff.text ?? eff.textTemplate ?? defaultSpineTemplate(item)} onChange={(e) => patch({ text: e.target.value })} />
           </label>
           {eff.text !== undefined && <button onClick={() => patch({ text: undefined })}>Use the design’s text</button>}
         </>
       ) : (
         <label className="field">
           <span>Text (every item in this design)</span>
-          <input type="text" value={eff.textTemplate ?? DEFAULT_SPINE_TEMPLATE} onChange={(e) => patch({ textTemplate: e.target.value })} />
+          <input type="text" value={eff.textTemplate ?? defaultSpineTemplate(item)} onChange={(e) => patch({ textTemplate: e.target.value })} />
         </label>
       )}
       <p className="spine-vars">
