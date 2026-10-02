@@ -38,26 +38,30 @@ describe('branding', () => {
   it('only leaves room for the cap when Branded is on', () => {
     expect(spineTitleStartMm('bluray', 'us-11', false, 148)).toBe(0);
     expect(spineTitleStartMm('bluray', 'us-11', true, 148)).toBeCloseTo(0.12 * 148);
-    // PS4 caps the top 23% of the spine; the title starts past it.
-    expect(spineTitleStartMm('game-case', 'ps4', true, 160)).toBeCloseTo(0.25 * 160);
+    // PS4 caps the top 22.8% of the spine; the title starts past it.
+    expect(spineTitleStartMm('game-case', 'ps4', true, 160)).toBeCloseTo(0.2477 * 160);
     // Switch spines are red along their length; the title starts under the icon.
     expect(spineTitleStartMm('game-case', 'switch', true, 161)).toBeCloseTo(0.08 * 161);
   });
 
   it('follows the measured header shapes', () => {
     const band = (id: string) => GAME_CASE_BRANDING[id].front as Extract<FrontHeader, { shape: 'band' }>;
-    expect(band('ps4').depth(0.5)).toBeCloseTo(0.103);
-    expect(band('ps5').line).toEqual({ color: '#1b3a70', size: 0.006 });
-    expect(band('gamecube').depth(0)).toBeCloseTo(0.112);
-    expect(band('gamecube').depth(1)).toBeCloseTo(0.072);
+    expect(band('ps4').depth(0.5)).toBeCloseTo(0.108);
+    expect(band('ps5').line).toEqual({ color: '#094695', size: 0.0047 });
+    // GameCube: a convex arc, deeper in the middle than at the sides (measured on the fan template).
+    expect(band('gamecube').depth(0)).toBeCloseTo(0.0587);
+    expect(band('gamecube').depth(0.5)).toBeCloseTo(0.1069);
+    expect(band('gamecube').depth(1)).toBeCloseTo(0.0587);
     // Wii: shallow across the left half, an S down to a deep plateau on the right (measured on the fan template).
     expect(band('wii').depth(0.3)).toBeCloseTo(0.024, 2);
     expect(band('wii').depth(0.7)).toBeCloseTo(0.1, 2);
-    expect(band('wii').depth(0.9)).toBeCloseTo(0.126, 3);
+    expect(band('wii').depth(0.9)).toBeCloseTo(0.1255, 3);
+    // Wii: the header's top corner next to the spine is rounded, so it starts deeper than the shallow stretch.
+    expect(band('wii').depth(0)).toBeGreaterThan(band('wii').depth(0.1));
     expect(band('switch2').fill).toBe('#f20c0d');
     expect(band('xbox-one').marks[0].align).toBe('center');
-    expect(GAME_CASE_BRANDING.switch.front).toMatchObject({ shape: 'tab', w: 0.224, h: 0.13 });
-    expect(GAME_CASE_BRANDING.ps1.front).toMatchObject({ shape: 'strip', w: 0.15 });
+    expect(GAME_CASE_BRANDING.switch.front).toMatchObject({ shape: 'tab', w: 0.22, h: 0.132 });
+    expect(GAME_CASE_BRANDING.ps1.front).toMatchObject({ shape: 'strip', w: 0.155 });
     expect(FORMAT_BRANDING.dvd.front.shape).toBe('none');
   });
 

@@ -118,18 +118,21 @@ export function drawSpineText(
   ctx.save();
   ctx.fillStyle = s.color;
   ctx.textAlign = 'center';
-  ctx.textBaseline = 'middle';
+  // The em box's middle sits below the capitals' middle, so a 'middle' baseline reads as off-centre across the spine;
+  // draw on the alphabetic baseline and centre the capitals instead.
+  ctx.textBaseline = 'alphabetic';
   ctx.font = `700 ${sizePx}px ${s.fontFamily}`;
   const w = ctx.measureText(text).width;
   if (w > maxLengthPx) {
     sizePx = (sizePx * maxLengthPx) / w;
     ctx.font = `700 ${sizePx}px ${s.fontFamily}`;
   }
+  const capPx = ctx.measureText('H').actualBoundingBoxAscent || sizePx * CAP_HEIGHT_EM;
   // Shift the text's centre along its run so it sits in the space left after the insets.
   const shift = (inset.start - inset.end) / 2;
   ctx.translate((box.xMm + box.widthMm / 2 + (vertical ? 0 : shift)) * px, (box.yMm + box.heightMm / 2 + (vertical ? shift : 0)) * px);
   if (vertical) ctx.rotate(Math.PI / 2);
   if (s.rotationDeg) ctx.rotate((s.rotationDeg * Math.PI) / 180);
-  ctx.fillText(text, 0, 0);
+  ctx.fillText(text, 0, capPx / 2);
   ctx.restore();
 }

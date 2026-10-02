@@ -1,8 +1,9 @@
 import { BRANDS } from './brands.generated';
-import type { Brand, BrandCategory } from './types';
+import { LOGOS } from './logos.generated';
+import type { Brand, BrandCategory, Logo } from './types';
 
-export type { Brand, BrandCategory };
-export { BRANDS };
+export type { Brand, BrandCategory, Logo };
+export { BRANDS, LOGOS };
 
 const byId = new Map(BRANDS.map((b) => [b.id, b]));
 
@@ -22,5 +23,20 @@ const paths = new Map<string, Path2D>();
 export function brandPath2D(b: Brand): Path2D {
   let p = paths.get(b.id);
   if (!p) paths.set(b.id, (p = new Path2D(b.path)));
+  return p;
+}
+
+const logosById = new Map(LOGOS.map((l) => [l.id, l]));
+
+export const getLogo = (id: string | null | undefined): Logo | undefined => (id ? logosById.get(id) : undefined);
+
+export const logoWidth = (l: Logo) => l.bbox[2] - l.bbox[0];
+export const logoHeight = (l: Logo) => l.bbox[3] - l.bbox[1];
+
+const layerPaths = new Map<string, Path2D[]>();
+/** One Path2D per layer, created lazily and cached. */
+export function logoPaths2D(l: Logo): Path2D[] {
+  let p = layerPaths.get(l.id);
+  if (!p) layerPaths.set(l.id, (p = l.layers.map((layer) => new Path2D(layer.d))));
   return p;
 }

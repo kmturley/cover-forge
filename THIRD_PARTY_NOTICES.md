@@ -11,4 +11,10 @@ They are regenerated with `npm run gen:brands` into `src/brands/brands.generated
 and the marks are provided so fans can identify the platform or store on personal cover art. You are responsible for using them in line with each
 owner's brand guidelines, especially for anything you sell or distribute. Where an owner publishes guidelines, the app links to them.
 
-Simple Icons removes marks at their owners' request. The Xbox and Nintendo marks are not available from it and are deliberately not included.
+Simple Icons removes marks at their owners' request, so the Xbox and Nintendo marks are not available from it.
+
+## Additional logos
+
+The SVG files in `src/brands/svg/` (PlayStation, Nintendo Switch, Switch 2, Wii, Wii U and GameCube) were source from wiki pages and are
+turned into `src/brands/logos.generated.ts` by `npm run gen:brands`. They are used only to draw the "Branded" header and spine of the matching
+platform. They are trademarks of their respective owners (Sony Interactive Entertainment, Nintendo); CoverForge is not affiliated with or endorsed by them.

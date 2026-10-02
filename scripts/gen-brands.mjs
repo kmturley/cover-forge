@@ -1,7 +1,7 @@
 // Generates src/brands/brands.generated.ts from the Simple Icons package (CC0-1.0).
 // Run with `npm run gen:brands` after adding a brand to CURATED or updating simple-icons.
 // Nintendo and Xbox marks are not in Simple Icons (removed at their owners' request) and are deliberately not sourced elsewhere.
-import { writeFileSync, readFileSync } from 'node:fs';
+import { writeFileSync, readFileSync, readdirSync } from 'node:fs';
 import * as si from 'simple-icons';
 import { svgPathBbox } from 'svg-path-bbox';
 
@@ -47,3 +47,103 @@ export const BRANDS: Brand[] = ${JSON.stringify(brands, null, 2)};
 `;
 writeFileSync(new URL('../src/brands/brands.generated.ts', import.meta.url), out);
 console.log(`Wrote ${brands.length} brands from simple-icons@${version}`);
+
+// ---- Supplied logos: every SVG in src/brands/svg/ becomes a multi-layer Logo (src/brands/logos.generated.ts). ----
+// A layer filled white, black or not at all takes the colour of the lockup it is drawn in; any other fill is kept.
+// A gradient is flattened to the average of its stops. A background that fills the whole viewBox (the red square
+// behind the Switch logos) is dropped.
+const LOGO_LABELS = {
+  gamecube: 'GameCube',
+  'playstation-mark-colour': 'PlayStation symbol (colour)',
+  'playstation-wordmark': 'PlayStation wordmark',
+  switch: 'Nintendo Switch',
+  switch2: 'Nintendo Switch 2',
+  wii: 'Wii',
+  'wii-u': 'Wii U',
+};
+
+const attr = (tag, name) => tag.match(new RegExp(`(?:^|\\s)${name}="([^"]*)"`))?.[1];
+
+function hexOf(c) {
+  const v = c.trim().toLowerCase();
+  if (/^#[0-9a-f]{3}$/.test(v)) return '#' + [...v.slice(1)].map((x) => x + x).join('');
+  return v;
+}
+
+function parseLogo(svg, id) {
+  const [vx, vy, vw, vh] = attr(svg.match(/<svg[^>]*>/)[0], 'viewBox').split(/[\s,]+/).map(Number);
+  const rootFill = attr(svg.match(/<svg[^>]*>/)[0], 'fill');
+  const classes = {};
+  for (const m of svg.matchAll(/\.([\w-]+)\s*\{([^}]*)\}/g)) classes[m[1]] = m[2];
+  // Gradients become one colour: the average of their stops. A gradient may borrow another's stops (xlink:href).
+  const gradientDefs = {};
+  for (const m of svg.matchAll(/<(linear|radial)Gradient\b([^>]*?)(?:\/>|>([\s\S]*?)<\/\1Gradient>)/g)) {
+    gradientDefs[attr(m[2], 'id')] = { href: attr(m[2], 'xlink:href')?.slice(1), stops: [...(m[3] ?? '').matchAll(/stop-color="([^"]+)"/g)].map((x) => hexOf(x[1])) };
+  }
+  const gradients = {};
+  for (const id of Object.keys(gradientDefs)) {
+    let def = gradientDefs[id];
+    while (!def.stops.length && def.href && gradientDefs[def.href]) def = gradientDefs[def.href];
+    const rgb = def.stops.map((h) => [1, 3, 5].map((i) => parseInt(h.slice(i, i + 2), 16)));
+    if (rgb.length) gradients[id] = '#' + [0, 1, 2].map((c) => Math.round(rgb.reduce((a, r) => a + r[c], 0) / rgb.length).toString(16).padStart(2, '0')).join('');
+  }
+  const colour = (v) => {
+    if (v == null) return null;
+    if (v === 'none') return 'none';
+    const g = v.match(/url\(#([^)]+)\)/);
+    if (g) return gradients[g[1]];
+    const c = hexOf(v);
+    return ['#fff', '#ffffff', 'white', '#000', '#000000', 'black'].includes(c) ? null : c;
+  };
+
+  const offsets = [[0, 0]];
+  const layers = [];
+  for (const m of svg.matchAll(/<(\/?)(g|path|rect)\b([^>]*)>/g)) {
+    const [, close, name, rest] = m;
+    if (name === 'g') {
+      if (close) offsets.pop();
+      else {
+        const t = attr(rest, 'transform')?.match(/translate\(\s*(-?[\d.]+)[\s,]+(-?[\d.]+)\s*\)/);
+        const [ox, oy] = offsets[offsets.length - 1];
+        offsets.push(t ? [ox + Number(t[1]), oy + Number(t[2])] : [ox, oy]);
+      }
+      continue;
+    }
+    const [ox, oy] = offsets[offsets.length - 1];
+    let d = attr(rest, 'd');
+    if (name === 'rect') {
+      const [w, h] = [attr(rest, 'width'), attr(rest, 'height')].map(Number);
+      d = `M0 0H${w}V${h}H0Z`;
+    }
+    if (!d) continue;
+    const [x0, y0, x1, y1] = svgPathBbox(d);
+    const css = (attr(rest, 'class') ?? '').split(/\s+/).map((c) => classes[c] ?? '').join(';');
+    const cssFill = css.match(/fill:\s*([^;]+)/)?.[1];
+    const fill = colour(attr(rest, 'fill') ?? cssFill ?? rootFill);
+    const stroke = attr(rest, 'stroke');
+    layers.push({
+      d,
+      ...(fill !== null && { fill }),
+      ...(stroke && { stroke: colour(stroke), strokeWidth: Number(attr(rest, 'stroke-width') ?? 1) }),
+      box: [x0 + ox, y0 + oy, x1 + ox, y1 + oy],
+      offset: [ox, oy],
+    });
+  }
+  // A plain rectangle covering the whole viewBox is a background (the red square behind the Switch logos), unless it is all there is.
+  const covers = (l) => /^[MmHhVvLlZz\d\s.,-]+$/.test(l.d) && l.box[2] - l.box[0] >= vw * 0.98 && l.box[3] - l.box[1] >= vh * 0.98;
+  if (layers.length > 1) for (let i = layers.length - 1; i >= 0; i--) if (covers(layers[i])) layers.splice(i, 1);
+  const r3 = (n) => Math.round(n * 1000) / 1000;
+  const bbox = [Math.min(...layers.map((l) => l.box[0])), Math.min(...layers.map((l) => l.box[1])), Math.max(...layers.map((l) => l.box[2])), Math.max(...layers.map((l) => l.box[3]))].map(r3);
+  return { id, label: LOGO_LABELS[id] ?? id, bbox, ...(/fill-rule(="|:\s*)evenodd/.test(svg) && { evenodd: true }), layers: layers.map((l) => ({ ...l, box: l.box.map(r3) })) };
+}
+
+const svgDir = new URL('../src/brands/svg/', import.meta.url);
+const logos = readdirSync(svgDir)
+  .filter((f) => f.endsWith('.svg'))
+  .sort()
+  .map((f) => parseLogo(readFileSync(new URL(f, svgDir), 'utf8'), f.replace(/\.svg$/, '')));
+writeFileSync(
+  new URL('../src/brands/logos.generated.ts', import.meta.url),
+  `// GENERATED by scripts/gen-brands.mjs from the SVG files in src/brands/svg/. Do not edit by hand.\n// The marks are trademarks of their respective owners; see THIRD_PARTY_NOTICES.md.\nimport type { Logo } from './types';\n\nexport const LOGOS: Logo[] = ${JSON.stringify(logos, null, 2)};\n`,
+);
+console.log(`Wrote ${logos.length} logos from src/brands/svg/`);

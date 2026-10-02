@@ -92,27 +92,85 @@ const fit = (file: string, width: number, height: number): Promise<Buffer> =>
 
 /** Red where only the app prints, cyan where only the template does, yellow where both print but in different colours
  * (a logo in the wrong place or size shows up here), dark grey where both print the same. */
-async function overlay(app: Buffer, template: Buffer, width: number, height: number): Promise<Buffer> {
+async function overlay(app: Buffer, template: Buffer, width: number, height: number): Promise<{ png: Buffer; score: Score }> {
   const a = await sharp(app).ensureAlpha().raw().toBuffer();
   const t = await sharp(template).ensureAlpha().raw().toBuffer();
   const bg = parseInt(BASE_BACKGROUND.replace('#', ''), 16);
   const [br, bgc, bb] = [(bg >> 16) & 255, (bg >> 8) & 255, bg & 255];
   const out = Buffer.alloc(width * height * 3);
+  const score: Score = { onlyApp: 0, onlyTemplate: 0, differs: 0, same: 0 };
+  // Only the header and spine cap area is branding: the top STRIP_FRACTION of the wrap.
+  const rows = Math.round(height * STRIP_FRACTION);
   for (let i = 0; i < width * height; i++) {
     const appPrints = Math.abs(a[i * 4] - br) + Math.abs(a[i * 4 + 1] - bgc) + Math.abs(a[i * 4 + 2] - bb) > 40;
     const tplPrints = t[i * 4 + 3] > 128;
     const differs = Math.abs(a[i * 4] - t[i * 4]) + Math.abs(a[i * 4 + 1] - t[i * 4 + 1]) + Math.abs(a[i * 4 + 2] - t[i * 4 + 2]) > 150;
+    if (i < width * rows) {
+      if (appPrints && tplPrints) score[differs ? 'differs' : 'same']++;
+      else if (appPrints) score.onlyApp++;
+      else if (tplPrints) score.onlyTemplate++;
+    }
     const [r, g, b] = appPrints && tplPrints ? (differs ? [255, 215, 0] : [90, 90, 90]) : appPrints ? [255, 60, 60] : tplPrints ? [60, 200, 255] : [24, 24, 24];
     out[i * 3] = r;
     out[i * 3 + 1] = g;
     out[i * 3 + 2] = b;
   }
-  return sharp(out, { raw: { width, height, channels: 3 } }).png().toBuffer();
+  return { png: await sharp(out, { raw: { width, height, channels: 3 } }).png().toBuffer(), score };
 }
+
+/** Pixel counts over the branding area; `match` is the share of everything either side prints that agrees. */
+interface Score { onlyApp: number; onlyTemplate: number; differs: number; same: number }
+const matchPct = (s: Score) => (100 * s.same) / Math.max(1, s.same + s.differs + s.onlyApp + s.onlyTemplate);
 
 async function strip(source: { label: string; png: Buffer }, width: number, height: number, rowH: number, canvasW: number) {
   const img = await loadImage(await sharp(source.png).flatten({ background: '#808080' }).resize(canvasW, Math.round((height * canvasW) / width)).png().toBuffer());
   return { label: source.label, img, rowH };
+}
+
+/** Full-resolution crops of the front header (left and right halves) and the top of the spine, for pixel-level checks:
+ * app, template and overlay one above the other for the header, side by side for the spine. */
+async function zoom(folder: string, app: { png: Buffer; width: number; height: number; x1: number; x2: number; x3?: number }, template: Buffer, overlayPng: Buffer): Promise<void> {
+  const flat = (b: Buffer) => sharp(b).flatten({ background: '#808080' }).png().toBuffer();
+  const sources = [await flat(app.png), await flat(template), overlayPng];
+  // A jewel case wraps as spine | back | spine | front: the front starts at the third fold and the first spine is 0..x1.
+  const frontStart = app.x3 ?? app.x2;
+  const spineLeft = app.x3 ? 0 : app.x1;
+  const frontW = app.width - frontStart;
+  const headH = Math.round(app.height * 0.16);
+  const crop = async (b: Buffer, left: number, width: number, height: number, scale: number) =>
+    loadImage(await sharp(b).extract({ left, top: 0, width, height }).resize(Math.round(width * scale), Math.round(height * scale), { kernel: 'lanczos3' }).png().toBuffer());
+  const halves = [Math.round(frontW / 2), frontW - Math.round(frontW / 2)];
+  const scale = 1800 / halves[0];
+  const rowH = Math.round(headH * scale);
+  const spineW = app.x3 ? app.x1 : app.x2 - app.x1;
+  const spineH = Math.round(app.height * 0.3);
+  const spineScale = (rowH * 3 + 4 * LABEL_H) / spineH;
+  const headW = 1800;
+  const sw = Math.round(spineW * spineScale);
+  const canvas = createCanvas(headW + sw * 3 + 20, 2 * (3 * rowH + 3 * LABEL_H) + 12);
+  const ctx = canvas.getContext('2d');
+  ctx.fillStyle = '#111';
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  ctx.font = '15px Helvetica, Arial, sans-serif';
+  const names = ['app', 'template', 'overlay'];
+  for (let h = 0; h < 2; h++) {
+    const left = h === 0 ? frontStart : frontStart + halves[0];
+    for (let r = 0; r < 3; r++) {
+      const y = h * (3 * rowH + 3 * LABEL_H + 12) + r * (rowH + LABEL_H);
+      ctx.fillStyle = '#222';
+      ctx.fillRect(0, y, headW, LABEL_H);
+      ctx.fillStyle = '#fff';
+      ctx.fillText(`${names[r]} - front ${h === 0 ? 'left' : 'right'} half`, 8, y + 18);
+      ctx.drawImage(await crop(sources[r], left, halves[h], headH, scale), 0, y + LABEL_H);
+    }
+  }
+  for (let r = 0; r < 3; r++) {
+    const x = headW + 10 + r * sw;
+    ctx.fillStyle = '#fff';
+    ctx.fillText(names[r], x + 4, 18);
+    ctx.drawImage(await crop(sources[r], spineLeft, spineW, spineH, spineScale), x, LABEL_H);
+  }
+  writeFileSync(join(OUT, `${folder}-zoom.png`), canvas.toBuffer('image/png'));
 }
 
 async function compare(folder: string, includeScans: boolean): Promise<void> {
@@ -137,7 +195,9 @@ async function compare(folder: string, includeScans: boolean): Promise<void> {
 
   // Stacked header strips.
   const rows = await Promise.all(sources.map((s) => strip(s, app.width, app.height, 0, ROW_WIDTH)));
-  const diffRow = templatePng ? await strip({ label: 'overlay: red = only the app prints, cyan = only the template prints, yellow = both print but differ, grey = same', png: await overlay(app.png, templatePng, app.width, app.height) }, app.width, app.height, 0, ROW_WIDTH) : null;
+  const diff = templatePng ? await overlay(app.png, templatePng, app.width, app.height) : null;
+  const diffRow = diff ? await strip({ label: 'overlay: red = only the app prints, cyan = only the template prints, yellow = both print but differ, grey = same', png: diff.png }, app.width, app.height, 0, ROW_WIDTH) : null;
+  if (diff) console.error(`${folder}: match ${matchPct(diff.score).toFixed(1)}% (only app ${diff.score.onlyApp}, only template ${diff.score.onlyTemplate}, colour differs ${diff.score.differs})`);
   const all = diffRow ? [...rows.slice(0, 2), diffRow, ...rows.slice(2)] : rows;
   const rowImgH = Math.round(all[0].img.height * STRIP_FRACTION);
   const canvas = createCanvas(ROW_WIDTH, all.length * (rowImgH + LABEL_H));
@@ -175,6 +235,7 @@ async function compare(folder: string, includeScans: boolean): Promise<void> {
     fctx.drawImage(img, x, y + LABEL_H);
   }
   writeFileSync(join(OUT, `${folder}-full.png`), full.toBuffer('image/png'));
+  if (diff && templatePng) await zoom(folder, app, templatePng, diff.png);
   console.error(`${folder}: app vs ${sources.length - 1} image(s) -> ${join(OUT, `${folder}.png`)}`);
 }
 

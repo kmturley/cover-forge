@@ -22,6 +22,15 @@ Fold lines detected from the image in 0/1; estimated from a known spine width in
 
 Fold lines detected from the image in 0/1; estimated from a known spine width in 0/1.
 
+## pc  (n=0)
+
+| File | DPI | Width mm | Height mm | Back mm | Spine mm | Spine 2 mm | Front mm | Spine source | Band % H | Band shape | Band colour | Band end colour | Spine cap % L | Notes |
+| :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
+| **Mode** | | **—** | **—** | **—** | **—** | **—** | **—** | | **—** | | **—** | **—** | **—** | |
+| app (rendered) | 300 | 273.0 | 183.0 | 129.5 | 14.0 | — | 129.5 | known | 11.0 | flat | #f3f3f2 | — | — |  |
+
+Fold lines detected from the image in 0/0; estimated from a known spine width in 0/0.
+
 ## ps1  (n=4)
 
 | File | DPI | Width mm | Height mm | Back mm | Spine mm | Spine 2 mm | Front mm | Spine source | Band % H | Band shape | Band colour | Band end colour | Spine cap % L | Notes |
@@ -45,8 +54,8 @@ Fold lines detected from the image in 1/4; estimated from a known spine width in
 | spawnarmageddon.jpg | 300 | 273.1 | 182.5 | 129.9 | 14.8 | — | 128.4 | detected | 9.5 | flat | #0e0e0c | — | — |  |
 | template.png | 300 | 273.1 | 182.5 | 129.1 | 14.6 | — | 129.3 | detected | 10.3 | flat | #000000 | — | — |  |
 | **Mode** | | **273.1** | **182.5** | **129.5** | **14.7** | **—** | **127.1** | | **9.3** | | **#000000** | **—** | **—** | |
-| app (rendered) | 300 | 273.0 | 183.0 | 129.5 | 14.0 | — | 129.5 | known | 9.0 | flat | #000000 | — | — |  |
-| *app − Mode* | | -0.1 | +0.4 | +0.0 | -0.8 | — | +2.4 | | -0.3 | = | 0 | — | — | |
+| app (rendered) | 300 | 273.0 | 183.0 | 129.5 | 14.0 | — | 129.5 | known | 10.4 | flat | #000000 | — | — |  |
+| *app − Mode* | | -0.1 | +0.4 | +0.0 | -0.8 | — | +2.4 | | +1.1 | = | 0 | — | — | |
 
 Fold lines detected from the image in 4/4; estimated from a known spine width in 0/4.
 
@@ -59,8 +68,8 @@ Fold lines detected from the image in 4/4; estimated from a known spine width in
 | masseffect3.jpg | 300 | 273.1 | 148.8 | 129.5 | 14.0 | — | 129.5 | estimated | 7.5 | gradient | #060507 | #8d8e8e | 16.2 | Fold lines not detected; estimated from ps3's known 14 mm spine, assuming equal front/back width. |
 | template.png | 300 | 273.1 | 148.8 | 128.8 | 14.5 | — | 129.8 | detected | 8.3 | gradient | #000000 | #848484 | 16.4 |  |
 | **Mode** | | **273.1** | **148.8** | **129.2** | **14.0** | **—** | **129.7** | | **8.3** | | **#000000** | **#848484** | **16.4** | |
-| app (rendered) | 300 | 273.0 | 149.0 | 129.5 | 14.0 | — | 129.5 | known | 8.3 | gradient | #000000 | #7e7e7e | — |  |
-| *app − Mode* | | -0.1 | +0.2 | +0.3 | -0.0 | — | -0.2 | | -0.0 | = | 0 | 10 | — | |
+| app (rendered) | 300 | 273.0 | 149.0 | 129.5 | 14.0 | — | 129.5 | known | 8.3 | gradient | #040404 | #828282 | 16.5 |  |
+| *app − Mode* | | -0.1 | +0.2 | +0.3 | -0.0 | — | -0.2 | | -0.0 | = | 7 | 3 | +0.0 | |
 
 Fold lines detected from the image in 2/4; estimated from a known spine width in 2/4.
 
@@ -73,8 +82,8 @@ Fold lines detected from the image in 2/4; estimated from a known spine width in
 | mortalkombatx.jpg | 300 | 273.1 | 161.2 | 129.5 | 14.0 | — | 129.5 | estimated | 11.0 | gradient | #003399 | #046acd | 22.8 | Fold lines not detected; estimated from ps4's known 14 mm spine, assuming equal front/back width. |
 | template.png | 300 | 272.0 | 160.5 | 129.0 | 14.5 | — | 128.5 | detected | 10.9 | gradient | #2d478b | #147fbe | 22.7 |  |
 | **Mode** | | **273.1** | **160.7** | **129.5** | **14.0** | **—** | **129.5** | | **10.8** | | **#294395** | **#197dc5** | **22.6** | |
-| app (rendered) | 300 | 273.0 | 161.0 | 129.5 | 14.0 | — | 129.5 | known | 10.3 | gradient | #003fa6 | #0892d5 | 23.0 |  |
-| *app − Mode* | | -0.1 | +0.3 | +0.0 | +0.0 | — | -0.1 | | -0.5 | = | 45 | 31 | +0.3 | |
+| app (rendered) | 300 | 273.0 | 161.0 | 129.5 | 14.0 | — | 129.5 | known | 10.9 | gradient | #2d4c8f | #147fbe | 22.8 |  |
+| *app − Mode* | | -0.1 | +0.3 | +0.0 | +0.0 | — | -0.1 | | +0.1 | = | 12 | 9 | +0.1 | |
 
 Fold lines detected from the image in 1/4; estimated from a known spine width in 3/4.
 
@@ -87,8 +96,8 @@ Fold lines detected from the image in 1/4; estimated from a known spine width in
 | talesofarise.jpg | 300 | 273.1 | 161.2 | 129.5 | 14.0 | — | 129.5 | estimated | 11.0 | flat | #ffffff | — | 22.8 | Fold lines not detected; estimated from ps5's known 14 mm spine, assuming equal front/back width. |
 | template.png | 1000 | 273.1 | 160.9 | 129.7 | 13.4 | — | 129.9 | detected | 11.2 | flat | #ffffff | — | 23.0 | Implausible width at 300 DPI (910 mm); rescaled to ps5's scan summary width 273.1 mm (effective 1000 DPI). Percentages are unaffected; mm values assume the template is a full wrap at scan size. |
 | **Mode** | | **273.1** | **161.0** | **129.6** | **14.1** | **—** | **129.7** | | **11.2** | | **#ffffff** | **—** | **23.0** | |
-| app (rendered) | 300 | 273.0 | 161.0 | 129.5 | 14.0 | — | 129.5 | known | 11.1 | flat | #ffffff | — | 23.0 |  |
-| *app − Mode* | | -0.1 | +0.0 | -0.1 | -0.1 | — | -0.3 | | -0.1 | = | 0 | — | +0.0 | |
+| app (rendered) | 300 | 273.0 | 161.0 | 129.5 | 14.0 | — | 129.5 | known | 11.1 | flat | #ffffff | — | 22.9 |  |
+| *app − Mode* | | -0.1 | +0.0 | -0.1 | -0.1 | — | -0.3 | | -0.0 | = | 0 | — | -0.1 | |
 
 Fold lines detected from the image in 1/4; estimated from a known spine width in 3/4.
 
@@ -101,8 +110,8 @@ Fold lines detected from the image in 1/4; estimated from a known spine width in
 | saintsrowivreelected.jpg | 300 | 209.4 | 161.0 | 99.7 | 10.1 | — | 99.7 | estimated | 12.9 | flat | #da1820 | — | — | Fold lines not detected; estimated from switch's known 10 mm spine, assuming equal front/back width. |
 | template.png | 300 | 209.4 | 161.0 | 99.7 | 10.0 | — | 99.7 | detected | 13.2 | flat | #da1820 | — | — |  |
 | **Mode** | | **209.4** | **161.0** | **99.7** | **10.1** | **—** | **99.7** | | **13.3** | | **#da1820** | **#b1191d** | **—** | |
-| app (rendered) | 300 | 208.0 | 161.0 | 99.0 | 10.0 | — | 99.1 | known | 13.0 | flat | #e60012 | — | — |  |
-| *app − Mode* | | -1.4 | +0.0 | -0.7 | -0.1 | — | -0.6 | | -0.3 | = | 30 | — | — | |
+| app (rendered) | 300 | 208.0 | 161.0 | 99.0 | 10.0 | — | 99.1 | known | 13.2 | flat | #da1820 | — | — |  |
+| *app − Mode* | | -1.4 | +0.0 | -0.7 | -0.1 | — | -0.6 | | -0.1 | = | 0 | — | — | |
 
 Fold lines detected from the image in 1/4; estimated from a known spine width in 3/4.
 
@@ -115,8 +124,8 @@ Fold lines detected from the image in 1/4; estimated from a known spine width in
 | pacmanworld2.jpg | 300 | 242.6 | 187.2 | 114.6 | 11.9 | — | 116.1 | detected | 12.5 | flat | #e80113 | — | — |  |
 | template.png | 300 | 209.4 | 161.0 | 99.7 | 10.0 | — | 99.7 | detected | 13.1 | flat | #ff0000 | — | — |  |
 | **Mode** | | **242.6** | **173.7** | **107.2** | **10.1** | **—** | **107.9** | | **12.8** | | **#f20c0d** | **#df0714** | **12.7** | |
-| app (rendered) | 300 | 208.0 | 161.0 | 99.0 | 10.0 | — | 99.1 | known | 13.0 | flat | #f20c0d | — | — |  |
-| *app − Mode* | | -34.5 | -12.7 | -8.2 | -0.1 | — | -8.8 | | +0.2 | = | 0 | — | — | |
+| app (rendered) | 300 | 208.0 | 161.0 | 99.0 | 10.0 | — | 99.1 | known | 13.1 | flat | #f20c0d | — | — |  |
+| *app − Mode* | | -34.5 | -12.7 | -8.2 | -0.1 | — | -8.8 | | +0.3 | = | 0 | — | — | |
 
 Fold lines detected from the image in 2/4; estimated from a known spine width in 2/4.
 
@@ -129,8 +138,8 @@ Fold lines detected from the image in 2/4; estimated from a known spine width in
 | marioparty8.jpg | 300 | 273.1 | 182.5 | 129.5 | 14.0 | — | 129.5 | estimated | 12.7 | flat | #ecf0f3 | — | 8.1 | Fold lines not detected; estimated from wii's known 14 mm spine, assuming equal front/back width. |
 | template.png | 300 | 274.3 | 184.1 | 130.1 | 14.1 | — | 130.1 | estimated | 12.5 | flat | #ffffff | — | — | No symmetric spine strip found; estimated from wii's known 14 mm spine, assuming equal front/back width. |
 | **Mode** | | **273.1** | **182.5** | **129.5** | **14.0** | **—** | **129.5** | | **12.6** | | **#ffffff** | **—** | **20.0** | |
-| app (rendered) | 300 | 273.0 | 183.0 | 129.5 | 14.0 | — | 129.5 | known | 12.6 | flat | #ffffff | — | — |  |
-| *app − Mode* | | -0.1 | +0.4 | +0.0 | +0.0 | — | -0.1 | | -0.0 | = | 0 | — | — | |
+| app (rendered) | 300 | 273.0 | 183.0 | 129.5 | 14.0 | — | 129.5 | known | 12.5 | flat | #ffffff | — | — |  |
+| *app − Mode* | | -0.1 | +0.4 | +0.0 | +0.0 | — | -0.1 | | -0.1 | = | 0 | — | — | |
 
 Fold lines detected from the image in 0/4; estimated from a known spine width in 4/4.
 
@@ -143,7 +152,7 @@ Fold lines detected from the image in 0/4; estimated from a known spine width in
 | supermariomaker.jpg | 300 | 273.1 | 182.5 | 128.9 | 13.9 | — | 130.2 | detected | 6.9 | flat | #019fcc | — | — |  |
 | template.png | 300 | 274.3 | 184.1 | 130.1 | 14.1 | — | 130.1 | detected | 7.2 | flat | #049ec2 | — | — |  |
 | **Mode** | | **273.1** | **182.5** | **129.9** | **13.8** | **—** | **130.2** | | **7.3** | | **#019fcc** | **—** | **3.6** | |
-| app (rendered) | 300 | 273.0 | 183.0 | 129.5 | 14.0 | — | 129.5 | known | 7.4 | flat | #009ac7 | — | — |  |
-| *app − Mode* | | -0.1 | +0.4 | -0.3 | +0.1 | — | -0.7 | | +0.0 | = | 7 | — | — | |
+| app (rendered) | 300 | 273.0 | 183.0 | 129.5 | 14.0 | — | 129.5 | known | 7.3 | flat | #019fcc | — | — |  |
+| *app − Mode* | | -0.1 | +0.4 | -0.3 | +0.1 | — | -0.7 | | -0.1 | = | 0 | — | — | |
 
 Fold lines detected from the image in 4/4; estimated from a known spine width in 0/4.

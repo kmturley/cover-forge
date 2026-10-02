@@ -1,6 +1,6 @@
 import type { PanelRect, TemplateConfig, TemplateKind } from '../types/template';
 import { paintRect } from '../templates/geometry';
-import { brandHeight, brandPath2D, brandWidth, getBrand } from '../brands';
+import { brandHeight, brandPath2D, brandWidth, getBrand, getLogo, logoPaths2D } from '../brands';
 
 /**
  * The "Branded" trade dress: each platform's front header, spine cap and marks, drawn as on retail covers. The values
@@ -11,12 +11,13 @@ import { brandHeight, brandPath2D, brandWidth, getBrand } from '../brands';
 /** A flat colour, or a gradient across the shape (`x`: left to right, `y`: top to bottom) as [offset, colour] stops. */
 export type Paint = string | { x: [number, string][] } | { y: [number, string][] };
 
-/** Simple drawn marks for brands Simple Icons doesn't carry. */
-export type Icon = 'joycon' | 'xsphere' | 'cube' | 'windows';
+/** Simple drawn marks for brands that have no supplied logo (src/brands/svg) or Simple Icons entry. */
+export type Icon = 'xsphere' | 'windows';
 
 /** One piece of a lockup. `h` is its height relative to the others (default 1); `color` overrides the lockup's. */
 export type Part =
   | { brand: string; h?: number; color?: string }
+  | { logo: string; h?: number; color?: string; mono?: boolean; ink?: string; only?: number[]; crop?: [number, number, number, number] }
   | { text: string; h?: number; color?: string; weight?: number; italic?: boolean; spacing?: number }
   | { icon: Icon; h?: number; color?: string; accent?: string }
   | { row: Part[] }
@@ -26,6 +27,8 @@ export type Part =
 export interface Lockup {
   parts: Part[];
   color: string;
+  /** A thin outline drawn round the whole lockup (PS1's boxed symbol). */
+  frame?: { color: string; mm?: number };
   /** Gap between parts as a fraction of the lockup's height. Default 0.25. */
   gap?: number;
 }
@@ -40,6 +43,8 @@ export interface FrontMark extends Lockup {
   cy?: number;
   /** Measure alignment against the whole panel rather than the header (a mark on the artwork beside a tab). */
   onPanel?: boolean;
+  /** Shifts the mark sideways by this fraction of W (positive: right). */
+  dx?: number;
   /** A solid rectangle behind the mark, for marks that sit on the artwork. */
   plate?: string;
 }
@@ -55,7 +60,14 @@ export interface SpanMark extends Lockup {
   rotate: 0 | 90 | -90;
   /** Fills the whole span, edge to edge, behind the mark (PS2's white square). */
   plate?: string;
+  /** Share of the strip's width the plate covers, centred. Default: all of it. */
+  plateAcross?: number;
+  /** Shifts the mark across the strip by this fraction of its width (positive: right or down). */
+  dx?: number;
 }
+
+/** A line along a band's lower edge. `taper` makes it thinner towards both sides: that share of `size` at the edges. */
+export interface Line { color: string; size: number; taper?: number }
 
 /** The lower edge of a band: its depth (fraction of H) at `x` (fraction of W from the left). */
 export type Depth = (x: number) => number;
@@ -76,7 +88,7 @@ export const ease = (left: number, right: number): Depth => (x) => left + (right
 
 export type FrontHeader =
   /** Full width across the top. */
-  | { shape: 'band'; depth: Depth; fill: Paint; line?: { color: string; size: number }; decor?: 'xbox-orb' | 'x360-swoosh'; marks: FrontMark[] }
+  | { shape: 'band'; depth: Depth; fill: Paint; line?: Line; decor?: 'xbox-orb' | 'x360-swoosh'; marks: FrontMark[] }
   /** A block in the top-left corner, `w` × `h`; with `wBottom` its right edge is a diagonal. */
   | { shape: 'tab'; w: number; h: number; wBottom?: number; fill: Paint; marks: FrontMark[] }
   /** Full height down the left edge, `w` wide. Its marks run along it. */
@@ -86,8 +98,11 @@ export type FrontHeader =
 export interface SpineBranding {
   /** Colours the whole spine (Switch red, Wii white). */
   fill?: Paint;
-  /** A block at the top of the spine, `length` of L, closed by an optional line. */
-  cap?: { length: number; fill: Paint; line?: { color: string; size: number } };
+  /** A block at the top of the spine, `length` of L, closed by an optional line. `dome` curves its lower edge up in the middle by that share of L. */
+  cap?: { length: number; fill: Paint; line?: { color: string; size: number }; dome?: number };
+  /** A thin outline round the whole spine (or its cap), `mm` thick. `top: false` leaves the top edge off, and `rightFrom`
+   * starts the right edge that far down (fraction of L) so it doesn't run along a header that meets it. */
+  outline?: { color: string; mm: number; top?: boolean; rightFrom?: number };
   marks: SpanMark[];
   /** Where the title may start (fraction of L). Default: just past the cap and the marks. */
   titleFrom?: number;
@@ -107,12 +122,12 @@ export interface Branding {
 const W = '#ffffff';
 const K = '#000000';
 const PS = { brand: 'playstation' } as const;
-const NINTENDO_RED = '#e60012';
+const NINTENDO_RED = '#da1820';
 /** Switch 2 covers print a brighter red than the Switch's (measured on three covers and the fan template). */
 const SWITCH2_RED = '#f20c0d';
 const XBOX_GREEN = '#107c10';
 
-const PS4_BLUE: Paint = { x: [[0, '#003ca5'], [0.45, '#0162b8'], [0.85, '#1aa0e0'], [1, '#048fd2']] };
+const PS4_BLUE: Paint = { x: [[0, '#2e4a8e'], [0.5, '#2063a4'], [1, '#1381c0']] };
 const X360_WHITE: Paint = { y: [[0, '#ffffff'], [1, '#d9dcde']] };
 const GFW_WHITE: Paint = { y: [[0, '#f2f2f0'], [1, '#fbfbfb']] };
 
@@ -165,68 +180,70 @@ export const GAME_CASE_BRANDING: Record<string, Branding> = {
   // PS1 (jewel case): a black strip down the left, the PS symbol at its top and "PlayStation" reading upwards.
   ps1: {
     front: {
-      shape: 'strip', w: 0.15, fill: K,
+      shape: 'strip', w: 0.155, fill: K,
       marks: [
-        { parts: [PS], color: W, from: 0.02, to: 0.14, across: 0.7, rotate: 0 },
-        { parts: [{ text: 'PlayStation', weight: 500 }], color: W, from: 0.17, to: 0.78, across: 0.6, rotate: -90 },
+        { parts: [{ stack: [{ logo: 'playstation-mark-colour' }, { logo: 'playstation-wordmark', mono: true, crop: [0, 0, 0.94, 1], h: 0.22 }] }], color: W, frame: { color: W }, gap: 0.3, from: 0.034, to: 0.1325, across: 0.635, dx: -0.052, rotate: 0 },
+        { parts: [{ logo: 'sony-logo', ink: '#013999' }], color: W, from: 0.84, to: 0.98, across: 0.62, dx: 0.04, rotate: 0 },
+        { parts: [{ logo: 'playstation-wordmark', mono: true }], color: W, from: 0.168, to: 0.79, across: 0.85, dx: 0.06, rotate: -90 },
       ],
     },
     spine: {
       fill: K,
-      marks: [{ parts: [{ text: 'PlayStation®', weight: 500 }], color: W, from: 0.02, to: 0.17, rotate: 90 }],
+      marks: [{ parts: [{ logo: 'playstation-wordmark', mono: true }], color: W, from: 0.028, to: 0.147, dx: -0.05, rotate: 90 }],
       titleCase: 'upper',
     },
   },
   // PS2: a black band, the wordmark left and the PS symbol right; a black spine with the symbol on a white square.
   ps2: {
     front: {
-      shape: 'band', depth: flat(0.09), fill: K,
+      shape: 'band', depth: flat(0.104), fill: K, line: { color: W, size: 0.0016 },
       marks: [
-        { parts: [{ text: 'PlayStation', weight: 500 }, { text: '2', weight: 700 }], color: W, h: 0.035, align: 'left', inset: 0.02, gap: 0.08 },
-        { parts: [PS], color: W, h: 0.06, align: 'right', inset: 0.02 },
+        { parts: [{ logo: 'playstation-2-wordmark', mono: true }], color: W, h: 0.066, align: 'left', inset: 0.038, cy: 0.058 },
+        { parts: [{ logo: 'playstation-mark-colour' }], color: W, h: 0.066, align: 'right', inset: 0.024, cy: 0.0525 },
       ],
     },
     spine: {
-      fill: K,
+      cap: { length: 0.278, fill: K },
+      outline: { color: W, mm: 0.25, top: false, rightFrom: 0.106 },
       marks: [
-        { parts: [PS], color: K, plate: W, from: 0.006, to: 0.067, across: 0.75, rotate: 0 },
-        { parts: [{ text: 'PlayStation', weight: 500 }, { text: '2', weight: 700 }], color: W, from: 0.075, to: 0.25, gap: 0.08, rotate: 90 },
+        { parts: [{ logo: 'playstation-mark-colour' }], color: K, plate: W, plateAcross: 0.79, from: 0.018, to: 0.0776, across: 0.6, rotate: 0 },
+        { parts: [{ logo: 'playstation-2-wordmark', mono: true }], color: W, from: 0.1065, to: 0.262, rotate: 90 },
       ],
     },
   },
-  // PS3 (2009–2017): black fading to grey from 60% W, a crimson line, the logo left; a black spine cap with "PS3".
+  // PS3 (2009–2017): black blending evenly to grey across the width, a crimson line, the logo left; a black spine cap with "PS3".
   ps3: {
     front: {
-      shape: 'band', depth: flat(0.083), fill: { x: [[0, K], [0.6, K], [1, '#888888']] }, line: { color: '#8d1214', size: 0.004 },
-      marks: [{ parts: [PS, { brand: 'playstation3', h: 0.55 }], color: W, h: 0.045, align: 'left', inset: 0.035 }],
+      shape: 'band', depth: flat(0.083), fill: { x: [[0, K], [1, '#868686']] }, line: { color: '#b00a0a', size: 0.004 },
+      marks: [{ parts: [{ brand: 'playstation', color: '#b8b8b8' }, { brand: 'playstation3', h: 0.875 }], color: W, h: 0.05, align: 'left', inset: 0.032, gap: 0.6 }],
     },
-    spine: { cap: { length: 0.165, fill: K }, marks: [{ parts: [{ brand: 'playstation3' }], color: W, from: 0.02, to: 0.14, rotate: 90 }] },
+    spine: { cap: { length: 0.1648, fill: K, line: { color: '#a50a0a', size: 0.004 } }, marks: [{ parts: [{ brand: 'playstation3' }], color: W, from: 0.0185, to: 0.1455, rotate: 90 }] },
   },
   // PS4: a blue gradient band with a white line; a blue spine cap to 23% L with the symbol, then "PS4".
   ps4: {
     front: {
-      shape: 'band', depth: flat(0.103), fill: PS4_BLUE, line: { color: W, size: 0.006 },
-      marks: [{ parts: [PS, { brand: 'playstation4', h: 0.55 }], color: W, h: 0.055, align: 'left', inset: 0.025 }],
+      shape: 'band', depth: flat(0.1094), fill: PS4_BLUE, line: { color: W, size: 0.0042 },
+      marks: [{ parts: [PS, { brand: 'playstation4', h: 0.6 }], color: W, h: 0.0765, align: 'left', inset: 0.022, gap: 0.5 }],
     },
     spine: {
-      cap: { length: 0.23, fill: '#0a5fb4', line: { color: W, size: 0.006 } },
+      cap: { length: 0.2277, fill: '#2e4589', line: { color: W, size: 0.0042 } },
       marks: [
-        { parts: [PS], color: W, from: 0.02, to: 0.06, rotate: 0 },
-        { parts: [{ brand: 'playstation4' }], color: W, from: 0.08, to: 0.21, rotate: 90 },
+        { parts: [PS], color: W, from: 0.0174, to: 0.0654, across: 0.72, rotate: 0 },
+        { parts: [{ brand: 'playstation4' }], color: W, from: 0.08, to: 0.21, across: 0.64, rotate: 90 },
       ],
     },
   },
   // PS5: a white band with a navy line and a black logo; a white spine cap to 23% L.
   ps5: {
     front: {
-      shape: 'band', depth: flat(0.111), fill: W, line: { color: '#1b3a70', size: 0.006 },
-      marks: [{ parts: [PS, { brand: 'playstation5', h: 0.55 }], color: K, h: 0.055, align: 'left', inset: 0.025 }],
+      shape: 'band', depth: flat(0.1117), fill: W, line: { color: '#094695', size: 0.0047 },
+      marks: [{ parts: [PS, { brand: 'playstation5', h: 0.65 }], color: K, h: 0.075, align: 'left', inset: 0.037 }],
     },
     spine: {
-      cap: { length: 0.23, fill: W },
+      cap: { length: 0.2292, fill: W, line: { color: '#094695', size: 0.0052 } },
       marks: [
-        { parts: [PS], color: K, from: 0.03, to: 0.06, rotate: 0 },
-        { parts: [{ brand: 'playstation5' }], color: K, from: 0.08, to: 0.19, rotate: 90 },
+        { parts: [PS], color: K, from: 0.021, to: 0.066, across: 0.7, rotate: 0 },
+        { parts: [{ brand: 'playstation5' }], color: K, from: 0.08, to: 0.2, across: 0.7, rotate: 90 },
       ],
     },
   },
@@ -247,51 +264,51 @@ export const GAME_CASE_BRANDING: Record<string, Branding> = {
   // Switch: a red tab in the top-left corner with the Joy-Con icon over "NINTENDO SWITCH"; a red spine.
   switch: {
     front: {
-      shape: 'tab', w: 0.224, h: 0.13, fill: NINTENDO_RED,
-      marks: [{ parts: [{ stack: [{ icon: 'joycon', h: 0.55, accent: NINTENDO_RED }, { text: 'NINTENDO', weight: 500, h: 0.13, spacing: 0.25 }, { text: 'SWITCH', weight: 800, h: 0.2 }] }], color: W, h: 0.095, align: 'center', gap: 0.08 }],
+      shape: 'tab', w: 0.22, h: 0.132, fill: NINTENDO_RED,
+      marks: [{ parts: [{ logo: 'switch' }], color: W, h: 0.096, align: 'center', dx: 0.006 }],
     },
-    spine: { fill: NINTENDO_RED, marks: [{ parts: [{ icon: 'joycon', accent: NINTENDO_RED }], color: W, from: 0.02, to: 0.045, rotate: 0 }], titleFrom: 0.08 },
+    spine: { fill: NINTENDO_RED, marks: [{ parts: [{ logo: 'switch', crop: [0.155, 0, 0.805, 0.635] }], color: W, from: 0.014, to: 0.046, across: 0.6, rotate: 0 }], titleFrom: 0.08 },
   },
   // Switch 2: a full-width red band, the icon and "2" over a small "NINTENDO" and "SWITCH", centred; a red spine.
   switch2: {
     front: {
-      shape: 'band', depth: flat(0.13), fill: SWITCH2_RED,
-      marks: [{ parts: [{ stack: [{ row: [{ icon: 'joycon', accent: SWITCH2_RED }, { text: '2', weight: 800, h: 0.8 }], h: 0.6 }, { text: 'NINTENDO', weight: 500, h: 0.1, spacing: 0.3 }, { text: 'SWITCH', weight: 500, h: 0.16, spacing: 0.05 }] }], color: W, h: 0.077, align: 'center', gap: 0.15 }],
+      shape: 'band', depth: flat(0.131), fill: SWITCH2_RED,
+      marks: [{ parts: [{ logo: 'switch2' }], color: W, h: 0.0835, align: 'center' }],
     },
-    spine: { fill: SWITCH2_RED, marks: [{ parts: [{ stack: [{ icon: 'joycon', accent: SWITCH2_RED }, { text: '2', weight: 800, h: 0.7 }] }], color: W, from: 0.028, to: 0.101, across: 0.55, rotate: 0 }], titleFrom: 0.12 },
+    spine: { fill: SWITCH2_RED, marks: [{ parts: [{ stack: [{ logo: 'switch2', only: [1] }, { logo: 'switch2', only: [2] }] }], color: W, gap: 0.7, from: 0.0235, to: 0.112, across: 0.5, rotate: 0 }], titleFrom: 0.12 },
   },
   // Wii U: a cyan band with a convex lower edge and a yellow-green line, "Wii U" centred; a white spine.
   'wii-u': {
     front: {
-      shape: 'band', depth: arc(0.035, 0.095), fill: '#009ac7', line: { color: '#e7f237', size: 0.005 },
-      marks: [{ parts: [{ text: 'Wii U', weight: 700 }], color: W, h: 0.035, align: 'center', cy: 0.035 }],
+      shape: 'band', depth: arc(0.0346, 0.0941), fill: '#019fcc', line: { color: '#fcee38', size: 0.0065, taper: 0.45 },
+      marks: [{ parts: [{ logo: 'wii-u', mono: true }], color: W, h: 0.052, align: 'center', cy: 0.043, dx: 0.004 }],
     },
     spine: {
+      cap: { length: 0.0315, fill: '#019fcc', dome: 0.0045 },
       fill: W,
       titleColor: '#333333',
-      marks: [{ parts: [{ text: 'Wii', weight: 700, color: '#8c8c8c' }, { text: 'U', weight: 700, color: '#009ac7' }], color: '#8c8c8c', from: 0.03, to: 0.15, gap: 0.12, rotate: 90 }],
+      marks: [{ parts: [{ logo: 'wii-u' }], color: '#8c8c8c', from: 0.056, to: 0.191, across: 0.55, rotate: 90 }],
     },
   },
   // Wii: a white header that stays shallow across the left half, then curves down in an S to a deep plateau on the right,
   // with a grey line along it and "Wii" at the right; a white spine. (Depths are the band alone: the line is drawn below.)
   wii: {
     front: {
-      shape: 'band', depth: slope([[0, 0.022], [0.45, 0.024], [0.5, 0.028], [0.55, 0.036], [0.6, 0.05], [0.65, 0.072], [0.7, 0.1], [0.75, 0.119], [0.8, 0.126], [1, 0.126]]), fill: W, line: { color: '#9f9fa7', size: 0.005 },
-      marks: [{ parts: [{ text: 'Wii', weight: 800, spacing: 0.12 }], color: '#838488', h: 0.06, align: 'right', inset: 0.03 }],
+      shape: 'band', depth: slope([[0.0000, 0.0288], [0.0011, 0.0261], [0.0021, 0.0250], [0.0032, 0.0243], [0.0042, 0.0237], [0.0053, 0.0233], [0.0063, 0.0229], [0.0074, 0.0226], [0.0085, 0.0224], [0.0095, 0.0222], [0.0106, 0.0221], [0.0116, 0.0220], [0.0127, 0.022], [0.45, 0.024], [0.5, 0.028], [0.55, 0.036], [0.6, 0.05], [0.65, 0.072], [0.7, 0.1], [0.75, 0.119], [0.8, 0.1255], [1, 0.1255]]), fill: W, line: { color: '#8a8f93', size: 0.004 },
+      marks: [{ parts: [{ logo: 'wii', mono: true }], color: '#838488', h: 0.066, align: 'right', inset: 0.03 }],
     },
-    spine: { fill: W, titleColor: '#333333', marks: [{ parts: [{ text: 'Wii', weight: 800, spacing: 0.12 }], color: '#838488', from: 0.038, to: 0.133, across: 0.52, rotate: 90 }] },
+    spine: { fill: W, titleColor: '#333333', marks: [{ parts: [{ logo: 'wii', mono: true }], color: '#838488', from: 0.0285, to: 0.1365, across: 0.55, rotate: 90 }] },
   },
-  // GameCube: a black band sloping up at the right with a white line, the cube and wordmark centred; a black spine cap.
+  // GameCube: a black band with a convex lower edge and a white line tapering towards the sides, the cube and wordmark centred; a black spine cap.
   gamecube: {
     front: {
-      shape: 'band', depth: slope([[0, 0.112], [0.55, 0.112], [1, 0.072]]), fill: K, line: { color: W, size: 0.005 },
-      marks: [{ parts: [{ icon: 'cube', color: '#6b63b5' }, { stack: [{ text: 'NINTENDO', weight: 500, h: 0.3, spacing: 0.3 }, { text: 'GAMECUBE', weight: 800, h: 0.55 }] }], color: W, h: 0.06, align: 'center', gap: 0.2 }],
+      shape: 'band', depth: arc(0.0587, 0.1069), fill: K, line: { color: '#f2f2f2', size: 0.0085, taper: 0.35 },
+      marks: [{ parts: [{ logo: 'gamecube', crop: [0, 0, 0.165, 1], h: 0.94 }, { logo: 'gamecube', crop: [0.165, 0, 1, 1] }], color: W, h: 0.0615, align: 'center', gap: 0, dx: 0.01 }],
     },
     spine: {
       cap: { length: 0.175, fill: K },
       marks: [
-        { parts: [{ icon: 'cube', color: '#6b63b5' }], color: W, from: 0.05, to: 0.09, rotate: 0 },
-        { parts: [{ text: 'NINTENDO GAMECUBE', weight: 700 }], color: W, from: 0.1, to: 0.165, across: 0.45, rotate: 90 },
+        { parts: [{ logo: 'gamecube' }], color: W, from: 0.03, to: 0.165, across: 0.5, rotate: 90 },
       ],
     },
   },
@@ -422,7 +439,7 @@ function setFont(ctx: Ctx, p: { weight?: number; italic?: boolean; spacing?: num
 
 interface Box { w: number; h: number; draw: (x: number, y: number) => void }
 
-const ICON_ASPECT: Record<Icon, number> = { joycon: 0.85, xsphere: 1, cube: 1, windows: 1.05 };
+const ICON_ASPECT: Record<Icon, number> = { xsphere: 1, windows: 1.05 };
 
 /** Lays out parts at `unit` pixels per relative height unit; returns the size and a function drawing it at a top-left. */
 function layout(ctx: Ctx, parts: Part[], color: string, unit: number, gapUnits: number, dir: 'row' | 'stack'): Box {
@@ -482,6 +499,48 @@ function part(ctx: Ctx, p: Part, color: string, unit: number, gapUnits: number):
       },
     };
   }
+  if ('logo' in p) {
+    const l = getLogo(p.logo);
+    if (!l) return { w: 0, h: 0, draw: () => {} };
+    const used = l.layers.map((layer, i) => i).filter((i) => !p.only || p.only.includes(i));
+    const boxes = used.map((i) => l.layers[i].box);
+    const [lx0, ly0, lx1, ly1] = [Math.min(...boxes.map((b) => b[0])), Math.min(...boxes.map((b) => b[1])), Math.max(...boxes.map((b) => b[2])), Math.max(...boxes.map((b) => b[3]))];
+    // `crop` keeps only a share of the artwork, as fractions of its bounds: [left, top, right, bottom].
+    const [c0, c1, c2, c3] = p.crop ?? [0, 0, 1, 1];
+    const [bx, by] = [lx0 + c0 * (lx1 - lx0), ly0 + c1 * (ly1 - ly0)];
+    const [bw, bh] = [(c2 - c0) * (lx1 - lx0), (c3 - c1) * (ly1 - ly0)];
+    const k = h / bh;
+    return {
+      w: bw * k, h,
+      draw: (x, y) => {
+        const paths = logoPaths2D(l);
+        ctx.save();
+        ctx.translate(x, y);
+        ctx.scale(k, k);
+        if (p.crop) {
+          ctx.beginPath();
+          ctx.rect(0, 0, bw, bh);
+          ctx.clip();
+        }
+        used.forEach((i) => {
+          const layer = l.layers[i];
+          ctx.save();
+          ctx.translate(-bx + layer.offset[0], -by + layer.offset[1]);
+          if (layer.fill !== 'none') {
+            ctx.fillStyle = p.mono || !layer.fill || layer.fill === p.ink ? fill : layer.fill;
+            ctx.fill(paths[i], l.evenodd ? 'evenodd' : 'nonzero');
+          }
+          if (layer.stroke !== undefined) {
+            ctx.strokeStyle = p.mono || !layer.stroke || layer.stroke === p.ink ? fill : layer.stroke;
+            ctx.lineWidth = layer.strokeWidth ?? 1;
+            ctx.stroke(paths[i]);
+          }
+          ctx.restore();
+        });
+        ctx.restore();
+      },
+    };
+  }
   const w = h * ICON_ASPECT[p.icon];
   return { w, h, draw: (x, y) => drawIcon(ctx, p.icon, x, y, w, h, fill, p.accent) };
 }
@@ -495,30 +554,7 @@ function drawIcon(ctx: Ctx, icon: Icon, x: number, y: number, w: number, h: numb
   ctx.save();
   ctx.fillStyle = color;
   ctx.strokeStyle = color;
-  if (icon === 'joycon') {
-    // Two Joy-Con halves: the left outlined with a stick, the right solid with four face buttons.
-    const half = w * 0.47;
-    const line = w * 0.09;
-    ctx.lineWidth = line;
-    roundRect(ctx, x + line / 2, y + line / 2, half - line, h - line, [half / 2, 0, 0, half / 2]);
-    ctx.stroke();
-    ctx.beginPath();
-    ctx.arc(x + half / 2, y + h * 0.28, half * 0.19, 0, Math.PI * 2);
-    ctx.fill();
-    roundRect(ctx, x + w - half, y, half, h, [0, half / 2, half / 2, 0]);
-    ctx.fill();
-    // The four face buttons (ABXY layout) are holes showing the background behind the icon.
-    ctx.fillStyle = accent;
-    const bx = x + w - half / 2;
-    const by = y + h * 0.62;
-    const spread = half * 0.19;
-    const dotR = half * 0.085;
-    ([[0, -spread], [0, spread], [-spread, 0], [spread, 0]] as [number, number][]).forEach(([dx, dy]) => {
-      ctx.beginPath();
-      ctx.arc(bx + dx, by + dy, dotR, 0, Math.PI * 2);
-      ctx.fill();
-    });
-  } else if (icon === 'xsphere') {
+  if (icon === 'xsphere') {
     // A sphere with a soft diagonal swoosh across its upper half.
     const r = h / 2;
     ctx.beginPath();
@@ -537,24 +573,6 @@ function drawIcon(ctx: Ctx, icon: Icon, x: number, y: number, w: number, h: numb
     ctx.quadraticCurveTo(x + r * 1.0, y + r * 0.25, x + r * 1.9, y + r * 0.85);
     ctx.stroke();
     ctx.restore();
-  } else if (icon === 'cube') {
-    // An isometric cube: three faces of one colour at different strengths, with a faint seam between them.
-    const cx = x + w / 2;
-    const s = h / 2;
-    ctx.strokeStyle = 'rgba(0,0,0,0.25)';
-    ctx.lineWidth = Math.max(1, h * 0.012);
-    const face = (pts: [number, number][], alpha: number) => {
-      ctx.globalAlpha = alpha;
-      ctx.beginPath();
-      pts.forEach(([px, py], i) => (i ? ctx.lineTo(px, py) : ctx.moveTo(px, py)));
-      ctx.closePath();
-      ctx.fill();
-      ctx.stroke();
-    };
-    const dx = s * 0.87;
-    face([[cx, y], [cx + dx, y + s / 2], [cx, y + s], [cx - dx, y + s / 2]], 1);
-    face([[cx - dx, y + s / 2], [cx, y + s], [cx, y + h], [cx - dx, y + h - s / 2]], 0.75);
-    face([[cx + dx, y + s / 2], [cx, y + s], [cx, y + h], [cx + dx, y + h - s / 2]], 0.55);
   } else {
     // The four-colour Windows flag, panes slightly rounded.
     const g = w * 0.07;
@@ -578,16 +596,24 @@ function lockup(ctx: Ctx, m: Lockup, heightPx: number): Box {
 }
 
 /** Draws a lockup fitted inside `w` × `h` (px, centred on cx, cy), rotated by `rotate` degrees. */
-function drawFitted(ctx: Ctx, m: Lockup, cx: number, cy: number, w: number, h: number, rotate: number) {
+function drawFitted(ctx: Ctx, m: Lockup, cx: number, cy: number, w: number, h: number, rotate: number, px = 1) {
   const sideways = rotate !== 0;
   const [bw, bh] = sideways ? [h, w] : [w, h];
   const probe = lockup(ctx, m, 100);
   if (!probe.w || !probe.h) return;
-  const heightPx = Math.min(bh, (bw * probe.h) / probe.w);
+  // A frame takes a little room round the artwork.
+  const pad = m.frame ? Math.min(bw, bh) * 0.08 : 0;
+  const heightPx = Math.min(bh - 2 * pad, ((bw - 2 * pad) * probe.h) / probe.w);
   const box = lockup(ctx, m, heightPx);
   ctx.save();
   ctx.translate(cx, cy);
   ctx.rotate((rotate * Math.PI) / 180);
+  if (m.frame) {
+    const lw = Math.max(1, (m.frame.mm ?? 0.2) * px);
+    ctx.strokeStyle = m.frame.color;
+    ctx.lineWidth = lw;
+    ctx.strokeRect(-box.w / 2 - pad, -box.h / 2 - pad, box.w + 2 * pad, box.h + 2 * pad);
+  }
   box.draw(-box.w / 2, -box.h / 2);
   ctx.restore();
 }
@@ -599,7 +625,7 @@ function drawFrontMark(ctx: Ctx, m: FrontMark, area: { x: number; w: number }, p
   const maxW = area.w * 0.9;
   if (box.w > maxW) box = lockup(ctx, m, (m.h * H * maxW) / box.w);
   const inset = (m.inset ?? 0.025) * p.widthMm * px;
-  const x = m.align === 'left' ? area.x + inset : m.align === 'right' ? area.x + area.w - inset - box.w : area.x + (area.w - box.w) / 2;
+  const x = (m.align === 'left' ? area.x + inset : m.align === 'right' ? area.x + area.w - inset - box.w : area.x + (area.w - box.w) / 2) + (m.dx ?? 0) * p.widthMm * px;
   const cy = m.cy !== undefined ? p.yMm * px + m.cy * H : p.yMm * px + (depth((x + box.w / 2) / px) * px) / 2;
   const y = cy - box.h / 2;
   if (m.plate) {
@@ -652,10 +678,15 @@ function drawFront(ctx: Ctx, t: TemplateConfig, p: PanelRect, h: FrontHeader, px
     }
 
     if (h.line) {
-      const t2 = h.line.size * H;
+      // Thickest in the middle and thinner towards both sides when tapered.
+      const thick = (x: number) => {
+        const u = Math.min(1, Math.max(0, (x - x0) / W));
+        const edge = h.line!.taper ?? 1;
+        return h.line!.size * H * (edge + (1 - edge) * (1 - (2 * u - 1) ** 2));
+      };
       ctx.beginPath();
       outline(0).forEach(([x, y], i) => (i ? ctx.lineTo(x, y) : ctx.moveTo(x, y)));
-      for (const [x, y] of outline(t2).reverse()) ctx.lineTo(x, y);
+      for (const [x, y] of xs.map((x) => [x, edge(x) + thick(x)] as const).reverse()) ctx.lineTo(x, y);
       ctx.closePath();
       ctx.fillStyle = h.line.color;
       ctx.fill();
@@ -719,21 +750,23 @@ function drawDecor(ctx: Ctx, decor: 'xbox-orb' | 'x360-swoosh', x0: number, y0: 
 
 /** A span mark along a spine-like strip; `frame` is in px, `across` the strip's width and `along` its length. */
 function drawSpan(ctx: Ctx, m: SpanMark, frame: { x: number; y: number; across: number; along: number }, orientation: 'vertical' | 'horizontal', px: number) {
-  void px;
   const vertical = orientation === 'vertical';
   const start = m.from * frame.along;
   const len = (m.to - m.from) * frame.along;
-  const [cx, cy] = vertical ? [frame.x + frame.across / 2, frame.y + start + len / 2] : [frame.x + start + len / 2, frame.y + frame.across / 2];
+  const shift = (m.dx ?? 0) * frame.across;
+  const [cx, cy] = vertical ? [frame.x + frame.across / 2 + shift, frame.y + start + len / 2] : [frame.x + start + len / 2, frame.y + frame.across / 2 + shift];
   if (m.plate) {
     ctx.fillStyle = m.plate;
-    if (vertical) ctx.fillRect(frame.x, frame.y + start, frame.across, len);
-    else ctx.fillRect(frame.x + start, frame.y, len, frame.across);
+    const pw = frame.across * (m.plateAcross ?? 1);
+    const off = (frame.across - pw) / 2;
+    if (vertical) ctx.fillRect(frame.x + off, frame.y + start, pw, len);
+    else ctx.fillRect(frame.x + start, frame.y + off, len, pw);
   }
   const room = frame.across * (m.across ?? 0.6);
   // On a horizontal spine the text already runs along it, so nothing turns.
   const rotate = vertical ? m.rotate : 0;
   const [w, h] = vertical ? [room, len] : [len, room];
-  drawFitted(ctx, m, cx, cy, w, h, rotate);
+  drawFitted(ctx, m, cx, cy, w, h, rotate, px);
 }
 
 function drawSpine(ctx: Ctx, t: TemplateConfig, p: PanelRect, s: SpineBranding, px: number) {
@@ -752,13 +785,35 @@ function drawSpine(ctx: Ctx, t: TemplateConfig, p: PanelRect, s: SpineBranding, 
     const len = s.cap.length * along;
     const rect = vertical ? [ax, ay, aw, y0 + len - ay] : [ax, ay, x0 + len - ax, ah];
     ctx.fillStyle = paint(ctx, s.cap.fill, rect[0], rect[1], rect[2], rect[3]);
-    ctx.fillRect(rect[0], rect[1], rect[2], rect[3]);
+    if (s.cap.dome && vertical) {
+      // The lower edge rises in the middle: a curve between the two ends of the edge.
+      const rise = s.cap.dome * along;
+      const [cx0, cy0, cw, ch] = rect;
+      ctx.beginPath();
+      ctx.moveTo(cx0, cy0);
+      ctx.lineTo(cx0 + cw, cy0);
+      ctx.lineTo(cx0 + cw, cy0 + ch);
+      ctx.quadraticCurveTo(cx0 + cw / 2, cy0 + ch - 2 * rise, cx0, cy0 + ch);
+      ctx.closePath();
+      ctx.fill();
+    } else ctx.fillRect(rect[0], rect[1], rect[2], rect[3]);
     if (s.cap.line) {
       const t2 = s.cap.line.size * along;
       ctx.fillStyle = s.cap.line.color;
       if (vertical) ctx.fillRect(ax, y0 + len, aw, t2);
       else ctx.fillRect(x0 + len, ay, t2, ah);
     }
+  }
+  if (s.outline) {
+    // Round the cap when there is one, otherwise round the whole spine.
+    const lw = Math.max(1, s.outline.mm * px);
+    const [ow, oh] = [p.widthMm * px, (s.cap && vertical ? s.cap.length * along : p.heightMm * px)];
+    const rightFrom = (s.outline.rightFrom ?? 0) * along;
+    ctx.fillStyle = s.outline.color;
+    if (s.outline.top !== false) ctx.fillRect(x0, y0, ow, lw);
+    ctx.fillRect(x0, y0, lw, oh);
+    ctx.fillRect(x0, y0 + oh - lw, ow, lw);
+    ctx.fillRect(x0 + ow - lw, y0 + rightFrom, lw, oh - rightFrom);
   }
   for (const m of s.marks) drawSpan(ctx, m, { x: x0, y: y0, across, along }, vertical ? 'vertical' : 'horizontal', px);
 }
