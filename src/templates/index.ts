@@ -33,16 +33,32 @@ export function buildTemplate(kind: TemplateKind, variantId?: string): TemplateC
 /** The template opened with an empty queue. */
 export const DEFAULT_TEMPLATE_ID = 'dvd-std-14';
 
-const built = new Map<string, TemplateConfig>();
-/** Builds a template from its library id (`${kind}-${variantId}`), once; an unknown id gets the default template. */
-export function buildTemplateById(id: string): TemplateConfig {
-  let t = built.get(id);
-  if (!t) {
-    const def = TEMPLATE_DEFS.find((d) => d.variants.some((v) => `${d.kind}-${v.id}` === id));
-    const variant = def?.variants.find((v) => `${def.kind}-${v.id}` === id);
-    if (!def || !variant) return id === DEFAULT_TEMPLATE_ID ? buildTemplate(DEFAULT_KIND) : buildTemplateById(DEFAULT_TEMPLATE_ID);
-    built.set(id, (t = def.build(variant.id)));
+function deepFreeze<T>(o: T): T {
+  if (o && typeof o === 'object' && !Object.isFrozen(o)) {
+    Object.freeze(o);
+    for (const v of Object.values(o)) deepFreeze(v);
   }
+  return o;
+}
+
+const built = new Map<string, TemplateConfig>();
+/**
+ * Builds a template from its library id (`${kind}-${variantId}`), once. An unknown id gets its kind's first template
+ * (or the default template when the kind is unknown too). The result is shared by every caller, so it is frozen.
+ */
+export function buildTemplateById(id: string): TemplateConfig {
+  const hit = built.get(id);
+  if (hit) return hit;
+  const def = TEMPLATE_DEFS.find((d) => d.variants.some((v) => `${d.kind}-${v.id}` === id));
+  const variant = def?.variants.find((v) => `${def.kind}-${v.id}` === id);
+  if (!def || !variant) {
+    // Longest kind first, so `nfc-card-…` isn't taken for some shorter kind that is its prefix.
+    const byKind = [...TEMPLATE_DEFS].sort((a, b) => b.kind.length - a.kind.length).find((d) => id.startsWith(`${d.kind}-`));
+    if (byKind) return buildTemplateById(`${byKind.kind}-${byKind.variants[0].id}`);
+    return id === DEFAULT_TEMPLATE_ID ? deepFreeze(buildTemplate(DEFAULT_KIND)) : buildTemplateById(DEFAULT_TEMPLATE_ID);
+  }
+  const t = deepFreeze(def.build(variant.id));
+  built.set(id, t);
   return t;
 }
 

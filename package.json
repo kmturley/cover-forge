@@ -12,7 +12,7 @@
     "lint": "eslint .",
     "test": "vitest run",
     "gen:brands": "node scripts/gen-brands.mjs",
-    "measure:covers": "node scripts/measure-covers.ts",
+    "measure:covers": "tsx scripts/measure-covers.ts",
     "compare:covers": "tsx scripts/compare-covers.ts"
   },
   "dependencies": {

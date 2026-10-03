@@ -9,7 +9,7 @@ import {
   saveConfigFile,
   CONFIG_EXTENSION,
 } from "../../context/configFile";
-import { restoreSession } from "../../context/session";
+import { clearBackup, loadBackup, restoreSession } from "../../context/session";
 import { buildShareLink } from "../../context/share";
 
 /** Save the whole configuration to a file, open one, or copy a link that reopens it. */
@@ -20,6 +20,8 @@ export function ConfigButtons() {
   const [note, setNote] = useState<{ text: string; bad?: boolean } | null>(
     null,
   );
+  // The visitor's own session, set aside when a shared link replaced it.
+  const [backup, setBackup] = useState(() => loadBackup(initialState));
 
   const say = (text: string, bad = false) => {
     setNote({ text, bad });
@@ -35,6 +37,20 @@ export function ConfigButtons() {
     } catch (e) {
       say(e instanceof Error ? e.message : "Couldn’t open that file.", true);
     }
+  }
+
+  function restoreBackup() {
+    if (!backup) return;
+    if (!window.confirm("Go back to the session you had before opening the shared link? The shared one will be replaced.")) return;
+    dispatch({ type: "loadState", state: backup });
+    clearBackup();
+    setBackup(null);
+    say("Restored your previous session");
+  }
+
+  function keepLinked() {
+    clearBackup();
+    setBackup(null);
   }
 
   async function save() {
@@ -85,6 +101,23 @@ export function ConfigButtons() {
         >
           Share
         </button>
+        {backup && (
+          <button
+            title="Opening the shared link replaced your saved session. Bring yours back."
+            onClick={restoreBackup}
+          >
+            Restore previous
+          </button>
+        )}
+        {backup && (
+          <button
+            title="Keep the shared session as yours and forget the previous one"
+            aria-label="Keep the shared session"
+            onClick={keepLinked}
+          >
+            ✕
+          </button>
+        )}
         <input
           ref={input}
           type="file"

@@ -16,7 +16,7 @@ export function fillPattern(pattern: string, item: MediaItem): string {
     year: item.year ?? '',
     subtitle: item.subtitle ?? '',
   };
-  return pattern.replace(/\{(\w+)\}/g, (whole, key: string) => (key in values ? values[key] : whole));
+  return pattern.replace(/\{(\w+)\}/g, (whole, key: string) => (Object.hasOwn(values, key) ? values[key] : whole)); // own keys only, not Object.prototype's
 }
 
 /** 32-bit FNV-1a; small, stable and good enough to spread titles over digits. */

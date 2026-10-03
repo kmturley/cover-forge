@@ -32,10 +32,34 @@ export async function encodeConfig(value: unknown): Promise<string> {
   return toBase64Url(await pipe(new TextEncoder().encode(JSON.stringify(value)), new CompressionStream('deflate-raw')));
 }
 
-/** The reverse of encodeConfig; null when the text isn't a valid encoded config. */
-export async function decodeConfig(text: string): Promise<unknown> {
+/**
+ * The most a link's config may inflate to. A real session is a few hundred KB at most; deflate can expand about 1000×,
+ * so without a limit a crafted link could inflate to gigabytes and crash the tab that opens it.
+ */
+export const MAX_CONFIG_BYTES = 5 * 1024 * 1024;
+
+/** Inflates, giving up as soon as the output passes `limit` bytes. */
+async function inflateCapped(bytes: Uint8Array, limit: number): Promise<Uint8Array> {
+  const reader = new Blob([bytes as BlobPart]).stream().pipeThrough(new DecompressionStream('deflate-raw')).getReader();
+  const chunks: Uint8Array[] = [];
+  let total = 0;
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    total += value.byteLength;
+    if (total > limit) {
+      await reader.cancel();
+      throw new Error('Shared config is too large');
+    }
+    chunks.push(value);
+  }
+  return new Uint8Array(await new Blob(chunks as BlobPart[]).arrayBuffer());
+}
+
+/** The reverse of encodeConfig; null when the text isn't a valid encoded config (or inflates past MAX_CONFIG_BYTES). */
+export async function decodeConfig(text: string, limit = MAX_CONFIG_BYTES): Promise<unknown> {
   try {
-    return JSON.parse(new TextDecoder().decode(await pipe(fromBase64Url(text), new DecompressionStream('deflate-raw'))));
+    return JSON.parse(new TextDecoder().decode(await inflateCapped(fromBase64Url(text), limit)));
   } catch {
     return null;
   }

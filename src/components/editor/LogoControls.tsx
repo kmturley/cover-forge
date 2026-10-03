@@ -4,6 +4,8 @@ import { computeLogoPlacement } from '../../engine/logo';
 import type { LogoSettings } from '../../types/editor';
 import type { PanelId } from '../../types/template';
 import { NumberSlider } from './NumberSlider';
+import { BoxControls } from './BoxControls';
+import { rectToBox } from '../../engine/box';
 
 const SWATCHES = [
   { label: 'White', value: '#ffffff' },
@@ -63,12 +65,11 @@ export function LogoControls({ panel, target, logo }: Props) {
               </button>
             ))}
           </div>
-          <NumberSlider label="Logo size (width)" unit="mm" min={2} max={150} step={0.5} decimals={1} value={pl.widthMm} onChange={(widthMm) => patch({ widthMm })} />
-          <NumberSlider label="Logo position X" unit="mm" min={Math.floor(-pl.widthMm)} max={Math.ceil(pl.area.widthMm)} step={0.1} decimals={1} value={pl.xMm} onChange={(xMm) => patch({ xMm })} />
-          <NumberSlider label="Logo position Y" unit="mm" min={Math.floor(-pl.heightMm)} max={Math.ceil(pl.area.heightMm)} step={0.1} decimals={1} value={pl.yMm} onChange={(yMm) => patch({ yMm })} />
+          <p className="muted small">The logo is as large as fits inside its box, centred, keeping its shape.</p>
+          <BoxControls what="Logo" box={logo.box ?? rectToBox(rect, pl.box)} overhang={50} onChange={(box) => patch({ box })} />
           <NumberSlider label="Logo rotation" unit="°" min={-180} max={180} step={0.1} decimals={1} value={logo.rotationDeg} onChange={(rotationDeg) => patch({ rotationDeg })} />
           <NumberSlider label="Logo opacity" unit="%" min={0} max={100} step={1} decimals={0} value={Math.round(logo.opacity * 100)} onChange={(v) => patch({ opacity: v / 100 })} />
-          <button onClick={() => patch({ widthMm: null, xMm: null, yMm: null, rotationDeg: 0 })}>Reset logo placement</button>
+          <button onClick={() => patch({ box: null, rotationDeg: 0 })}>Reset logo placement</button>
         </>
       )}
       <p className="muted small">

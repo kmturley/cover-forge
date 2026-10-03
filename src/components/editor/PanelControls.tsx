@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { targetDesignId, useAppDispatch, useAppState, useSelectedItem } from '../../context/AppContext';
-import { DEFAULT_TRANSFORM, MAX_SCALE, MIN_SCALE, type ImageRef, type PanelSettings, type PanelTransform } from '../../types/editor';
+import { DEFAULT_TRANSFORM, type ImageFit, type ImageRef, type PanelSettings, type PanelTransform } from '../../types/editor';
 import type { PanelId } from '../../types/template';
 import { libraryImages, type LibraryImage } from '../../engine/imageLibrary';
 import { getCachedImage, loadImage } from '../../engine/imageCache';
@@ -14,6 +14,8 @@ import { useEditView } from './useEditView';
 import { readImageFile } from '../../api/upload';
 import { srcOf } from '../../storage/localImages';
 import { NumberSlider } from './NumberSlider';
+import { BoxControls } from './BoxControls';
+import { rectToBox } from '../../engine/box';
 import { SpineTextControls } from './SpineEditor';
 import { NoneLink } from './NoneLink';
 import { LogoControls } from './LogoControls';
@@ -23,7 +25,7 @@ import { getBrand } from '../../brands';
 import { defaultCapHeightMm } from '../../engine/SpineTypography';
 import { CodeControls } from './CodeControls';
 
-/** Natural pixel size of an image once loaded (needed to show its centred position in mm). */
+/** Natural pixel size of an image once loaded (needed to show where it sits). */
 function useImageSize(url: string | null) {
   const [size, setSize] = useState<{ url: string; w: number; h: number } | null>(null);
   useEffect(() => {
@@ -100,7 +102,6 @@ function PanelBody({ panel }: { panel: PanelId }) {
   const size = useImageSize(r.imageUrl);
   const rect = template.panels.find((p) => p.id === panel)!;
   const pl = size ? computePlacement(template, rect, size.w, size.h, t) : null;
-  const area = pl?.area ?? rect;
 
   const patch = (p: Partial<PanelSettings>) => dispatch({ type: 'updatePanel', id: target, panel, patch: p });
   const fileInput = useRef<HTMLInputElement>(null);
@@ -179,17 +180,28 @@ function PanelBody({ panel }: { panel: PanelId }) {
           <p className="muted">Loading image…</p>
         ) : r.imageRef !== null && pl ? (
           <>
-            <p className="muted">Position is the image's top-left corner from the panel's top-left (bleed included). 0, 0 aligns to the corner. Default: centred.</p>
-            <NumberSlider label="Position X" unit="mm" min={Math.floor(-pl.widthMm)} max={Math.ceil(area.widthMm)} step={0.1} decimals={1} value={pl.xMm} onChange={(xMm) => setTransform({ xMm })} />
-            <NumberSlider label="Position Y" unit="mm" min={Math.floor(-pl.heightMm)} max={Math.ceil(area.heightMm)} step={0.1} decimals={1} value={pl.yMm} onChange={(yMm) => setTransform({ yMm })} />
-            <NumberSlider label="Size (zoom)" unit="×" min={MIN_SCALE} max={MAX_SCALE} step={0.01} value={t.scale} onChange={(scale) => setTransform({ scale })} />
+            <div className="seg" role="group" aria-label="Image fit">
+              {(
+                [
+                  ['fill', 'Fill', 'Covers the whole box, cropping what overflows'],
+                  ['fit', 'Fit', 'Shows the whole image inside the box'],
+                ] as [ImageFit, string, string][]
+              ).map(([fit, label, title]) => (
+                // An older save's placement becomes the box it amounts to, so switching keeps the image where it was.
+                <button key={fit} className={t.fit === fit ? 'active' : ''} aria-pressed={t.fit === fit} title={title} onClick={() => setTransform({ fit, box: t.box ?? (t.box === null ? null : rectToBox(rect, pl.box)) })}>
+                  {label}
+                </button>
+              ))}
+            </div>
+            {/* Images may sit well past the panel, to crop in on part of them. */}
+            <BoxControls what="Image" box={t.box ?? rectToBox(rect, pl.box)} overhang={100} onChange={(box) => setTransform({ box })} />
             <NumberSlider label="Rotation" unit="°" min={-180} max={180} step={0.1} decimals={1} value={t.rotationDeg} onChange={(rotationDeg) => setTransform({ rotationDeg })} />
             <NumberSlider label="Opacity" unit="%" min={0} max={100} step={1} decimals={0} value={Math.round(t.opacity * 100)} onChange={(v) => setTransform({ opacity: v / 100 })} />
             <button
-              // Group: drop the design's placement. Item: pin this item to centred cover-all regardless of its design.
+              // Group: drop the design's placement. Item: pin this item to fill the panel regardless of its design.
               onClick={() => patch({ transform: isOverride ? DEFAULT_TRANSFORM : undefined })}
             >
-              Reset image (centred, cover all)
+              Reset image (fill the whole panel)
             </button>
           </>
         ) : (

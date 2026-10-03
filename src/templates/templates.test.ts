@@ -19,11 +19,12 @@ describe('blu-ray template', () => {
     expect(spine.widthMm).toBe(11);
   });
 
-  it('offers the US cases only, and falls back for unknown variants', () => {
-    expect(variantsFor('bluray').map((v) => v.id)).toEqual(['us-11']);
+  it('offers the US case only, keeps retired cases at their size, and falls back for unknown variants', () => {
+    expect(variantsFor('bluray').filter((v) => !v.hidden).map((v) => v.id)).toEqual(['us-11']);
     expect(defaultVariantId('bluray')).toBe('us-11');
-    expect(buildTemplate('bluray', 'eu-14').variantId).toBe('us-11');
-    expect(buildTemplate('bluray', 'us-12.5').variantId).toBe('us-11');
+    expect(buildTemplate('bluray', 'eu-14').panels.find((p) => p.id === 'spine')!.widthMm).toBe(14);
+    expect(buildTemplate('bluray', 'us-12.5').panels.find((p) => p.id === 'spine')!.widthMm).toBe(12.5);
+    expect(buildTemplate('bluray', 'nonsense').variantId).toBe('us-11');
   });
 });
 
@@ -44,7 +45,8 @@ describe('game case sizes (see branding-spec.md)', () => {
 
   it.each([
     ['dvd', 'std-14', 273, 183],
-    ['dvd', 'slim-9', 266, 183],
+    ['dvd', 'slim-7', 266, 183],
+    ['dvd', 'slim-9', 268, 183],
     ['bluray', 'us-11', 267, 149],
     ['game-case', 'pc', 273, 183],
     ['game-case', 'ps2', 273, 183],
@@ -241,7 +243,7 @@ describe('NFC box net', () => {
       expect(box.variantId).toBe(v);
       expect(box.preview.kind).toBe('box');
     }
-    expect(buildTemplate('nfc-box', 'small').variantId).toBe('card'); // the keepsake box is gone
+    expect(buildTemplate('nfc-box', 'small').variantId).toBe('small'); // retired, but old saves keep their box
     expect(buildTemplate('nfc-box', 'nonsense').variantId).toBe('card');
   });
 
@@ -281,7 +283,24 @@ describe('NFC card back', () => {
   it('is the default NFC card variant', () => {
     expect(defaultVariantId('nfc-card')).toBe('cr80-duplex');
     expect(buildTemplate('nfc-card').panels.map((q) => q.id)).toEqual(['back', 'front']);
-    // There is no front-only variant.
-    expect(variantsFor('nfc-card').map((v) => v.id)).toEqual(['cr80-duplex']);
+    // The front-only card is retired: not offered, but old saves still get one card.
+    expect(variantsFor('nfc-card').filter((v) => !v.hidden).map((v) => v.id)).toEqual(['cr80-duplex']);
+    expect(buildTemplate('nfc-card', 'cr80').panels.map((q) => q.id)).toEqual(['front']);
+  });
+});
+
+describe('template ids', () => {
+  // A saved design is tied to its template id, so an id must keep printing at the same physical size. A deliberate
+  // change to a size needs a new id (hide the old one), or a reviewed update of this snapshot.
+  it('never change the physical size of an existing template', () => {
+    const sizes = Object.fromEntries(
+      TEMPLATE_DEFS.flatMap((d) =>
+        d.variants.map((v) => {
+          const t = d.build(v.id);
+          return [t.id, `${t.totalWidthMm} × ${t.totalHeightMm} | ${t.panels.map((p) => `${p.id} ${p.widthMm}×${p.heightMm}`).join(', ')}`];
+        }),
+      ),
+    );
+    expect(sizes).toMatchSnapshot();
   });
 });

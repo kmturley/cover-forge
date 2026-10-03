@@ -1,6 +1,6 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { initialState, reducer } from './AppContext';
-import { restoreSession, serializeSession } from './session';
+import { backupBeforeLink, clearBackup, loadBackup, restoreSession, saveSession, serializeSession } from './session';
 import type { MediaItem } from '../types/media';
 
 const item: MediaItem = {
@@ -79,8 +79,26 @@ describe('session', () => {
     expect(s.templateId).toBe('bluray-us-11'); // EU cases are no longer offered: the US standard instead
     expect(s.view).toBe(initialState.view);
     expect(s.showGuides).toBe(initialState.showGuides);
-    expect(s.shared.panels).toEqual({ front: { image: 'hero' } }); // unknown panel dropped
+    // Unknown panel dropped; the back's barcode is pinned off, as it was when this (pre-template) save was made.
+    expect(s.shared.panels).toEqual({ front: { image: 'hero' }, back: { code: { kind: 'none' } } });
     expect(s.shared.spine).toEqual(initialState.shared.spine);
+  });
+
+  it('keeps an old save looking as it did: no default barcode, "Subtitle · Title" spines', () => {
+    const doc = { app: 'coverforge', version: 2, items: [{ ...item, subtitle: 'Valve' }], selectedItemId: 'steam-1', options: { templateKind: 'dvd', variantId: 'std-14' } };
+    const s = restoreSession(doc, initialState);
+    expect(s.shared.panels.back?.code).toEqual({ kind: 'none' });
+    expect(s.shared.spine.textTemplate).toBe('{subtitle} · {title}');
+    // A barcode the save chose itself is kept.
+    const chose = restoreSession({ ...doc, shared: { panels: { back: { code: { kind: 'qr' } } }, spine: {} } }, initialState);
+    expect(chose.shared.panels.back?.code).toEqual({ kind: 'qr' });
+  });
+
+  it('pins nothing for a save made with per-item templates', () => {
+    const doc = { app: 'coverforge', version: 2, items: [{ ...item, subtitle: 'Valve', templateId: 'dvd-std-14' }], selectedItemId: 'steam-1', options: { templateId: 'dvd-std-14' } };
+    const s = restoreSession(doc, initialState);
+    expect(s.shared.panels.back).toBeUndefined();
+    expect(s.shared.spine.textTemplate).toBeUndefined();
   });
 
   it('migrates a v1 session: keeps font/colour, drops the old text height, keeps item panels as overrides', () => {
@@ -92,10 +110,38 @@ describe('session', () => {
       options: { region: 'US', spineMm: 12.5, backgroundColor: '#222', spine: { fontFamily: 'Georgia, serif', textHeightMm: 6, color: '#ff0' } },
     };
     const s = restoreSession(v1, initialState);
-    // Blu-ray Elite (12.5 mm) was removed; it becomes the standard Blu-ray.
-    expect(s.templateId).toBe('bluray-us-11');
-    expect(s.items[0].templateId).toBe('bluray-us-11');
+    // Blu-ray Elite (12.5 mm) is no longer offered, but the save keeps printing at the size it was made for.
+    expect(s.templateId).toBe('bluray-us-12.5');
+    expect(s.items[0].templateId).toBe('bluray-us-12.5');
     expect(s.shared.spine).toEqual({ fontFamily: 'Georgia, serif', color: '#ff0' });
     expect(s.items[0].panels?.back?.transform).toEqual({ scale: 2 });
+  });
+});
+
+describe('the visitor’s session when a shared link replaces it', () => {
+  const memory = () => {
+    const m = new Map<string, string>();
+    return { getItem: (k: string) => m.get(k) ?? null, setItem: (k: string, v: string) => void m.set(k, v), removeItem: (k: string) => void m.delete(k) };
+  };
+  afterEach(() => vi.unstubAllGlobals());
+
+  it('is set aside before the link’s session is saved over it, and can be restored', () => {
+    vi.stubGlobal('localStorage', memory());
+    const own = reducer(initialState, { type: 'addItem', item });
+    saveSession(own);
+    backupBeforeLink();
+    saveSession(initialState); // the link's session, autosaved
+    expect(loadBackup(initialState)?.items.map((i) => i.id)).toEqual(['steam-1']);
+  });
+
+  it('is not overwritten by a second link, whose saved session is the first link’s', () => {
+    vi.stubGlobal('localStorage', memory());
+    saveSession(reducer(initialState, { type: 'addItem', item }));
+    backupBeforeLink();
+    saveSession(initialState);
+    backupBeforeLink();
+    expect(loadBackup(initialState)?.items).toHaveLength(1);
+    clearBackup();
+    expect(loadBackup(initialState)).toBeNull();
   });
 });

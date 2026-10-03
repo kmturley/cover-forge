@@ -1,7 +1,9 @@
 import { useAppDispatch, useAppState, useSelectedItem } from '../../context/AppContext';
 import { encodeBars, encodeQr } from '../../codes/encode';
 import { PATTERN_TOKENS, barcodeValue, fillPattern } from '../../codes/pattern';
-import { computeCodePlacement } from '../../engine/code';
+import { CODE_SAFETY_MM, computeCodePlacement } from '../../engine/code';
+import { BoxControls } from './BoxControls';
+import { rectToBox } from '../../engine/box';
 import type { CodeKind, CodeSettings } from '../../types/editor';
 import type { PanelId } from '../../types/template';
 import { NumberSlider } from './NumberSlider';
@@ -107,7 +109,7 @@ export function CodeControls({ panel, target, code }: Props) {
           )}
           {preview !== null && <p className="code-preview" title={preview}>Encodes: {preview}</p>}
           {problem && <p className="error small">{problem}</p>}
-          {!pl.fits && <p className="warn small">Doesn’t fit inside this panel at this size, so it won’t be printed. Make it smaller or use a larger panel.</p>}
+          {!pl.fits && <p className="warn small">Its box leaves too little room inside this panel’s safe area, so it won’t be printed. Make the box larger or move it onto the panel.</p>}
 
           <div className="field row">
             <input type="color" aria-label="Code colour" value={code.color} onChange={(e) => patch({ color: e.target.value })} />
@@ -115,12 +117,11 @@ export function CodeControls({ panel, target, code }: Props) {
             <input type="color" aria-label="Code background colour" value={code.background} onChange={(e) => patch({ background: e.target.value })} />
             <span className="muted">Background</span>
           </div>
-          <NumberSlider label="Code width" unit="mm" min={4} max={150} step={0.5} decimals={1} value={pl.widthMm} onChange={(widthMm) => patch({ widthMm })} />
-          <NumberSlider label="Code position X" unit="mm" min={Math.floor(-pl.widthMm)} max={Math.ceil(pl.area.widthMm)} step={0.1} decimals={1} value={pl.xMm} onChange={(xMm) => patch({ xMm })} />
-          <NumberSlider label="Code position Y" unit="mm" min={Math.floor(-pl.heightMm)} max={Math.ceil(pl.area.heightMm)} step={0.1} decimals={1} value={pl.yMm} onChange={(yMm) => patch({ yMm })} />
+          <p className="muted small">The code is as large as fits inside its box (and the panel’s {CODE_SAFETY_MM} mm safe area), centred, keeping its proportions.</p>
+          <BoxControls what="Code" box={code.box ?? rectToBox(rect, pl.box)} overhang={50} onChange={(box) => patch({ box })} />
           <NumberSlider label="Code rotation" unit="°" min={-180} max={180} step={0.1} decimals={1} value={code.rotationDeg} onChange={(rotationDeg) => patch({ rotationDeg })} />
           <NumberSlider label="Code opacity" unit="%" min={0} max={100} step={1} decimals={0} value={Math.round(code.opacity * 100)} onChange={(v) => patch({ opacity: v / 100 })} />
-          <button onClick={() => patch({ widthMm: null, xMm: null, yMm: null, rotationDeg: 0 })}>Reset code placement</button>
+          <button onClick={() => patch({ box: null, rotationDeg: 0 })}>Reset code placement</button>
         </>
       )}
     </>

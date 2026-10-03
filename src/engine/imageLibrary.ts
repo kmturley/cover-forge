@@ -26,7 +26,23 @@ export function resolveImageRef(item: MediaItem, ref: ImageRef | null): string |
   return item.assets.screenshots[i] ?? null;
 }
 
-/** What each panel shows until the user picks something else. The spine is text-only by default. */
-export function defaultImageRef(id: PanelId): ImageRef | null {
-  return id === 'front' ? 'cover' : id === 'back' ? 'hero' : null;
+/**
+ * The images each panel prefers, best first. A source with several images maps a front and a back from them: the
+ * cover in front and the wide hero/backdrop (or the back scan) behind, else the next image. With only one, both
+ * panels show it.
+ */
+const PREFERENCE: Partial<Record<PanelId, ImageRef[]>> = {
+  front: ['cover', 'hero', 'screenshot:0'],
+  back: ['hero', 'screenshot:0', 'cover'],
+};
+
+/**
+ * What a panel shows until the user picks something else: the first image it prefers that the item has. Without an
+ * item, the panel's first choice. The spine is text-only by default.
+ */
+export function defaultImageRef(id: PanelId, item: MediaItem | null = null): ImageRef | null {
+  const prefs = PREFERENCE[id];
+  if (!prefs) return null;
+  if (!item) return prefs[0];
+  return prefs.find((ref) => resolveImageRef(item, ref)) ?? prefs[0];
 }

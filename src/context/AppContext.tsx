@@ -5,6 +5,7 @@ import type { Design, PanelSettings, SharedSettings, SpineSettings } from '../ty
 import { DEFAULT_DESIGN_ID } from '../engine/designs';
 import { DEFAULT_TEMPLATE_ID, buildTemplateById } from '../templates';
 import { syncTemplate } from './templateOf';
+import { LEGACY_FIELDS } from '../engine/box';
 
 export { templateIdOf, templateOf } from './templateOf';
 import { defaultTemplateFor, isTemplateId, type LastTemplates } from '../templates/library';
@@ -116,13 +117,21 @@ function editDesign(state: AppState, id: string, f: (layer: Layer) => Layer): Ap
   return { ...state, designs: state.designs.map((d) => (d.id === id ? { ...d, ...f(d) } : d)) };
 }
 
+/** A layer with a patch on top; a patch that sets `box` also unsets the layer's older mm fields. */
+function withBox<T extends object>(existing: T | undefined, patch: Partial<T>, legacy: readonly string[]): T {
+  const next = { ...existing, ...patch } as Record<string, unknown>;
+  if ('box' in patch) for (const k of legacy) if (!(k in patch)) next[k] = undefined;
+  return next as T;
+}
+
 /** Merges a panel patch. `transform`, `logo`, `code` and `border` merge field by field; setting one to undefined clears it. */
 function mergePanel(existing: PanelSettings | undefined, patch: Partial<PanelSettings>): PanelSettings {
   const next: PanelSettings = { ...existing, ...patch };
   // Nested layers merge field by field; a field set to undefined is cleared so it inherits again.
-  if (patch.transform) next.transform = compact({ ...existing?.transform, ...patch.transform });
-  if (patch.logo) next.logo = compact({ ...existing?.logo, ...patch.logo });
-  if (patch.code) next.code = compact({ ...existing?.code, ...patch.code });
+  // Writing a box replaces the layer's older mm placement (see LegacyPlacement), so the two never mix.
+  if (patch.transform) next.transform = compact(withBox(existing?.transform, patch.transform, LEGACY_FIELDS.transform));
+  if (patch.logo) next.logo = compact(withBox(existing?.logo, patch.logo, LEGACY_FIELDS.logo));
+  if (patch.code) next.code = compact(withBox(existing?.code, patch.code, LEGACY_FIELDS.code));
   if (patch.border) next.border = compact({ ...existing?.border, ...patch.border });
   return compact(next);
 }

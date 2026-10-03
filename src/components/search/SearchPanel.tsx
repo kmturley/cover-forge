@@ -44,6 +44,8 @@ export function SearchPanel() {
       if (!term) {
         setResults({});
         setFailed([]);
+        // A search cleared while it ran was aborted before it could stop the spinner.
+        setLoading(false);
         return;
       }
       setLoading(true);

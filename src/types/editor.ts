@@ -4,19 +4,46 @@ import type { PanelId } from './template';
 export type StyleOverlay = 'clean' | 'digital' | 'retro';
 
 /**
- * Placement of an image inside its panel. Scale 1 = covers the panel. `xMm`/`yMm` are the image's top-left
- * corner in mm from the panel's top-left; `null` means centred (the default), whatever the image or scale.
+ * Where something sits on a panel: a box from a start to an end edge on each axis, in percent of the trimmed panel's
+ * width (x) and height (y), measured from its top-left. 0–100 is the trimmed panel; below 0 or above 100 reaches
+ * into the bleed (or past it, to crop). Being relative, the same box suits every case size a design is used on.
+ * What it holds is sized to the box without distortion (see `fit` for images; logos and codes always fit inside).
  */
-export interface PanelTransform {
-  xMm: number | null;
-  yMm: number | null;
-  scale: number;
+export interface PanelBox {
+  xStart: number;
+  xEnd: number;
+  yStart: number;
+  yEnd: number;
+}
+
+/**
+ * Placement fields saves used before boxes: absolute mm from the panel's paint-area top-left (and an image zoom).
+ * Still read, so an older save renders exactly as it did, until the placement is next edited and becomes a box.
+ */
+export interface LegacyPlacement {
+  /** @deprecated read only; see LegacyPlacement. */
+  xMm?: number | null;
+  /** @deprecated read only; see LegacyPlacement. */
+  yMm?: number | null;
+}
+
+/** How an image is sized to its box: `fill` covers it (cropping the overflow), `fit` shows all of it inside. */
+export type ImageFit = 'fill' | 'fit';
+
+/** Placement of an image inside its panel. */
+export interface PanelTransform extends LegacyPlacement {
+  /** `null` = the whole panel, bleed included. */
+  box: PanelBox | null;
+  fit: ImageFit;
+  /** About the box's centre. */
   rotationDeg: number;
   /** 0 (transparent) to 1 (opaque). */
   opacity: number;
+  /** @deprecated read only (1 = covers the panel); see LegacyPlacement. */
+  scale?: number;
 }
 
-export const DEFAULT_TRANSFORM: PanelTransform = { xMm: null, yMm: null, scale: 1, rotationDeg: 0, opacity: 1 };
+export const DEFAULT_TRANSFORM: PanelTransform = { box: null, fit: 'fill', rotationDeg: 0, opacity: 1 };
 
 /** A decorative frame drawn just inside the panel's trim edge. `widthMm: 0` (the default) means none. */
 export interface BorderSettings {
@@ -47,21 +74,20 @@ export interface PanelSettings {
 }
 
 /** A store / console brand mark drawn on top of a panel's image and text. Every field is layered like the rest (default → shared → item). */
-export interface LogoSettings {
+export interface LogoSettings extends LegacyPlacement {
   /** Brand id (see src/brands); `null` = no logo. */
   brand: string | null;
   /** Fill colour. */
   color: string;
-  /** Logo width in mm; `null` = automatic (sized for the panel). */
-  widthMm: number | null;
-  /** Top-left from the panel's top-left (bleed included), like images; `null` = default (centred, near the bottom). */
-  xMm: number | null;
-  yMm: number | null;
+  /** The logo is as large as fits inside it, centred; `null` = automatic (a size and spot that suit the panel). */
+  box: PanelBox | null;
   rotationDeg: number;
   opacity: number;
+  /** @deprecated read only; see LegacyPlacement. */
+  widthMm?: number | null;
 }
 
-export const DEFAULT_LOGO: LogoSettings = { brand: null, color: '#ffffff', widthMm: null, xMm: null, yMm: null, rotationDeg: 0, opacity: 1 };
+export const DEFAULT_LOGO: LogoSettings = { brand: null, color: '#ffffff', box: null, rotationDeg: 0, opacity: 1 };
 
 export type CodeKind = 'none' | 'qr' | 'ean13' | 'upca' | 'code128';
 
@@ -69,7 +95,7 @@ export type CodeKind = 'none' | 'qr' | 'ean13' | 'upca' | 'code128';
  * A scannable identifier (QR code or barcode) drawn on top of a panel. Layered like everything else
  * (default → shared → item). The pattern is filled per item; see codes/pattern.ts for the tokens.
  */
-export interface CodeSettings {
+export interface CodeSettings extends LegacyPlacement {
   kind: CodeKind;
   /** Text to encode, with {tokens} filled per item. Barcodes use its digits (or a generated number if it has too few). */
   pattern: string;
@@ -77,13 +103,15 @@ export interface CodeSettings {
   color: string;
   /** Quiet-zone and background colour (keep it light for scanners). */
   background: string;
-  /** Overall width in mm including the quiet zone; `null` = automatic for the kind. */
-  widthMm: number | null;
-  /** Top-left from the panel's top-left (bleed included); `null` = default (bottom-right corner). */
-  xMm: number | null;
-  yMm: number | null;
+  /**
+   * The symbol (quiet zones included) is as large as fits inside it and inside the panel's safe area, centred.
+   * `null` = automatic: the kind's standard size in the bottom-right corner.
+   */
+  box: PanelBox | null;
   rotationDeg: number;
   opacity: number;
+  /** @deprecated read only; see LegacyPlacement. */
+  widthMm?: number | null;
 }
 
 export const DEFAULT_CODE: CodeSettings = {
@@ -91,15 +119,10 @@ export const DEFAULT_CODE: CodeSettings = {
   pattern: 'steam://run/{appId}',
   color: '#000000',
   background: '#ffffff',
-  widthMm: null,
-  xMm: null,
-  yMm: null,
+  box: null,
   rotationDeg: 0,
   opacity: 1,
 };
-
-export const MIN_SCALE = 0.2;
-export const MAX_SCALE = 5;
 
 /** Spine text styling (per-item `text` only appears in overrides; it defaults to the title). */
 export interface SpineSettings {

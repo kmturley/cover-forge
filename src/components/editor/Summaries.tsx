@@ -6,7 +6,7 @@ import { brandAspect } from '../../brands';
 import { srcOf } from '../../storage/localImages';
 import type { ResolvedPanel } from '../../engine/resolve';
 import type { MediaItem } from '../../types/media';
-import type { CodeKind, SpineSettings } from '../../types/editor';
+import type { CodeKind, PanelBox, SpineSettings } from '../../types/editor';
 import type { PanelRect, TemplateConfig } from '../../types/template';
 import { FONTS } from './SpineEditor';
 
@@ -37,13 +37,21 @@ export function BorderSummary({ r }: { r: ResolvedPanel }) {
   );
 }
 
+const pct = (n: number) => `${Math.round(n * 10) / 10}%`;
+
+/** Where a placed layer sits, in words: its box, automatic, or an older save's mm placement. */
+function placedAt(box: PanelBox | null | undefined, auto: string): string {
+  if (box === undefined) return 'placed in mm (older save; edit to use a box)';
+  if (box === null) return auto;
+  return `box ${pct(box.xStart)}–${pct(box.xEnd)} across, ${pct(box.yStart)}–${pct(box.yEnd)} down`;
+}
+
 export function ImageSummary({ r, item }: { r: ResolvedPanel; item: MediaItem }) {
   if (r.imageRef === null || !r.imageUrl) return <span className="muted">None</span>;
   const t = r.transform;
   const parts = [
     libraryImages(item).find((i) => i.ref === r.imageRef)?.label ?? 'Image',
-    t.xMm === null && t.yMm === null ? 'centred' : `at ${t.xMm ?? 'centre'}, ${t.yMm ?? 'centre'} mm`,
-    `${t.scale}×`,
+    t.box === undefined ? placedAt(undefined, '') : `${t.fit === 'fit' ? 'fits' : 'fills'} ${placedAt(t.box, 'the whole panel')}`,
     ...(t.rotationDeg ? [`${t.rotationDeg}°`] : []),
     ...(t.opacity < 1 ? [`${Math.round(t.opacity * 100)}% opacity`] : []),
   ];
@@ -59,7 +67,7 @@ export function LogoSummary({ r, template, rect }: { r: ResolvedPanel; template:
   const brand = getBrand(r.logo.brand);
   if (!brand) return <span className="muted">None</span>;
   const pl = computeLogoPlacement(template, rect, brandAspect(brand), r.logo);
-  const placed = r.logo.xMm !== null || r.logo.yMm !== null ? `at ${Math.round(pl.xMm * 10) / 10}, ${Math.round(pl.yMm * 10) / 10} mm` : 'default position';
+  const placed = placedAt(r.logo.box, 'automatic position');
   return (
     <>
       <Swatch color={r.logo.color} />
@@ -75,7 +83,7 @@ export function CodeSummary({ r, template, rect }: { r: ResolvedPanel; template:
   const pl = computeCodePlacement(template, rect, r.code);
   return (
     <span>
-      {CODE_LABELS[r.code.kind]} · {r.code.pattern}{pl && ` · ${Math.round(pl.widthMm * 10) / 10} mm wide`}
+      {CODE_LABELS[r.code.kind]} · {r.code.pattern}{pl && ` · ${Math.round(pl.widthMm * 10) / 10} mm wide · ${placedAt(r.code.box, 'automatic position')}`}
     </span>
   );
 }

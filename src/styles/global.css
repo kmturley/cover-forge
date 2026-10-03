@@ -238,6 +238,12 @@ button.link.selected { color: var(--accent); text-decoration: none; cursor: defa
 .library-text { display: flex; flex-direction: column; min-width: 0; flex: 1; }
 .library-name { display: flex; align-items: center; gap: 6px; }
 .library-text small { color: var(--muted); font-size: 11px; }
+/* The items' recommended group, and the case their original release came in, so it's easy to go back to. */
+.library-group .recommended { color: var(--accent); text-transform: none; letter-spacing: 0; }
+.library-tile.original { background: color-mix(in srgb, #f5b942 8%, transparent); }
+.library-tile.original:not(.selected) { border-color: color-mix(in srgb, #f5b942 45%, var(--border)); }
+.original-badge { display: inline-flex; align-items: center; gap: 3px; font-size: 10px; font-weight: 600; color: #f5b942; }
+.library-tile .original-badge svg { color: #f5b942; }
 .design-row > :first-child { min-width: 44px; }
 .queue-group + .queue-group { margin-top: 10px; }
 .queue-group-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 4px 2px 4px 4px; font-size: 12px; font-weight: 600; color: var(--muted); border-bottom: 1px solid var(--border); margin-bottom: 4px; }

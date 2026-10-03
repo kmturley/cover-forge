@@ -20,13 +20,17 @@ export function ExportModal({ onClose }: { onClose: () => void }) {
 
   const base = { shared, designs, banner, templateOf: (item: MediaItem) => templateOf(state, item) };
   // Sheets are laid out per template; the preview shows the selected item's.
-  const used = useMemo(() => [...new Map(items.map((i) => templateOf(state, i)).map((t) => [t.id, t])).values()], [items, state]);
+  const { templateId } = state;
+  const used = useMemo(() => [...new Map(items.map((i) => templateOf({ templateId }, i)).map((t) => [t.id, t])).values()], [items, templateId]);
   const templates = used.length ? used : [template];
   // A die-cut sheet only applies to the templates it was made for; the others fall back to plain paper.
   const labelSheets = [...new Map(templates.flatMap((t) => labelSheetsFor(t.kind).filter((s) => fitsLabelSheet(s, t))).map((s) => [s.id, s])).values()];
   const labelSheet = labelSheets.some((s) => s.id === chosenSheet) ? chosenSheet : undefined;
   const chosen = getLabelSheet(labelSheet);
-  const settings: ExportSettings = { paper: chosen?.paper ?? paper, labelSheet, format, guides: guides && !chosen, jpegQuality: 0.92 };
+  // Templates the label sheet doesn't fit still print on plain paper, with the paper and guides chosen here.
+  const plainToo = !chosen || templates.some((t) => !fitsLabelSheet(chosen, t));
+  // Each template's sheets decide for themselves whether the label sheet applies (see computeLayout / sheetGuides).
+  const settings: ExportSettings = { paper, labelSheet, format, guides, jpegQuality: 0.92 };
 
   async function run(task: () => Promise<void>) {
     setError(null);
@@ -68,6 +72,16 @@ export function ExportModal({ onClose }: { onClose: () => void }) {
             </label>
             {chosen?.note && <p className="muted">{chosen.note}</p>}
             {used.length > 1 && <p className="muted">{used.length} templates in the queue: each gets its own print sheets{labelSheet ? ', and only the ones this label sheet fits use it' : ''}.</p>}
+            {chosen && plainToo && (
+              <label className="field">
+                <span>Other cases on</span>
+                <select value={paper} onChange={(e) => setPaper(e.target.value as PaperSize)}>
+                  <option value="A3">A3</option>
+                  <option value="A4">A4</option>
+                  <option value="Letter">US Letter</option>
+                </select>
+              </label>
+            )}
             <label className="field">
               <span>Format</span>
               <select value={format} onChange={(e) => setFormat(e.target.value as ExportSettings['format'])}>
@@ -78,8 +92,8 @@ export function ExportModal({ onClose }: { onClose: () => void }) {
               </select>
             </label>
             <label className="check">
-              <input type="checkbox" checked={guides && !chosen} disabled={!!chosen} onChange={(e) => setGuides(e.target.checked)} />
-              Cut / fold guides{chosen ? ' (not on die-cut sheets)' : ''}
+              <input type="checkbox" checked={guides && plainToo} disabled={!plainToo} onChange={(e) => setGuides(e.target.checked)} />
+              Cut / fold guides{chosen ? (plainToo ? ' (plain-paper sheets only)' : ' (not on die-cut sheets)') : ''}
             </label>
             <p className="muted">
               {format === 'pdf'
@@ -89,7 +103,7 @@ export function ExportModal({ onClose }: { onClose: () => void }) {
                   : 'ZIP: one image per game, the print sheets as images, and each game’s original images.'}
             </p>
           </div>
-          <PrintSheetPreview template={template} paper={settings.paper} labelSheet={fitsLabelSheet(chosen, template) ? labelSheet : undefined} />
+          <PrintSheetPreview template={template} paper={paper} labelSheet={labelSheet} />
         </div>
 
         {progress && (

@@ -2,6 +2,7 @@ import type { PanelRect, TemplateConfig } from '../types/template';
 import type { LogoSettings } from '../types/editor';
 import { brandAspect, brandHeight, brandPath2D, brandWidth, type Brand } from '../brands';
 import { paintRect } from './placement';
+import { boxRect, fitInside, type RectMm } from './box';
 import { defaultCapHeightMm } from './SpineTypography';
 
 /** Default logo width for big panels; spine-like panels use a share of their short side, narrow panels a share of their width. */
@@ -22,27 +23,35 @@ export interface LogoPlacement {
   xMm: number;
   yMm: number;
   area: PanelRect;
-  defaultWidthMm: number;
+  /** The box the logo is fitted into, in canvas mm (for an older save's mm placement: the logo itself). */
+  box: RectMm;
 }
 
 /**
- * Where a logo sits. Width defaults to something sensible per panel; x/y default to horizontally centred on the
- * trimmed panel and sitting near the top.
+ * Where a logo sits automatically, in canvas mm, as a rectangle exactly its shape: a width that suits the panel,
+ * horizontally centred near the top (on a wide, short spine: at the right end, vertically centred). `widthMm` and
+ * `xMm`/`yMm` (from the paint area) override it, for an older save's mm placement.
  */
+function defaultLogoRect(area: PanelRect, panel: PanelRect, aspect: number, widthMm?: number | null, xMm?: number | null, yMm?: number | null): RectMm {
+  const shortSide = Math.min(panel.widthMm, panel.heightMm);
+  const autoWidth = panel.text ? Math.min(MAX_SPINE_LOGO_MM, shortSide * SPINE_SHARE, defaultCapHeightMm(panel, panel.text) * SPINE_LOGO_PER_TEXT) : Math.min(DEFAULT_WIDTH_MM, shortSide * SMALL_PANEL_SHARE);
+  const w = widthMm ?? autoWidth;
+  const h = w / aspect;
+  let x = panel.xMm + (panel.widthMm - w) / 2;
+  let y = panel.yMm + (panel.text ? SPINE_MARGIN_MM : TOP_MARGIN_MM);
+  if (panel.text === 'horizontal') {
+    x = panel.xMm + panel.widthMm - SPINE_MARGIN_MM - w;
+    y = panel.yMm + (panel.heightMm - h) / 2;
+  }
+  return { xMm: xMm != null ? area.xMm + xMm : x, yMm: yMm != null ? area.yMm + yMm : y, widthMm: w, heightMm: h };
+}
+
+/** Where a logo sits: as large as fits inside its box, centred, keeping its shape. With no box, a spot that suits the panel. */
 export function computeLogoPlacement(t: TemplateConfig, panel: PanelRect, aspect: number, logo: LogoSettings): LogoPlacement {
   const area = paintRect(t, panel);
-  const shortSide = Math.min(panel.widthMm, panel.heightMm);
-  const defaultWidthMm = panel.text ? Math.min(MAX_SPINE_LOGO_MM, shortSide * SPINE_SHARE, defaultCapHeightMm(panel, panel.text) * SPINE_LOGO_PER_TEXT) : Math.min(DEFAULT_WIDTH_MM, shortSide * SMALL_PANEL_SHARE);
-  const widthMm = logo.widthMm ?? defaultWidthMm;
-  const heightMm = widthMm / aspect;
-  let centeredX = panel.xMm + (panel.widthMm - widthMm) / 2 - area.xMm;
-  let topY = panel.yMm + (panel.text ? SPINE_MARGIN_MM : TOP_MARGIN_MM) - area.yMm;
-  if (panel.text === 'horizontal') {
-    // A wide, short spine (J-card): the mark sits at the right end, vertically centred.
-    centeredX = panel.xMm + panel.widthMm - SPINE_MARGIN_MM - widthMm - area.xMm;
-    topY = panel.yMm + (panel.heightMm - heightMm) / 2 - area.yMm;
-  }
-  return { widthMm, heightMm, xMm: logo.xMm ?? centeredX, yMm: logo.yMm ?? topY, area, defaultWidthMm };
+  const box = logo.box ? boxRect(panel, logo.box) : logo.box === null ? defaultLogoRect(area, panel, aspect) : defaultLogoRect(area, panel, aspect, logo.widthMm, logo.xMm, logo.yMm);
+  const r = fitInside(box, aspect);
+  return { widthMm: r.widthMm, heightMm: r.heightMm, xMm: r.xMm - area.xMm, yMm: r.yMm - area.yMm, area, box };
 }
 
 /** Fills the brand mark, clipped to its panel so it never spills onto a neighbour. `px` is pixels per mm. */

@@ -84,39 +84,51 @@ export function buildItemPdf(canvas: HTMLCanvasElement, template: TemplateConfig
   return pdf.output('blob');
 }
 
-/**
- * All sheets as one multi-page PDF at exact paper size: raster artwork plus true vector guides.
- * `pages` holds each sheet's item canvases, rendered WITHOUT guides.
- */
-export function buildSheetsPdf(
-  pages: HTMLCanvasElement[][],
-  layout: Imposition,
-  template: TemplateConfig,
-  guides: boolean,
-): Blob {
-  const { widthMm: pw, heightMm: ph } = layout.paper;
-  const pdf = new jsPDF({ unit: 'mm', format: [pw, ph], orientation: orientation(pw, ph), compress: true });
+/** One template's sheets: each sheet's item canvases (rendered WITHOUT guides), laid out by `layout`. */
+export interface SheetSection {
+  pages: HTMLCanvasElement[][];
+  layout: Imposition;
+  template: TemplateConfig;
+  guides: boolean;
+}
 
-  pages.forEach((items, pageIdx) => {
-    if (pageIdx > 0) pdf.addPage([pw, ph], orientation(pw, ph));
-    items.forEach((canvas, i) => {
-      const p = layout.placements[i];
-      if (!p) return;
-      if (p.crop) {
-        // Die-cut label sheet: print only the label's part of the artwork (after any turn), with no cut/fold guides.
-        const part = cropCanvas(p.rotated ? rotateClockwise(canvas) : canvas, p.crop, template.dpiScale);
-        pdf.addImage(part.toDataURL('image/jpeg', JPEG_QUALITY), 'JPEG', p.xMm, p.yMm, p.crop.widthMm, p.crop.heightMm, undefined, 'FAST');
-        return;
-      }
-      const src = p.rotated ? rotateClockwise(canvas) : canvas;
-      const scale = layout.oversize ? Math.min(1, pw / layout.cellWidthMm, ph / layout.cellHeightMm) : 1;
-      const w = layout.cellWidthMm * scale;
-      const h = layout.cellHeightMm * scale;
-      const x = layout.oversize ? (pw - w) / 2 : p.xMm;
-      const y = layout.oversize ? (ph - h) / 2 : p.yMm;
-      pdf.addImage(src.toDataURL('image/jpeg', JPEG_QUALITY), 'JPEG', x, y, w, h, undefined, 'FAST');
-      if (guides && !layout.oversize) drawVectorGuides(pdf, template, p.xMm, p.yMm, p.rotated);
-    });
-  });
+/**
+ * All sheets as one multi-page PDF at exact paper size: raster artwork plus true vector guides. Takes one section per
+ * template, so a queue of several cases still downloads as a single file (each page keeps its own paper size).
+ */
+export function buildSheetsPdf(sections: SheetSection[]): Blob {
+  let pdf: jsPDF | undefined;
+  for (const { pages, layout, template, guides } of sections) {
+    const { widthMm: pw, heightMm: ph } = layout.paper;
+    for (const items of pages) {
+      if (!pdf) pdf = new jsPDF({ unit: 'mm', format: [pw, ph], orientation: orientation(pw, ph), compress: true });
+      else pdf.addPage([pw, ph], orientation(pw, ph));
+      drawSheetPage(pdf, items, layout, template, guides);
+    }
+  }
+  if (!pdf) throw new Error('Nothing to export');
   return pdf.output('blob');
+}
+
+/** One sheet's artwork (and guides) on the PDF's current page. */
+function drawSheetPage(pdf: jsPDF, items: HTMLCanvasElement[], layout: Imposition, template: TemplateConfig, guides: boolean): void {
+  const { widthMm: pw, heightMm: ph } = layout.paper;
+  items.forEach((canvas, i) => {
+    const p = layout.placements[i];
+    if (!p) return;
+    if (p.crop) {
+      // Die-cut label sheet: print only the label's part of the artwork (after any turn), with no cut/fold guides.
+      const part = cropCanvas(p.rotated ? rotateClockwise(canvas) : canvas, p.crop, template.dpiScale);
+      pdf.addImage(part.toDataURL('image/jpeg', JPEG_QUALITY), 'JPEG', p.xMm, p.yMm, p.crop.widthMm, p.crop.heightMm, undefined, 'FAST');
+      return;
+    }
+    const src = p.rotated ? rotateClockwise(canvas) : canvas;
+    const scale = layout.oversize ? Math.min(1, pw / layout.cellWidthMm, ph / layout.cellHeightMm) : 1;
+    const w = layout.cellWidthMm * scale;
+    const h = layout.cellHeightMm * scale;
+    const x = layout.oversize ? (pw - w) / 2 : p.xMm;
+    const y = layout.oversize ? (ph - h) / 2 : p.yMm;
+    pdf.addImage(src.toDataURL('image/jpeg', JPEG_QUALITY), 'JPEG', x, y, w, h, undefined, 'FAST');
+    if (guides && !layout.oversize) drawVectorGuides(pdf, template, p.xMm, p.yMm, p.rotated);
+  });
 }

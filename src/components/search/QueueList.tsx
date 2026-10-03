@@ -1,5 +1,5 @@
 import { templateIdOf, useAppDispatch, useAppState } from '../../context/AppContext';
-import { LIBRARY, LIBRARY_GROUPS, getEntry } from '../../templates/library';
+import { LIBRARY_ORDER, getEntry } from '../../templates/library';
 import { useMemo, useState } from 'react';
 import { TemplatePickerModal } from '../templates/TemplatePickerModal';
 import { itemHasOverrides } from '../../engine/resolve';
@@ -18,20 +18,21 @@ function OverrideIcon() {
 
 /** Every queued item, grouped by case (the order export lays out print sheets in), alphabetical within a group. */
 export function QueueList() {
-  const state = useAppState();
-  const { items, selectedItemId, designs } = state;
+  const { items, selectedItemId, designs, templateId } = useAppState();
   const dispatch = useAppDispatch();
   const [picking, setPicking] = useState<string[] | null>(null);
   const groups = useMemo(() => {
     const byCase = new Map<string, MediaItem[]>();
     for (const i of items) {
-      const id = templateIdOf(state, i);
-      byCase.set(id, [...(byCase.get(id) ?? []), i]);
+      const id = templateIdOf({ templateId }, i);
+      const members = byCase.get(id);
+      if (members) members.push(i);
+      else byCase.set(id, [i]);
     }
     // Like the library: games first, then films and TV, music, and the rest.
-    const order = (id: string) => LIBRARY_GROUPS.indexOf(getEntry(id)!.group) * 1000 + LIBRARY.findIndex((e) => e.id === id);
+    const order = (id: string) => LIBRARY_ORDER.get(id) ?? Number.MAX_SAFE_INTEGER;
     return [...byCase.entries()].sort(([a], [b]) => order(a) - order(b)).map(([id, members]) => ({ entry: getEntry(id), members }));
-  }, [items, state]);
+  }, [items, templateId]);
 
   function resetOverrides(id: string, title: string) {
     if (window.confirm(`Remove all overrides for “${title}” and use the shared settings?`)) {

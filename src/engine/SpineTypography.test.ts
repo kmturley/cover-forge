@@ -104,6 +104,11 @@ describe('spine text rotation', () => {
 describe('spine text', () => {
   const item = (type: MediaItem['type'], subtitle?: string, year?: string): MediaItem => ({ id: 'x', type, title: 'Title', subtitle, year, assets: { cover: null, hero: null, logo: null, screenshots: [] } });
 
+  it('leaves names that only exist on Object.prototype as typed', () => {
+    expect(fillSpineText('{constructor} {title}', item('game'))).toBe('{constructor} Title');
+    expect(fillSpineText('{__proto__}{toString}', item('game'))).toBe('{__proto__}{toString}');
+  });
+
   it('defaults to "artist · title" for music, and just the title for everything else', () => {
     expect(spineText(item('music', 'Artist'), {})).toBe('Artist · Title');
     expect(spineText(item('game', 'Valve'), {})).toBe('Title'); // no publisher/developer by default

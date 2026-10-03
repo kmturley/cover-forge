@@ -18,6 +18,8 @@ interface MbResponse {
 interface CaaImage {
   front: boolean;
   back: boolean;
+  /** What the scan shows: "Front", "Back", "Tray", "Booklet", "Medium" (the disc), "Spine"… */
+  types?: string[];
   image: string;
   thumbnails: Record<string, string>;
 }
@@ -58,7 +60,11 @@ export const musicProvider: Provider = {
     }
     if (!images.length) throw new Error('No cover art for this album on the Cover Art Archive.');
     const front = images.find((i) => i.front) ?? images[0];
-    const back = images.find((i) => i.back && i !== front);
+    // The back cover, else the tray card (a jewel case's back), else any other scan but the disc itself. With only
+    // the front, the Back panel reuses it (see defaultImageRef).
+    const others = images.filter((i) => i !== front);
+    const is = (i: CaaImage, type: string) => i.types?.includes(type);
+    const back = others.find((i) => i.back || is(i, 'Back')) ?? others.find((i) => is(i, 'Tray')) ?? others.find((i) => !is(i, 'Medium'));
     return {
       id: `mb-${result.id}`,
       type: 'music',
@@ -68,7 +74,7 @@ export const musicProvider: Provider = {
       sourceId: result.id,
       assets: {
         cover: bestUrl(front),
-        // The back cover becomes the Back panel's default image; booklet pages, discs etc. join the library.
+        // The back becomes the Back panel's default image; booklet pages, discs etc. join the library.
         hero: back ? bestUrl(back) : null,
         logo: null,
         screenshots: images.filter((i) => i !== front && i !== back).slice(0, 10).map(bestUrl),

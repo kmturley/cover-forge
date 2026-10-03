@@ -106,4 +106,6 @@ export interface TemplateVariant {
   id: string;
   /** Its name as people know it ("DVD Slim", "PS4", '12" LP'): standard names, not measurements. */
   label: string;
+  /** Retired: still built for saves and links that use it, but not offered in the library. */
+  hidden?: boolean;
 }

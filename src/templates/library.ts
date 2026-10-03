@@ -18,8 +18,14 @@ export interface LibraryEntry {
   group: LibraryGroup;
   /** Front size and spine, e.g. "135 × 170 mm · 14.5 mm spine". */
   size: string;
+  /** The standard case or format its print fits ("DVD Case", "CD Jewel Case"); null for a size of its own. */
+  standard: string | null;
+  /** How the library describes it: the standard's name (or "Custom") and its size, e.g. "DVD Case · 129.5 × 183 mm · 14 mm spine". */
+  detail: string;
   /** Lower-case text the search matches against. */
   keywords: string;
+  /** Retired: kept for saves and links that use it, but not listed or searchable. */
+  hidden: boolean;
 }
 
 const GROUP_OF: Record<TemplateKind, LibraryGroup> = {
@@ -47,7 +53,43 @@ function sizeOf(t: TemplateConfig): string {
   return `${mm(front.widthMm)} × ${mm(front.heightMm)} mm${spine ? ` · ${mm(spine.widthMm)} mm spine` : ''}`;
 }
 
-export const LIBRARY: LibraryEntry[] = TEMPLATE_DEFS.flatMap((def) =>
+/**
+ * Standard cases and formats, by the size of the printed pieces (front, and spine when there is one). A template whose
+ * print matches one is named for it, so the PS2's insert reads as the DVD case it is; anything else is Custom.
+ */
+const STANDARDS: { name: string; front: [number, number]; spine?: number; back?: [number, number] }[] = [
+  { name: 'DVD Case', front: [129.5, 183], spine: 14 },
+  { name: 'DVD Slim Case', front: [129.5, 183], spine: 7 },
+  { name: 'DVD Slim Case (9 mm)', front: [129.5, 183], spine: 9 },
+  { name: 'Blu-ray Case', front: [128, 149], spine: 11 },
+  { name: 'Blu-ray Elite Case', front: [128, 149], spine: 12.5 },
+  { name: 'Blu-ray Case (EU)', front: [128, 149], spine: 14 },
+  { name: 'CD Jewel Case', front: [120, 120], spine: 6.5, back: [137, 118] },
+  { name: 'VHS Sleeve', front: [105, 190], spine: 25 },
+  { name: 'Cassette J-Card', front: [65.1, 101.6], spine: 12.7 },
+  { name: '12" LP Sleeve', front: [314, 314], spine: 3 },
+  { name: '10" Record Sleeve', front: [262, 262], spine: 3 },
+  { name: '7" Single Sleeve', front: [184, 184], spine: 3 },
+  { name: '3.5" Floppy Label', front: [69.85, 69.85] },
+  { name: 'CR80 Card', front: [54, 85.6] },
+];
+
+/** The standard a template's print matches, if any (see STANDARDS). */
+export function standardCase(t: TemplateConfig): string | null {
+  const size = (id: string) => t.panels.find((p) => p.id === id);
+  const same = (p: { widthMm: number; heightMm: number } | undefined, [w, h]: [number, number]) => !!p && Math.abs(p.widthMm - w) < 0.05 && Math.abs(p.heightMm - h) < 0.05;
+  const spine = size('spine');
+  const hit = STANDARDS.find(
+    (s) =>
+      same(size('front'), s.front) &&
+      (s.spine === undefined ? !spine : !!spine && Math.abs(spine.widthMm - s.spine) < 0.05) &&
+      (!s.back || same(size('back'), s.back)),
+  );
+  return hit?.name ?? null;
+}
+
+/** Every template, retired ones included: by library group, then by name (numbers in order, so 7" before 10"). */
+const ALL_ENTRIES: LibraryEntry[] = TEMPLATE_DEFS.flatMap((def) =>
   def.variants.map((v) => {
     const t = def.build(v.id);
     const game = def.kind === 'game-case';
@@ -61,20 +103,27 @@ export const LIBRARY: LibraryEntry[] = TEMPLATE_DEFS.flatMap((def) =>
       short: game ? v.label : def.name,
       group: GROUP_OF[def.kind],
       size: sizeOf(t),
-      keywords: [name, def.name, v.id, GROUP_OF[def.kind], maker].join(' ').toLowerCase(),
+      standard: standardCase(t),
+      detail: `${standardCase(t) ?? 'Custom'} · ${sizeOf(t)}`,
+      keywords: [name, def.name, v.id, GROUP_OF[def.kind], maker, standardCase(t) ?? 'custom'].join(' ').toLowerCase(),
+      hidden: !!v.hidden,
     };
   }),
-);
+).sort((a, b) => LIBRARY_GROUPS.indexOf(a.group) - LIBRARY_GROUPS.indexOf(b.group) || a.name.localeCompare(b.name, 'en', { numeric: true, sensitivity: 'base' }));
 
-const byId = new Map(LIBRARY.map((e) => [e.id, e]));
+/** The templates offered in the library (retired ones are left out, but still resolve by id). */
+export const LIBRARY: LibraryEntry[] = ALL_ENTRIES.filter((e) => !e.hidden);
+
+const byId = new Map(ALL_ENTRIES.map((e) => [e.id, e]));
+
+/** Display order: by library group, then library order; retired templates sort after their group's offered ones. */
+export const LIBRARY_ORDER = new Map(ALL_ENTRIES.map((e, i) => [e.id, LIBRARY_GROUPS.indexOf(e.group) * 1000 + (e.hidden ? 500 : 0) + i]));
 
 export const getEntry = (id: string | null | undefined): LibraryEntry | undefined => (id ? byId.get(id) : undefined);
 export const isTemplateId = (id: unknown): id is string => typeof id === 'string' && byId.has(id);
 
 /** Templates that were removed or renamed, and what saves and links that used them get instead. */
 const REPLACED: Record<string, string> = {
-  'bluray-eu-14': 'bluray-us-11', // only US cases are supported
-  'bluray-us-12.5': 'bluray-us-11', // Blu-ray Elite was removed
   'game-case-ps1-pal': 'game-case-ps1', // PS1 is a jewel case in every region
 };
 
@@ -104,10 +153,13 @@ const MEDIA_OF: Record<LibraryGroup, MediaType[] | 'any'> = {
   'Labels, cards & NFC': 'any',
 };
 
-export function suits(entry: LibraryEntry, type: MediaType): boolean {
-  const media = MEDIA_OF[entry.group];
-  return type === 'custom' || media === 'any' || media.includes(type);
+/** The library group made for a media type (none for custom items, which suit anything). */
+export function groupFor(type: MediaType): LibraryGroup | null {
+  return LIBRARY_GROUPS.find((g) => g !== 'Labels, cards & NFC' && (MEDIA_OF[g] as MediaType[]).includes(type)) ?? null;
 }
+
+/** The case a media type's original release came in (see ORIGINAL); none for custom items. */
+export const originalTemplateFor = (type: MediaType): string | null => (type === 'custom' ? null : ORIGINAL[type]);
 
 /** The case last picked for each media type; new items of that type start with it. */
 export type LastTemplates = Partial<Record<MediaType, string>>;
@@ -116,7 +168,7 @@ export type LastTemplates = Partial<Record<MediaType, string>>;
  * What an item's original release came in. Without release data per platform this is the obvious one per source:
  * Steam games are PC, films and TV are DVD, music is a CD.
  */
-const ORIGINAL: Record<Exclude<MediaType, 'custom'>, string> = {
+export const ORIGINAL: Record<Exclude<MediaType, 'custom'>, string> = {
   game: 'game-case-pc',
   movie: 'dvd-std-14',
   tv: 'dvd-std-14',

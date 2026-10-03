@@ -20,6 +20,7 @@ describe('fillPattern', () => {
     expect(fillPattern('https://www.google.com/search?q={titleEncoded}', item())).toBe('https://www.google.com/search?q=Cyberpunk%202077');
     expect(fillPattern('{title} ({year}) by {subtitle}', item())).toBe('Cyberpunk 2077 (2020) by CD PROJEKT RED');
     expect(fillPattern('{nope}-{id}', item())).toBe('{nope}-steam-1091500');
+    expect(fillPattern('{constructor}/{hasOwnProperty}', item())).toBe('{constructor}/{hasOwnProperty}');
   });
 
   it('falls back to the id (minus "steam-") when an older save has no sourceId', () => {

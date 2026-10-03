@@ -35,21 +35,29 @@ describe('shared and override settings', () => {
     return s;
   };
 
+  const half = { xStart: 0, xEnd: 50, yStart: 0, yEnd: 100 };
+
   it('shared edits reach every item; item edits reach only that item', () => {
     let s = two();
-    s = reducer(s, { type: 'updatePanel', id: null, panel: 'front', patch: { transform: { scale: 2 } } });
+    s = reducer(s, { type: 'updatePanel', id: null, panel: 'front', patch: { transform: { box: half } } });
     s = reducer(s, { type: 'updatePanel', id: 'a', panel: 'front', patch: { transform: { opacity: 0.5 } } });
-    const at = (id: string) => resolvePanel(s.shared, s.items.find((i) => i.id === id)!, 'front').transform;
-    expect(at('a')).toMatchObject({ scale: 2, opacity: 0.5 }); // still follows shared size
-    expect(at('b')).toMatchObject({ scale: 2, opacity: 1 });
+    const at = (id: string) => resolvePanel(s.shared, s.items.find((i) => i.id === id)!, 'front', null).transform;
+    expect(at('a')).toMatchObject({ box: half, opacity: 0.5 }); // still follows the shared box
+    expect(at('b')).toMatchObject({ box: half, opacity: 1 });
   });
 
   it('merges transform fields and clears with undefined', () => {
-    let s = reducer(initialState, { type: 'updatePanel', id: null, panel: 'back', patch: { transform: { scale: 2 } } });
-    s = reducer(s, { type: 'updatePanel', id: null, panel: 'back', patch: { transform: { xMm: 5 } } });
-    expect(s.shared.panels.back?.transform).toEqual({ scale: 2, xMm: 5 });
+    let s = reducer(initialState, { type: 'updatePanel', id: null, panel: 'back', patch: { transform: { box: half } } });
+    s = reducer(s, { type: 'updatePanel', id: null, panel: 'back', patch: { transform: { fit: 'fit' } } });
+    expect(s.shared.panels.back?.transform).toEqual({ box: half, fit: 'fit' });
     s = reducer(s, { type: 'updatePanel', id: null, panel: 'back', patch: { transform: undefined } });
     expect(s.shared.panels.back).toEqual({});
+  });
+
+  it('writing a box replaces the layer’s older mm placement, which then no longer applies', () => {
+    let s = reducer(two(), { type: 'loadState', state: { ...two(), shared: { ...initialState.shared, panels: { back: { transform: { xMm: 5, scale: 2 } as never, logo: { widthMm: 10, xMm: 1 } as never } } } } });
+    s = reducer(s, { type: 'updatePanel', id: null, panel: 'back', patch: { transform: { box: half }, logo: { box: null } } });
+    expect(s.shared.panels.back).toEqual({ transform: { box: half }, logo: { box: null } });
   });
 
   it('clearOverrides removes one panel or everything, leaving shared untouched', () => {
@@ -85,7 +93,7 @@ describe('shared and override settings', () => {
     s = reducer(s, { type: 'updatePanel', id: null, panel: 'front', patch: { logo: { color: '#000000' } } });
     expect(s.shared.panels.front?.logo).toEqual({ brand: 'steam', widthMm: 20, color: '#000000' });
     s = reducer(s, { type: 'updatePanel', id: 'a', panel: 'front', patch: { logo: { brand: null } } });
-    const brandOf = (id: string) => resolvePanel(s.shared, s.items.find((i) => i.id === id)!, 'front').logo.brand;
+    const brandOf = (id: string) => resolvePanel(s.shared, s.items.find((i) => i.id === id)!, 'front', null).logo.brand;
     expect(brandOf('a')).toBeNull();
     expect(brandOf('b')).toBe('steam');
     s = reducer(s, { type: 'updatePanel', id: null, panel: 'front', patch: { logo: { widthMm: undefined } } });
@@ -132,11 +140,11 @@ describe('templates', () => {
   });
 
   it('the editor template follows the selected item, and falls back to the first panel it has', () => {
-    let s = reducer(initialState, { type: 'addItem', item: { ...typed('a', 'game'), templateId: 'dvd-slim-9' } });
+    let s = reducer(initialState, { type: 'addItem', item: { ...typed('a', 'game'), templateId: 'dvd-slim-7' } });
     s = reducer(s, { type: 'addItem', item: { ...typed('b', 'game'), templateId: 'floppy-face' } });
     s = reducer(s, { type: 'selectItem', id: 'a' });
     s = reducer(s, { type: 'selectPanel', panel: 'spine' });
-    expect(s.template.id).toBe('dvd-slim-9');
+    expect(s.template.id).toBe('dvd-slim-7');
     expect(s.template.panels[1].widthMm).toBe(7);
     s = reducer(s, { type: 'selectItem', id: 'b' });
     expect(s.template.id).toBe('floppy-face');

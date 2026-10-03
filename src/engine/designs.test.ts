@@ -21,13 +21,19 @@ describe('layering', () => {
     expect(s.spine).toEqual({ fontFamily: 'A', color: '#000' });
   });
 
+  it('takes a design’s logo box whole, dropping Default’s older mm placement under it', () => {
+    const box = { xStart: 10, xEnd: 40, yStart: 80, yEnd: 95 };
+    const s = layeredShared(shared, design('b', { front: { logo: { box } } }));
+    expect(s.panels.front?.logo).toEqual({ brand: 'steam', box });
+  });
+
   it('returns Default itself when there is no design, so memoising still works', () => {
     expect(layeredShared(shared, undefined)).toBe(shared);
   });
 
   it('keeps the item overrides on top of its design', () => {
     const it = { ...item('a'), panels: { front: { logo: { brand: 'itch' } } } };
-    expect(resolvePanel(layeredShared(shared, d), it, 'front').logo).toMatchObject({ brand: 'itch', xMm: 1 });
+    expect(resolvePanel(layeredShared(shared, d), it, 'front', null).logo).toMatchObject({ brand: 'itch', xMm: 1 });
   });
 
   it('finds an item\'s design, and treats a missing one as Default', () => {

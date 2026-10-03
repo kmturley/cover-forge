@@ -46,7 +46,7 @@ export function renderCover(
 
   for (const panel of t.panels) {
     const area = paintRect(t, panel);
-    const r = resolvePanel(shared, item, panel.follows ?? panel.id);
+    const r = resolvePanel(shared, item, panel.follows ?? panel.id, t.kind);
     if (r.backgroundColor) {
       ctx.fillStyle = r.backgroundColor;
       // Snapped outwards to whole pixels so neighbouring panels leave no hairline of the base colour between them.
@@ -58,14 +58,14 @@ export function renderCover(
     const img = getImage(r.imageUrl);
     if (img) {
       const tr = r.transform;
+      // Sized to its box (filling or fitting it) and clipped to it when filling; rotation is about the image centre.
+      const pl = computePlacement(t, panel, img.naturalWidth, img.naturalHeight, tr);
       ctx.save();
       ctx.beginPath();
-      ctx.rect(area.xMm * px, area.yMm * px, area.widthMm * px, area.heightMm * px);
+      ctx.rect(pl.clip.xMm * px, pl.clip.yMm * px, pl.clip.widthMm * px, pl.clip.heightMm * px);
       ctx.clip();
       ctx.globalAlpha = tr.opacity ?? 1;
 
-      // Position is the image's top-left from the panel's visible top-left (centred by default); rotation is about the image centre.
-      const pl = computePlacement(t, panel, img.naturalWidth, img.naturalHeight, tr);
       ctx.translate((pl.area.xMm + pl.xMm + pl.widthMm / 2) * px, (pl.area.yMm + pl.yMm + pl.heightMm / 2) * px);
       ctx.rotate((tr.rotationDeg * Math.PI) / 180);
       ctx.scale(pl.fit * px, pl.fit * px);
@@ -89,7 +89,7 @@ export function renderCover(
 
   // Brand logos sit above every image and the spine text.
   for (const panel of t.panels.filter((q) => !q.follows)) {
-    const { logo } = resolvePanel(shared, item, panel.id);
+    const { logo } = resolvePanel(shared, item, panel.id, t.kind);
     const brand = getBrand(logo.brand);
     if (brand && item) drawLogo(ctx, t, panel, brand, logo, px);
   }
@@ -109,7 +109,7 @@ export function renderCover(
 export function preloadItem({ item, shared, designs }: Pick<Scene, 'item' | 'shared' | 'designs'>): Promise<unknown> {
   if (!item) return Promise.resolve();
   const layered = layeredShared(shared, designOf(designs, item));
-  return loadImages(PANEL_IDS.map((id) => resolvePanel(layered, item, id).imageUrl));
+  return loadImages(PANEL_IDS.map((id) => resolvePanel(layered, item, id, null).imageUrl));
 }
 
 /**
