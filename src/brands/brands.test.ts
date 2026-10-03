@@ -59,4 +59,18 @@ describe('supplied logos', () => {
   it('keeps the two colours of Wii U', () => {
     expect(new Set(getLogo('wii-u')!.layers.map((layer) => layer.fill))).toEqual(new Set(['#009ac7', '#8b8b8b']));
   });
+
+  it('reads styled, transformed and gradient-filled shapes (the Xbox logo)', () => {
+    const xbox = getLogo('xbox')!;
+    expect(xbox.layers.length).toBeGreaterThan(8);
+    // The 3D X keeps its linear gradients; the wordmark letters are one flat green.
+    expect(xbox.layers.filter((layer) => layer.gradient).length).toBeGreaterThanOrEqual(6);
+    expect(xbox.layers.some((layer) => layer.fill === '#94c83f' && !layer.gradient)).toBe(true);
+    // Scaled paths are baked in, so every shape sits inside the logo's bounds.
+    for (const layer of xbox.layers) expect(layer.box[2]).toBeLessThanOrEqual(xbox.bbox[2] + 0.01);
+  });
+
+  it('skips SVGs that only wrap bitmaps', () => {
+    expect(getLogo('xbox-button')).toBeUndefined();
+  });
 });

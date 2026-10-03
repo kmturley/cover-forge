@@ -4,6 +4,7 @@
 import { writeFileSync, readFileSync, readdirSync } from 'node:fs';
 import * as si from 'simple-icons';
 import { svgPathBbox } from 'svg-path-bbox';
+import svgpath from 'svgpath';
 
 const CURATED = [
   // [slug, label, category]
@@ -60,32 +61,86 @@ const LOGO_LABELS = {
   switch2: 'Nintendo Switch 2',
   wii: 'Wii',
   'wii-u': 'Wii U',
+  xbox: 'Xbox (2001)',
 };
 
 const attr = (tag, name) => tag.match(new RegExp(`(?:^|\\s)${name}="([^"]*)"`))?.[1];
 
+const NAMED = { white: '#ffffff', black: '#000000' };
+
 function hexOf(c) {
   const v = c.trim().toLowerCase();
+  if (NAMED[v]) return NAMED[v];
   if (/^#[0-9a-f]{3}$/.test(v)) return '#' + [...v.slice(1)].map((x) => x + x).join('');
   return v;
 }
+
+/** A CSS declaration list ("fill:#fff;stroke:none") as an object. */
+const parseStyle = (text) =>
+  Object.fromEntries(
+    (text ?? '')
+      .split(';')
+      .map((decl) => decl.split(':').map((x) => x.trim()))
+      .filter((kv) => kv[0] && kv[1] !== undefined),
+  );
+
+const IDENTITY = [1, 0, 0, 1, 0, 0];
+/** a·b for SVG matrices [a b c d e f]: apply b first, then a. */
+const mul = (a, b) => [
+  a[0] * b[0] + a[2] * b[1], a[1] * b[0] + a[3] * b[1],
+  a[0] * b[2] + a[2] * b[3], a[1] * b[2] + a[3] * b[3],
+  a[0] * b[4] + a[2] * b[5] + a[4], a[1] * b[4] + a[3] * b[5] + a[5],
+];
+const apply = (m, x, y) => [m[0] * x + m[2] * y + m[4], m[1] * x + m[3] * y + m[5]];
+
+/** An SVG transform list (translate, scale, rotate, matrix) as one matrix. */
+function parseTransform(text) {
+  let m = IDENTITY;
+  for (const t of (text ?? '').matchAll(/(\w+)\(([^)]*)\)/g)) {
+    const n = t[2].split(/[\s,]+/).filter(Boolean).map(Number);
+    let next = IDENTITY;
+    if (t[1] === 'translate') next = [1, 0, 0, 1, n[0], n[1] ?? 0];
+    else if (t[1] === 'scale') next = [n[0], 0, 0, n[1] ?? n[0], 0, 0];
+    else if (t[1] === 'matrix') next = n;
+    else if (t[1] === 'rotate') {
+      const [c, s] = [Math.cos((n[0] * Math.PI) / 180), Math.sin((n[0] * Math.PI) / 180)];
+      next = mul(mul([1, 0, 0, 1, n[1] ?? 0, n[2] ?? 0], [c, s, -s, c, 0, 0]), [1, 0, 0, 1, -(n[1] ?? 0), -(n[2] ?? 0)]);
+    } else throw new Error(`unsupported transform "${t[1]}"`);
+    m = mul(m, next);
+  }
+  return m;
+}
+const isTranslate = (m) => m[0] === 1 && m[1] === 0 && m[2] === 0 && m[3] === 1;
 
 function parseLogo(svg, id) {
   const [vx, vy, vw, vh] = attr(svg.match(/<svg[^>]*>/)[0], 'viewBox').split(/[\s,]+/).map(Number);
   const rootFill = attr(svg.match(/<svg[^>]*>/)[0], 'fill');
   const classes = {};
   for (const m of svg.matchAll(/\.([\w-]+)\s*\{([^}]*)\}/g)) classes[m[1]] = m[2];
-  // Gradients become one colour: the average of their stops. A gradient may borrow another's stops (xlink:href).
+  // Gradients: a flat colour (the average of the stops) for every kind, plus the real linear or radial geometry.
+  // A gradient may borrow another's stops and geometry (xlink:href).
   const gradientDefs = {};
   for (const m of svg.matchAll(/<(linear|radial)Gradient\b([^>]*?)(?:\/>|>([\s\S]*?)<\/\1Gradient>)/g)) {
-    gradientDefs[attr(m[2], 'id')] = { href: attr(m[2], 'xlink:href')?.slice(1), stops: [...(m[3] ?? '').matchAll(/stop-color="([^"]+)"/g)].map((x) => hexOf(x[1])) };
+    const stops = [...(m[3] ?? '').matchAll(/<stop\b([^>]*?)\/?>/g)].map((x) => {
+      const st = parseStyle(attr(x[1], 'style'));
+      const off = attr(x[1], 'offset') ?? '0';
+      return [off.endsWith('%') ? parseFloat(off) / 100 : Number(off), hexOf(attr(x[1], 'stop-color') ?? st['stop-color'] ?? '#000'), Number(attr(x[1], 'stop-opacity') ?? st['stop-opacity'] ?? 1)];
+    });
+    gradientDefs[attr(m[2], 'id')] = { kind: m[1], tag: m[2], href: attr(m[2], 'xlink:href')?.slice(1), stops };
   }
+  const resolved = (gid) => {
+    let def = gradientDefs[gid];
+    const chain = [def];
+    while (def.href && gradientDefs[def.href]) chain.push((def = gradientDefs[def.href]));
+    const stops = chain.find((g) => g.stops.length)?.stops ?? [];
+    const own = (name) => chain.map((g) => attr(g.tag, name)).find((v) => v !== undefined);
+    return { kind: gradientDefs[gid].kind, stops, own };
+  };
   const gradients = {};
-  for (const id of Object.keys(gradientDefs)) {
-    let def = gradientDefs[id];
-    while (!def.stops.length && def.href && gradientDefs[def.href]) def = gradientDefs[def.href];
-    const rgb = def.stops.map((h) => [1, 3, 5].map((i) => parseInt(h.slice(i, i + 2), 16)));
-    if (rgb.length) gradients[id] = '#' + [0, 1, 2].map((c) => Math.round(rgb.reduce((a, r) => a + r[c], 0) / rgb.length).toString(16).padStart(2, '0')).join('');
+  for (const gid of Object.keys(gradientDefs)) {
+    const stops = resolved(gid).stops;
+    const rgb = (stops.some(([, , a]) => a > 0) ? stops.filter(([, , a]) => a > 0) : stops).map(([, h]) => [1, 3, 5].map((i) => parseInt(h.slice(i, i + 2), 16)));
+    if (rgb.length) gradients[gid] = '#' + [0, 1, 2].map((c) => Math.round(rgb.reduce((a, r) => a + r[c], 0) / rgb.length).toString(16).padStart(2, '0')).join('');
   }
   const colour = (v) => {
     if (v == null) return null;
@@ -95,36 +150,76 @@ function parseLogo(svg, id) {
     const c = hexOf(v);
     return ['#fff', '#ffffff', 'white', '#000', '#000000', 'black'].includes(c) ? null : c;
   };
+  /** A stop as a CSS colour: hex when opaque, rgba() when it fades. */
+  const css = ([at, hex, a]) => [at, a >= 1 ? hex : `rgba(${[1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16)).join(',')},${Math.round(a * 1000) / 1000})`];
+  /**
+   * A linear or radial gradient in the layer's own coordinates. `bbox` is the shape's box and `m` takes the shape's
+   * local space to the layer's. A radial gradient is the unit circle under a matrix (so it can be an ellipse).
+   */
+  const gradientOf = (v, bbox, m) => {
+    const gid = v?.match(/url\(#([^)]+)\)/)?.[1];
+    const g = gid && resolved(gid);
+    if (!g || g.stops.length < 2) return undefined;
+    const num = (name, fallback) => {
+      const raw = g.own(name);
+      return raw === undefined ? fallback : raw.endsWith('%') ? parseFloat(raw) / 100 : Number(raw);
+    };
+    const boxed = g.own('gradientUnits') !== 'userSpaceOnUse';
+    let gm = parseTransform(g.own('gradientTransform'));
+    if (boxed) gm = mul([bbox[2] - bbox[0], 0, 0, bbox[3] - bbox[1], bbox[0], bbox[1]], gm);
+    gm = mul(m, gm);
+    const stops = g.stops.map(css);
+    if (g.kind === 'linear') {
+      const [x1, y1] = apply(gm, num('x1', 0), num('y1', 0));
+      const [x2, y2] = apply(gm, num('x2', 1), num('y2', 0));
+      return { stops, line: [x1, y1, x2, y2] };
+    }
+    const [cx, cy, r] = [num('cx', boxed ? 0.5 : 0), num('cy', boxed ? 0.5 : 0), num('r', boxed ? 0.5 : 1)];
+    return { stops, radial: mul(gm, [r, 0, 0, r, cx, cy]).map((n) => Math.round(n * 1e4) / 1e4) };
+  };
 
-  const offsets = [[0, 0]];
+  // Clip paths, masks and definitions hold shapes that are not drawn themselves.
+  const body = svg.replace(/<(defs|clipPath|mask)\b[\s\S]*?<\/\1>/g, '');
+  const stack = [IDENTITY];
   const layers = [];
-  for (const m of svg.matchAll(/<(\/?)(g|path|rect)\b([^>]*)>/g)) {
+  for (const m of body.matchAll(/<(\/?)(g|path|rect|circle)\b([^>]*?)(\/?)>/g)) {
     const [, close, name, rest] = m;
     if (name === 'g') {
-      if (close) offsets.pop();
-      else {
-        const t = attr(rest, 'transform')?.match(/translate\(\s*(-?[\d.]+)[\s,]+(-?[\d.]+)\s*\)/);
-        const [ox, oy] = offsets[offsets.length - 1];
-        offsets.push(t ? [ox + Number(t[1]), oy + Number(t[2])] : [ox, oy]);
-      }
+      if (close) stack.pop();
+      else stack.push(mul(stack[stack.length - 1], parseTransform(attr(rest, 'transform'))));
       continue;
     }
-    const [ox, oy] = offsets[offsets.length - 1];
+    const style = parseStyle(attr(rest, 'style'));
+    const prop = (key) => attr(rest, key) ?? style[key];
+    // Blurred glows, invisible shapes and masked shapes can't be drawn flat; leave them out.
+    if (prop('filter') || prop('display') === 'none' || prop('opacity') === '0' || prop('fill-opacity') === '0') continue;
     let d = attr(rest, 'd');
     if (name === 'rect') {
       const [w, h] = [attr(rest, 'width'), attr(rest, 'height')].map(Number);
       d = `M0 0H${w}V${h}H0Z`;
     }
+    if (name === 'circle') {
+      const [cx, cy, r] = ['cx', 'cy', 'r'].map((k) => Number(attr(rest, k)));
+      d = `M${cx - r} ${cy}a${r} ${r} 0 1 0 ${2 * r} 0a${r} ${r} 0 1 0 ${-2 * r} 0Z`;
+    }
     if (!d) continue;
+    const total = mul(stack[stack.length - 1], parseTransform(attr(rest, 'transform')));
+    // A plain shift is kept as an offset; anything else (scale, rotation) is baked into the path.
+    const shift = isTranslate(total);
+    if (!shift) d = svgpath(d).matrix(total).abs().round(3).toString();
+    const [ox, oy] = shift ? [total[4], total[5]] : [0, 0];
     const [x0, y0, x1, y1] = svgPathBbox(d);
     const css = (attr(rest, 'class') ?? '').split(/\s+/).map((c) => classes[c] ?? '').join(';');
     const cssFill = css.match(/fill:\s*([^;]+)/)?.[1];
-    const fill = colour(attr(rest, 'fill') ?? cssFill ?? rootFill);
-    const stroke = attr(rest, 'stroke');
+    const rawFill = prop('fill') ?? cssFill ?? rootFill;
+    const fill = colour(rawFill);
+    const gradient = gradientOf(rawFill, [x0, y0, x1, y1], shift ? IDENTITY : total);
+    const stroke = prop('stroke') === 'none' ? undefined : prop('stroke');
     layers.push({
       d,
       ...(fill !== null && { fill }),
-      ...(stroke && { stroke: colour(stroke), strokeWidth: Number(attr(rest, 'stroke-width') ?? 1) }),
+      ...(gradient && { gradient }),
+      ...(stroke && { stroke: colour(stroke), strokeWidth: Number(prop('stroke-width')?.replace('px', '') ?? 1), ...(prop('stroke-linecap') && prop('stroke-linecap') !== 'butt' && { strokeCap: prop('stroke-linecap') }) }),
       box: [x0 + ox, y0 + oy, x1 + ox, y1 + oy],
       offset: [ox, oy],
     });
@@ -141,6 +236,12 @@ const svgDir = new URL('../src/brands/svg/', import.meta.url);
 const logos = readdirSync(svgDir)
   .filter((f) => f.endsWith('.svg'))
   .sort()
+  .filter((f) => {
+    // An SVG that wraps bitmaps (Figma exports of rendered artwork) has no shapes to draw; skip it.
+    const raster = /<image\b/.test(readFileSync(new URL(f, svgDir), 'utf8'));
+    if (raster) console.warn(`Skipped ${f}: it embeds bitmaps, not vector shapes`);
+    return !raster;
+  })
   .map((f) => parseLogo(readFileSync(new URL(f, svgDir), 'utf8'), f.replace(/\.svg$/, '')));
 writeFileSync(
   new URL('../src/brands/logos.generated.ts', import.meta.url),

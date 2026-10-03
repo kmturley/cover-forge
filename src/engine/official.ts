@@ -1,6 +1,7 @@
 import type { PanelRect, TemplateConfig, TemplateKind } from '../types/template';
 import { paintRect } from '../templates/geometry';
 import { brandHeight, brandPath2D, brandWidth, getBrand, getLogo, logoPaths2D } from '../brands';
+import { X360_WAVES, X360_WAVES_SIZE } from './x360Waves.generated';
 
 /**
  * The "Branded" trade dress: each platform's front header, spine cap and marks, drawn as on retail covers. The values
@@ -67,7 +68,7 @@ export interface SpanMark extends Lockup {
 }
 
 /** A line along a band's lower edge. `taper` makes it thinner towards both sides: that share of `size` at the edges. */
-export interface Line { color: string; size: number; taper?: number }
+export interface Line { color: string; size: number; taper?: number; shadow?: { color: string; size: number } }
 
 /** The lower edge of a band: its depth (fraction of H) at `x` (fraction of W from the left). */
 export type Depth = (x: number) => number;
@@ -90,7 +91,7 @@ export type FrontHeader =
   /** Full width across the top. */
   | { shape: 'band'; depth: Depth; fill: Paint; line?: Line; decor?: 'xbox-orb' | 'x360-swoosh'; marks: FrontMark[] }
   /** A block in the top-left corner, `w` × `h`; with `wBottom` its right edge is a diagonal. */
-  | { shape: 'tab'; w: number; h: number; wBottom?: number; fill: Paint; marks: FrontMark[] }
+  | { shape: 'tab'; w: number; h: number; wBottom?: number; fill: Paint; plate?: { top: number; bottom: number; fill: string; line: string }; marks: FrontMark[] }
   /** Full height down the left edge, `w` wide. Its marks run along it. */
   | { shape: 'strip'; w: number; fill: Paint; marks: SpanMark[] }
   | { shape: 'none'; marks: FrontMark[] };
@@ -99,10 +100,10 @@ export interface SpineBranding {
   /** Colours the whole spine (Switch red, Wii white). */
   fill?: Paint;
   /** A block at the top of the spine, `length` of L, closed by an optional line. `dome` curves its lower edge up in the middle by that share of L. */
-  cap?: { length: number; fill: Paint; line?: { color: string; size: number }; dome?: number };
+  cap?: { length: number; fill: Paint; line?: { color: string; size: number; gap?: number }; dome?: number };
   /** A thin outline round the whole spine (or its cap), `mm` thick. `top: false` leaves the top edge off, and `rightFrom`
    * starts the right edge that far down (fraction of L) so it doesn't run along a header that meets it. */
-  outline?: { color: string; mm: number; top?: boolean; rightFrom?: number };
+  outline?: { color: string; mm: number; top?: boolean; right?: boolean; rightFrom?: number };
   marks: SpanMark[];
   /** Where the title may start (fraction of L). Default: just past the cap and the marks. */
   titleFrom?: number;
@@ -128,7 +129,7 @@ const SWITCH2_RED = '#f20c0d';
 const XBOX_GREEN = '#107c10';
 
 const PS4_BLUE: Paint = { x: [[0, '#2e4a8e'], [0.5, '#2063a4'], [1, '#1381c0']] };
-const X360_WHITE: Paint = { y: [[0, '#ffffff'], [1, '#d9dcde']] };
+const X360_WHITE = '#ffffff';
 const GFW_WHITE: Paint = { y: [[0, '#f2f2f0'], [1, '#fbfbfb']] };
 
 /** A format's small spine cap and back logo (DVD, CD, VHS…), which have no front header. */
@@ -237,28 +238,25 @@ export const GAME_CASE_BRANDING: Record<string, Branding> = {
   ps5: {
     front: {
       shape: 'band', depth: flat(0.1117), fill: W, line: { color: '#094695', size: 0.0047 },
-      marks: [{ parts: [PS, { brand: 'playstation5', h: 0.65 }], color: K, h: 0.075, align: 'left', inset: 0.037 }],
+      marks: [{ parts: [PS, { brand: 'playstation5', h: 0.6 }], color: K, h: 0.075, align: 'left', inset: 0.037, gap: 0.32 }],
     },
     spine: {
       cap: { length: 0.2292, fill: W, line: { color: '#094695', size: 0.0052 } },
       marks: [
         { parts: [PS], color: K, from: 0.021, to: 0.066, across: 0.7, rotate: 0 },
-        { parts: [{ brand: 'playstation5' }], color: K, from: 0.08, to: 0.2, across: 0.7, rotate: 90 },
+        { parts: [{ brand: 'playstation5' }], color: K, from: 0.0779, to: 0.1935, across: 0.7, rotate: 90 },
       ],
     },
   },
-  // PS Vita: a blue gradient band with a white line; the spine laid out like PS4 (unverified).
+  // PS Vita: a blue gradient band with a white line, the symbol and a large wordmark left; a dark blue spine cap with the wordmark.
   'ps-vita': {
     front: {
-      shape: 'band', depth: flat(0.075), fill: { x: [[0, '#075daa'], [1, '#1b8dcc']] }, line: { color: W, size: 0.005 },
-      marks: [{ parts: [PS, { brand: 'playstationvita', h: 0.45 }], color: W, h: 0.04, align: 'left', inset: 0.02 }],
+      shape: 'band', depth: flat(0.075), fill: { x: [[0, '#143b81'], [0.5, '#0b64ab'], [1, '#018fd7']] }, line: { color: W, size: 0.0065 },
+      marks: [{ parts: [PS, { brand: 'playstationvita', h: 0.78 }], color: W, h: 0.0482, align: 'left', inset: 0.0607, gap: 0.66 }],
     },
     spine: {
-      cap: { length: 0.2, fill: '#075daa' },
-      marks: [
-        { parts: [PS], color: W, from: 0.02, to: 0.06, rotate: 0 },
-        { parts: [{ brand: 'playstationvita' }], color: W, from: 0.08, to: 0.18, rotate: 90 },
-      ],
+      cap: { length: 0.1865, fill: '#143b81', line: { color: W, size: 0.006 } },
+      marks: [{ parts: [{ brand: 'playstationvita' }], color: W, from: 0.019, to: 0.1624, dx: 0.025, rotate: 90 }],
     },
   },
   // Switch: a red tab in the top-left corner with the Joy-Con icon over "NINTENDO SWITCH"; a red spine.
@@ -280,11 +278,11 @@ export const GAME_CASE_BRANDING: Record<string, Branding> = {
   // Wii U: a cyan band with a convex lower edge and a yellow-green line, "Wii U" centred; a white spine.
   'wii-u': {
     front: {
-      shape: 'band', depth: arc(0.0346, 0.0941), fill: '#019fcc', line: { color: '#fcee38', size: 0.0065, taper: 0.45 },
+      shape: 'band', depth: arc(0.0346, 0.0941), fill: '#019fcc', line: { color: '#fcee38', size: 0.0078, taper: 0 },
       marks: [{ parts: [{ logo: 'wii-u', mono: true }], color: W, h: 0.052, align: 'center', cy: 0.043, dx: 0.004 }],
     },
     spine: {
-      cap: { length: 0.0315, fill: '#019fcc', dome: 0.0045 },
+      cap: { length: 0.0346, fill: '#019fcc', dome: 0.0075 },
       fill: W,
       titleColor: '#333333',
       marks: [{ parts: [{ logo: 'wii-u' }], color: '#8c8c8c', from: 0.056, to: 0.191, across: 0.55, rotate: 90 }],
@@ -302,13 +300,13 @@ export const GAME_CASE_BRANDING: Record<string, Branding> = {
   // GameCube: a black band with a convex lower edge and a white line tapering towards the sides, the cube and wordmark centred; a black spine cap.
   gamecube: {
     front: {
-      shape: 'band', depth: arc(0.0587, 0.1069), fill: K, line: { color: '#f2f2f2', size: 0.0085, taper: 0.35 },
-      marks: [{ parts: [{ logo: 'gamecube', crop: [0, 0, 0.165, 1], h: 0.94 }, { logo: 'gamecube', crop: [0.165, 0, 1, 1] }], color: W, h: 0.0615, align: 'center', gap: 0, dx: 0.01 }],
+      shape: 'band', depth: arc(0.0575, 0.1055), fill: K, line: { color: '#f2f2f2', size: 0.0065, taper: 0.4, shadow: { color: '#8a8a8a', size: 0.0045 } },
+      marks: [{ parts: [{ logo: 'gamecube', crop: [0, 0, 0.214, 1], h: 1.1 }, { logo: 'gamecube', crop: [0.214, 0, 1, 1] }], color: W, h: 0.0676, align: 'center', gap: 0, dx: 0.01 }],
     },
     spine: {
-      cap: { length: 0.175, fill: K },
+      cap: { length: 0.3097, fill: K, line: { color: W, size: 0.0051 } },
       marks: [
-        { parts: [{ logo: 'gamecube' }], color: W, from: 0.03, to: 0.165, across: 0.5, rotate: 90 },
+        { parts: [{ logo: 'gamecube' }], color: W, from: 0.069, to: 0.275, across: 0.62, rotate: 90 },
       ],
     },
   },
@@ -316,60 +314,63 @@ export const GAME_CASE_BRANDING: Record<string, Branding> = {
   xbox: {
     front: {
       shape: 'band', depth: flat(0.1), fill: K, decor: 'xbox-orb',
-      marks: [{ parts: [{ icon: 'xsphere', accent: K }, { text: 'XBOX', weight: 800 }], color: '#9bc848', h: 0.05, align: 'left', inset: 0.08 }],
+      marks: [{ parts: [{ logo: 'xbox', crop: [0, 0, 0.339, 1] }, { logo: 'xbox', crop: [0.339, 0.285, 1, 0.71], h: 0.411 }], color: '#94c83f', h: 0.0647, align: 'left', inset: 0.0415, cy: 0.0555, gap: 0.03 }],
     },
     spine: {
-      cap: { length: 0.17, fill: K },
+      cap: { length: 0.2154, fill: K },
       marks: [
-        { parts: [{ icon: 'xsphere', accent: K }], color: '#9bc848', from: 0.045, to: 0.07, rotate: 0 },
-        { parts: [{ text: 'XBOX', weight: 800 }], color: '#9bc848', from: 0.08, to: 0.16, rotate: 90 },
+        { parts: [{ logo: 'xbox', crop: [0, 0, 0.339, 1] }], color: '#94c83f', from: 0.046, to: 0.093, across: 0.6, rotate: 0 },
+        { parts: [{ logo: 'xbox', crop: [0.339, 0.285, 1, 0.71] }], color: '#94c83f', from: 0.0946, to: 0.1891, across: 0.55, rotate: 90 },
       ],
     },
   },
-  // Xbox 360: a white band with green swooshes on the right third, the logo left; a white spine cap.
+  // Xbox 360: a white band with a thin green line and green swooshes on the right, the logo left; a white spine cap outlined in green on the left and below.
   'xbox-360': {
     front: {
-      shape: 'band', depth: flat(0.121), fill: X360_WHITE, decor: 'x360-swoosh',
-      marks: [{ parts: [{ icon: 'xsphere', color: '#b8bcbf', accent: '#52a43a' }, { text: 'XBOX', weight: 800, h: 0.6, color: '#52a43a' }, { text: '360', weight: 400, h: 0.6, color: '#8a8d8f' }], color: '#52a43a', h: 0.07, align: 'left', inset: 0.05, gap: 0.12 }],
+      shape: 'band', depth: flat(0.121), fill: X360_WHITE, line: { color: '#8dc63f', size: 0.0016 }, decor: 'x360-swoosh',
+      marks: [{ parts: [{ logo: 'xbox360' }], color: '#92c83e', h: 0.0715, align: 'left', inset: 0.0275, cy: 0.0657 }],
     },
     spine: {
-      cap: { length: 0.25, fill: X360_WHITE },
+      cap: { length: 0.261, fill: X360_WHITE },
+      outline: { color: '#8dc63f', mm: 0.25, top: false, right: false },
       marks: [
-        { parts: [{ icon: 'xsphere', color: '#b8bcbf', accent: '#52a43a' }], color: '#52a43a', from: 0.025, to: 0.065, rotate: 0 },
-        { parts: [{ text: 'XBOX', weight: 800, color: '#52a43a' }, { text: '360', weight: 400, color: '#8a8d8f' }], color: '#52a43a', from: 0.08, to: 0.23, gap: 0.12, rotate: 90 },
+        { parts: [{ logo: 'xbox360', crop: [0, 0, 0.22, 1] }], color: '#92c83e', from: 0.0275, to: 0.0762, across: 0.63, rotate: 0 },
+        { parts: [{ logo: 'xbox360', crop: [0.22, 0.18, 1, 0.82] }], color: '#92c83e', from: 0.0804, to: 0.249, across: 0.55, rotate: 90 },
       ],
     },
   },
-  // Xbox One: a flat green band with the sphere and "XBOX ONE" centred; a black spine.
+  // Xbox One: a flat green band with the sphere and "XBOX ONE" centred, running over the spine's top; a charcoal spine.
   'xbox-one': {
     front: {
-      shape: 'band', depth: flat(0.08), fill: XBOX_GREEN,
-      marks: [{ parts: [{ icon: 'xsphere', accent: XBOX_GREEN }, { text: 'XBOX ONE', weight: 700, h: 0.75 }], color: W, h: 0.035, align: 'center' }],
+      shape: 'band', depth: flat(0.105), fill: XBOX_GREEN,
+      marks: [{ parts: [{ logo: 'xbox-one' }], color: W, h: 0.052, align: 'center', cy: 0.0532, dx: -0.0052 }],
     },
     spine: {
-      fill: K,
+      fill: '#373632',
+      cap: { length: 0.105, fill: XBOX_GREEN },
       marks: [
-        { parts: [{ icon: 'xsphere', accent: K }], color: W, from: 0.024, to: 0.064, rotate: 0 },
-        { parts: [{ text: 'XBOX ONE', weight: 700 }], color: W, from: 0.07, to: 0.2, rotate: 90 },
+        { parts: [{ logo: 'xbox-one', crop: [0, 0, 0.208, 1] }], color: W, from: 0.1298, to: 0.1812, across: 0.6, dx: 0.03, rotate: 0 },
+        { parts: [{ logo: 'xbox-one', crop: [0.208, 0.16, 1, 0.82] }], color: W, from: 0.1823, to: 0.3503, across: 0.5, dx: 0.03, rotate: 90 },
       ],
     },
   },
   // Xbox Series X|S (2024 on): a green block over the spine's top and the front's top-left corner with a diagonal edge,
-  // "XBOX SERIES X" top right on the artwork; a black spine.
+  // continued by a pale slanted plate holding "Xbox Series X"; a charcoal spine.
   'xbox-series': {
     front: {
-      shape: 'tab', w: 0.17, wBottom: 0.1, h: 0.088, fill: '#4daa14',
+      shape: 'tab', w: 0.2069, wBottom: 0.1195, h: 0.105, fill: XBOX_GREEN,
+      plate: { top: 0.583, bottom: 0.497, fill: '#fcfcfc', line: '#d9d9d9' },
       marks: [
-        { parts: [{ icon: 'xsphere', accent: '#4daa14' }], color: W, h: 0.06, align: 'left', inset: 0.025 },
-        { parts: [{ text: 'XBOX SERIES X', weight: 800 }], color: K, h: 0.02, align: 'right', inset: 0.03, cy: 0.035, onPanel: true },
+        { parts: [{ logo: 'xbox-seriesx-mark' }], color: W, h: 0.0583, align: 'left', inset: 0.0529, cy: 0.0588 },
+        { parts: [{ text: 'Xbox Series X', weight: 800 }], color: '#333333', h: 0.0232, align: 'left', inset: 0.211, cy: 0.0582, onPanel: true },
       ],
     },
     spine: {
-      fill: K,
-      cap: { length: 0.088, fill: '#4daa14' },
+      fill: '#373632',
+      cap: { length: 0.105, fill: XBOX_GREEN },
       marks: [
-        { parts: [{ icon: 'xsphere', accent: K }], color: W, from: 0.11, to: 0.14, rotate: 0 },
-        { parts: [{ text: 'XBOX', weight: 800 }], color: W, from: 0.15, to: 0.22, rotate: 90 },
+        { parts: [{ logo: 'xbox-seriesx-mark' }], color: W, from: 0.131, to: 0.181, across: 0.58, dx: 0.03, rotate: 0 },
+        { parts: [{ logo: 'xbox-seriesx', crop: [0.372, 0.2, 1, 0.82] }], color: W, from: 0.1852, to: 0.2755, across: 0.4, dx: 0.02, rotate: 90 },
       ],
     },
   },
@@ -528,11 +529,34 @@ function part(ctx: Ctx, p: Part, color: string, unit: number, gapUnits: number):
           ctx.translate(-bx + layer.offset[0], -by + layer.offset[1]);
           if (layer.fill !== 'none') {
             ctx.fillStyle = p.mono || !layer.fill || layer.fill === p.ink ? fill : layer.fill;
-            ctx.fill(paths[i], l.evenodd ? 'evenodd' : 'nonzero');
+            const grad = layer.gradient && !p.mono && layer.fill !== p.ink ? layer.gradient : undefined;
+            let shape = paths[i];
+            if (grad) {
+              let g: CanvasGradient;
+              ctx.save();
+              if (grad.radial) {
+                // A radial gradient is the unit circle under a matrix, so the layer is drawn through its inverse.
+                const [a, b, c, d, e, f] = grad.radial;
+                const det = a * d - b * c;
+                const inv = { a: d / det, b: -b / det, c: -c / det, d: a / det, e: (c * f - d * e) / det, f: (b * e - a * f) / det };
+                ctx.transform(a, b, c, d, e, f);
+                g = ctx.createRadialGradient(0, 0, 0, 0, 0, 1);
+                shape = new Path2D();
+                shape.addPath(paths[i], inv as unknown as DOMMatrix);
+              } else {
+                const [x1, y1, x2, y2] = grad.line!;
+                g = ctx.createLinearGradient(x1, y1, x2, y2);
+              }
+              for (const [at, color] of grad.stops) g.addColorStop(Math.min(1, Math.max(0, at)), color);
+              ctx.fillStyle = g;
+              ctx.fill(shape, l.evenodd ? 'evenodd' : 'nonzero');
+              ctx.restore();
+            } else ctx.fill(shape, l.evenodd ? 'evenodd' : 'nonzero');
           }
           if (layer.stroke !== undefined) {
             ctx.strokeStyle = p.mono || !layer.stroke || layer.stroke === p.ink ? fill : layer.stroke;
             ctx.lineWidth = layer.strokeWidth ?? 1;
+            ctx.lineCap = layer.strokeCap ?? 'butt';
             ctx.stroke(paths[i]);
           }
           ctx.restore();
@@ -650,14 +674,16 @@ export function drawOfficial(ctx: Ctx, t: TemplateConfig, px: number): void {
 
 function drawFront(ctx: Ctx, t: TemplateConfig, p: PanelRect, h: FrontHeader, px: number) {
   const area = paintRect(t, p);
-  const [ax, ay, aw] = [area.xMm * px, area.yMm * px, area.widthMm * px];
+  // Snapped outwards to whole pixels so the paint meets its neighbour with no hairline of the base colour between them.
+  const [ax, ay] = [Math.floor(area.xMm * px), Math.floor(area.yMm * px)];
+  const aw = Math.ceil((area.xMm + area.widthMm) * px) - ax;
   const [x0, y0, W, H] = [p.xMm * px, p.yMm * px, p.widthMm * px, p.heightMm * px];
   const panelBox = { x: x0, w: W };
 
   if (h.shape === 'band') {
     // The lower edge in px at a canvas x, clamped to the trim so the bleed carries the edge's end depth.
     const edge = (x: number) => y0 + h.depth(Math.min(1, Math.max(0, (x - x0) / W))) * H;
-    const steps = 64;
+    const steps = 480;
     const xs = Array.from({ length: steps + 1 }, (_, i) => ax + (aw * i) / steps);
     const outline = (offset: number) => xs.map((x) => [x, edge(x) + offset] as const);
     const deepest = Math.max(...xs.map(edge));
@@ -690,15 +716,48 @@ function drawFront(ctx: Ctx, t: TemplateConfig, p: PanelRect, h: FrontHeader, px
       ctx.closePath();
       ctx.fillStyle = h.line.color;
       ctx.fill();
+      if (h.line.shadow) {
+        // A soft edge under the line (GameCube's bevel), drawn translucent.
+        const sh = h.line.shadow.size * H;
+        ctx.beginPath();
+        xs.forEach((x, i) => (i ? ctx.lineTo(x, edge(x) + thick(x)) : ctx.moveTo(x, edge(x) + thick(x))));
+        for (const x of [...xs].reverse()) ctx.lineTo(x, edge(x) + thick(x) + sh);
+        ctx.closePath();
+        ctx.fillStyle = h.line.shadow.color;
+        ctx.globalAlpha = 0.55;
+        ctx.fill();
+        ctx.globalAlpha = 1;
+      }
     }
     for (const m of h.marks) drawFrontMark(ctx, m, panelBox, p, px, (xMm) => h.depth(Math.min(1, Math.max(0, (xMm - p.xMm) / p.widthMm))) * p.heightMm);
   } else if (h.shape === 'tab') {
     const tw = h.w * W;
     const bw = (h.wBottom ?? h.w) * W;
     const th = h.h * H;
+    // The edges are measured at the trim; the paint runs on up into the bleed along the same slope.
+    const lead = (y0 - ay) / th;
+    const onward = (top: number, bottom: number) => (top + (top - bottom) * lead) * W;
+    if (h.plate) {
+      // A pale slanted plate continuing the tab to the right, outlined along its slanted edge and bottom.
+      ctx.beginPath();
+      ctx.moveTo(x0 + tw - 1, ay);
+      ctx.lineTo(x0 + onward(h.plate.top, h.plate.bottom), ay);
+      ctx.lineTo(x0 + h.plate.bottom * W, y0 + th);
+      ctx.lineTo(x0 + bw - 1, y0 + th);
+      ctx.closePath();
+      ctx.fillStyle = h.plate.fill;
+      ctx.fill();
+      ctx.beginPath();
+      ctx.moveTo(x0 + onward(h.plate.top, h.plate.bottom), ay);
+      ctx.lineTo(x0 + h.plate.bottom * W, y0 + th);
+      ctx.lineTo(x0 + bw, y0 + th);
+      ctx.strokeStyle = h.plate.line;
+      ctx.lineWidth = Math.max(1, px * 0.1);
+      ctx.stroke();
+    }
     ctx.beginPath();
     ctx.moveTo(ax, ay);
-    ctx.lineTo(x0 + tw, ay);
+    ctx.lineTo(x0 + onward(h.w, h.wBottom ?? h.w), ay);
     ctx.lineTo(x0 + bw, y0 + th);
     ctx.lineTo(ax, y0 + th);
     ctx.closePath();
@@ -719,30 +778,79 @@ function drawFront(ctx: Ctx, t: TemplateConfig, p: PanelRect, h: FrontHeader, px
 
 function drawDecor(ctx: Ctx, decor: 'xbox-orb' | 'x360-swoosh', x0: number, y0: number, W: number, depth: number) {
   if (decor === 'xbox-orb') {
-    // A glowing green orb with an X, cropped by the top and right trims.
-    const r = W * 0.14;
-    const cx = x0 + W - r * 0.55;
-    const cy = y0 + depth * 0.35;
-    const g = ctx.createRadialGradient(cx - r * 0.3, cy - r * 0.3, r * 0.1, cx, cy, r);
-    g.addColorStop(0, '#d8f59a');
-    g.addColorStop(0.45, '#7cc242');
-    g.addColorStop(1, '#1e5c12');
+    // Fine horizontal ridges fading in towards the orb, a dark ring, then the glossy green-to-yellow orb with its X,
+    // cropped by the band's bottom and right trims.
+    const [r, cx, cy] = [W * 0.125, x0 + W * 0.9, y0 + depth * 0.47];
+    const ridge = ctx.createLinearGradient(x0 + W * 0.2, 0, x0 + W * 0.77, 0);
+    ridge.addColorStop(0, 'rgba(255,255,255,0)');
+    ridge.addColorStop(0.35, 'rgba(255,255,255,0.08)');
+    ridge.addColorStop(1, 'rgba(255,255,255,0.15)');
+    ctx.fillStyle = ridge;
+    const pitch = depth * 0.052;
+    for (let y = y0; y < y0 + depth; y += pitch) ctx.fillRect(x0 + W * 0.2, y, W * 0.57, pitch * 0.55);
+
+    const ring = ctx.createLinearGradient(cx - r * 1.2, 0, cx - r * 0.8, 0);
+    ring.addColorStop(0, '#1c1c1c');
+    ring.addColorStop(1, '#030303');
+    ctx.fillStyle = ring;
+    ctx.beginPath();
+    ctx.arc(cx, cy, r * 1.17, 0, Math.PI * 2);
+    ctx.fill();
+
+    const g = ctx.createRadialGradient(cx + r * 0.2, cy + r * 0.35, 0, cx + r * 0.2, cy + r * 0.35, r * 1.7);
+    for (const [at, color] of [[0, '#f8f4a8'], [0.2, '#e6e75c'], [0.38, '#cdd514'], [0.58, '#96c008'], [0.76, '#4f9c06'], [1, '#1f5f05']] as const) g.addColorStop(at, color);
     ctx.fillStyle = g;
     ctx.beginPath();
     ctx.arc(cx, cy, r, 0, Math.PI * 2);
     ctx.fill();
-    drawIcon(ctx, 'xsphere', cx - r * 0.6, cy - r * 0.6, r * 1.2, r * 1.2, 'rgba(0,0,0,0)', '#0f3b0a');
+
+    const x = part(ctx, { logo: 'xbox', crop: [0, 0, 0.339, 1] }, '#ffffff', W * 0.119, 0);
+    ctx.save();
+    ctx.globalAlpha = 0.6;
+    x.draw(cx - x.w / 2, cy - x.h / 2);
+    ctx.restore();
     return;
   }
-  // Green ribbons sweeping through the band's right third.
-  const ribbons: [string, number, number][] = [['#d3e753', 0.05, 0.5], ['#8ec645', 0.35, 0.75], ['#46a82d', 0.6, 1.05]];
-  for (const [color, a, b] of ribbons) {
-    ctx.fillStyle = color;
+  // The Xbox 360 swooshes, traced from the artwork: a fade from white, then bands painted left to right. The artwork is
+  // as tall as the band and flush with the right trim, with its last colours carried on into the bleed.
+  const k = depth / (X360_WAVES_SIZE.h - 1);
+  const right = x0 + W;
+  const sx = (x: number) => right - (X360_WAVES_SIZE.w - x) * k;
+  const sy = (y: number) => y0 + y * k;
+  const edgeAt = (pts: [number, number][], y: number) => {
+    const i = Math.max(1, pts.findIndex((p) => p[1] >= y));
+    const [a, b] = [pts[i - 1], pts[i]];
+    return a[0] + ((b[0] - a[0]) * (y - a[1])) / (b[1] - a[1] || 1);
+  };
+  const first = X360_WAVES[0];
+  const [fr, fg, fb] = (first.stops[1][1].match(/[0-9a-f]{2}/g) ?? []).map((h) => parseInt(h, 16));
+  const fade = W * 0.075;
+  for (let y = 0; y < X360_WAVES_SIZE.h; y += 1) {
+    const e = sx(edgeAt(first.left, y));
+    const g = ctx.createLinearGradient(e - fade, 0, e, 0);
+    g.addColorStop(0, `rgba(${fr},${fg},${fb},0)`);
+    g.addColorStop(0.65, `rgba(${fr},${fg},${fb},0.12)`);
+    g.addColorStop(1, `rgba(${fr},${fg},${fb},0.8)`);
+    ctx.fillStyle = g;
+    ctx.fillRect(e - fade, sy(y), fade + 1, k + 0.6);
+  }
+  // A green underlay, so the hairline between two neighbouring shapes shows green rather than the page.
+  ctx.fillStyle = '#2f9b00';
+  ctx.beginPath();
+  first.left.forEach(([x, y], i) => (i ? ctx.lineTo(sx(x), sy(y)) : ctx.moveTo(sx(x), sy(y))));
+  ctx.lineTo(right + W * 0.1, sy(X360_WAVES_SIZE.h - 1));
+  ctx.lineTo(right + W * 0.1, sy(0));
+  ctx.closePath();
+  ctx.fill();
+  const bleed = (x: number) => (x > X360_WAVES_SIZE.w ? right + W * 0.1 : sx(x));
+  for (const band of X360_WAVES) {
+    const [top, bottom] = [sy(band.left[0][1]), sy(band.left.at(-1)![1])];
+    const g = ctx.createLinearGradient(0, top, 0, bottom);
+    for (const [at, color] of band.stops) g.addColorStop(at, color);
+    ctx.fillStyle = g;
     ctx.beginPath();
-    ctx.moveTo(x0 + W * 0.67, y0 + depth);
-    ctx.bezierCurveTo(x0 + W * 0.8, y0 + depth * a, x0 + W * 0.9, y0 + depth * (a - 0.2), x0 + W * 1.02, y0 + depth * (a - 0.3));
-    ctx.lineTo(x0 + W * 1.02, y0 + depth * (b - 0.3));
-    ctx.bezierCurveTo(x0 + W * 0.9, y0 + depth * b, x0 + W * 0.82, y0 + depth * (b + 0.2), x0 + W * 0.72, y0 + depth);
+    band.left.forEach(([x, y], i) => (i ? ctx.lineTo(sx(x), sy(y)) : ctx.moveTo(sx(x), sy(y))));
+    for (const [x, y] of [...band.right].reverse()) ctx.lineTo(bleed(x), sy(y));
     ctx.closePath();
     ctx.fill();
   }
@@ -772,7 +880,8 @@ function drawSpan(ctx: Ctx, m: SpanMark, frame: { x: number; y: number; across: 
 function drawSpine(ctx: Ctx, t: TemplateConfig, p: PanelRect, s: SpineBranding, px: number) {
   const area = paintRect(t, p);
   const vertical = p.text === 'vertical';
-  const [ax, ay, aw, ah] = [area.xMm * px, area.yMm * px, area.widthMm * px, area.heightMm * px];
+  const [ax, ay] = [Math.floor(area.xMm * px), Math.floor(area.yMm * px)];
+  const [aw, ah] = [Math.ceil((area.xMm + area.widthMm) * px) - ax, Math.ceil((area.yMm + area.heightMm) * px) - ay];
   const along = (vertical ? p.heightMm : p.widthMm) * px;
   const across = (vertical ? p.widthMm : p.heightMm) * px;
   const [x0, y0] = [p.xMm * px, p.yMm * px];
@@ -800,8 +909,9 @@ function drawSpine(ctx: Ctx, t: TemplateConfig, p: PanelRect, s: SpineBranding, 
     if (s.cap.line) {
       const t2 = s.cap.line.size * along;
       ctx.fillStyle = s.cap.line.color;
-      if (vertical) ctx.fillRect(ax, y0 + len, aw, t2);
-      else ctx.fillRect(x0 + len, ay, t2, ah);
+      const gap = (s.cap.line.gap ?? 0) * along;
+      if (vertical) ctx.fillRect(ax, y0 + len + gap, aw, t2);
+      else ctx.fillRect(x0 + len + gap, ay, t2, ah);
     }
   }
   if (s.outline) {
@@ -813,7 +923,7 @@ function drawSpine(ctx: Ctx, t: TemplateConfig, p: PanelRect, s: SpineBranding, 
     if (s.outline.top !== false) ctx.fillRect(x0, y0, ow, lw);
     ctx.fillRect(x0, y0, lw, oh);
     ctx.fillRect(x0, y0 + oh - lw, ow, lw);
-    ctx.fillRect(x0 + ow - lw, y0 + rightFrom, lw, oh - rightFrom);
+    if (s.outline.right !== false) ctx.fillRect(x0 + ow - lw, y0 + rightFrom, lw, oh - rightFrom);
   }
   for (const m of s.marks) drawSpan(ctx, m, { x: x0, y: y0, across, along }, vertical ? 'vertical' : 'horizontal', px);
 }

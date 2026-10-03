@@ -49,7 +49,9 @@ export function renderCover(
     const r = resolvePanel(shared, item, panel.follows ?? panel.id);
     if (r.backgroundColor) {
       ctx.fillStyle = r.backgroundColor;
-      ctx.fillRect(area.xMm * px, area.yMm * px, area.widthMm * px, area.heightMm * px);
+      // Snapped outwards to whole pixels so neighbouring panels leave no hairline of the base colour between them.
+      const [x0, y0] = [Math.floor(area.xMm * px), Math.floor(area.yMm * px)];
+      ctx.fillRect(x0, y0, Math.ceil((area.xMm + area.widthMm) * px) - x0, Math.ceil((area.yMm + area.heightMm) * px) - y0);
     }
     if (panel.follows) continue; // a dust flap is plain: no image, border, logo or code
 

@@ -49,9 +49,9 @@ describe('branding', () => {
     expect(band('ps4').depth(0.5)).toBeCloseTo(0.108);
     expect(band('ps5').line).toEqual({ color: '#094695', size: 0.0047 });
     // GameCube: a convex arc, deeper in the middle than at the sides (measured on the fan template).
-    expect(band('gamecube').depth(0)).toBeCloseTo(0.0587);
-    expect(band('gamecube').depth(0.5)).toBeCloseTo(0.1069);
-    expect(band('gamecube').depth(1)).toBeCloseTo(0.0587);
+    expect(band('gamecube').depth(0)).toBeCloseTo(0.0575);
+    expect(band('gamecube').depth(0.5)).toBeCloseTo(0.1055);
+    expect(band('gamecube').depth(1)).toBeCloseTo(0.0575);
     // Wii: shallow across the left half, an S down to a deep plateau on the right (measured on the fan template).
     expect(band('wii').depth(0.3)).toBeCloseTo(0.024, 2);
     expect(band('wii').depth(0.7)).toBeCloseTo(0.1, 2);

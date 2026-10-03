@@ -43,7 +43,7 @@ const SCANS = 'scans';
 const OUT = 'compare';
 const IMAGE_EXTS = /\.(jpe?g|png|tiff?|webp)$/i;
 /** Scan folder names that differ from the app's variant id. */
-const FOLDER_TO_VARIANT: Record<string, string> = { wiiu: 'wii-u', psvita: 'ps-vita' };
+const FOLDER_TO_VARIANT: Record<string, string> = { wiiu: 'wii-u', psvita: 'ps-vita', xbox360: 'xbox-360', xboxone: 'xbox-one', xboxseriesx: 'xbox-series' };
 /** How much of the wrap's height the stacked strip shows: the header, spine cap and logos. */
 const STRIP_FRACTION = 0.4;
 const ROW_WIDTH = 1800;
