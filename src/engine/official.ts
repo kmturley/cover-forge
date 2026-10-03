@@ -162,7 +162,7 @@ export const FORMAT_BRANDING: Record<TemplateKind, Branding> = {
   vhs: format([{ logo: 'vhs' }], W, '#141414', 0.08, undefined, { across: 0.58, titleScale: 1.25 }),
   cd: format([{ logo: 'cd' }], W, '#141414', 0.108, undefined, { across: 0.9, rotate: 90, from: 0.022, to: 0.102 }),
   cassette: format([{ logo: 'cassette', color: W }], W, '#141414', 0.26, undefined, { across: 0.9, rotate: 90, from: 0.035, to: 0.225, titleScale: 1.3 }),
-  vinyl: format([{ text: 'STEREO · 33⅓ RPM', weight: 700 }], '#f5e642', '#1a1a1a', 0),
+  vinyl: format([{ text: 'STEREO · 33⅓ RPM', weight: 700 }], W, '#1a1a1a', 0),
   floppy: labelBand('FLOPPY', '#22252b', W, 0.086, 0),
   'nfc-card': labelBand('NFC', '#1a73e8', W, 0.082, 0, NFC_WAVES, 0.85),
   'nfc-sticker': labelBand('NFC', '#1a73e8', W, 0.1, 0, NFC_WAVES, 0.85, true, 'center'),
@@ -173,12 +173,12 @@ export const FORMAT_BRANDING: Record<TemplateKind, Branding> = {
 /** Per-platform branding for game cases, keyed by variant id. US releases, current era; see branding-spec.md. */
 export const GAME_CASE_BRANDING: Record<string, Branding> = {
   // Games for Windows (2006–2013): a white bevelled band, the logo left and "PC DVD" right.
-  // PC: just the PC CD-ROM logo, top left at a quarter of the cover's width (with a dark corner behind it that carries
+  // PC: just the PC CD-ROM logo, top left at 28% of the cover's width (with a dark corner behind it that carries
   // the colour into the bleed), and the same logo turned to read down the top of the spine.
   pc: {
     front: {
-      shape: 'tab', w: 0.01, lip: 0.25, h: 0.0577, fill: '#171717',
-      marks: [{ parts: [{ logo: 'pc' }], color: W, h: 0.0577, align: 'left', inset: 0, cy: 0.0577 / 2, onPanel: true }],
+      shape: 'tab', w: 0.01, lip: 0.28, h: 0.0646, fill: '#171717',
+      marks: [{ parts: [{ logo: 'pc' }], color: W, h: 0.0646, align: 'left', inset: 0, cy: 0.0646 / 2, onPanel: true }],
     },
     spine: {
       marks: [{ parts: [{ logo: 'pc' }], color: W, from: 0.02, to: 0.19, across: 0.85, rotate: 90 }],

@@ -1,5 +1,5 @@
 import type { MediaItem } from '../types/media';
-import type { PanelId } from '../types/template';
+import type { PanelId, TemplateKind } from '../types/template';
 import { DEFAULT_BORDER, DEFAULT_CODE, DEFAULT_LOGO, DEFAULT_TRANSFORM, type BorderSettings, type CodeSettings, type ImageRef, type LogoSettings, type PanelTransform, type SharedSettings, type SpineSettings } from '../types/editor';
 import { defaultImageRef, resolveImageRef } from './imageLibrary';
 
@@ -20,11 +20,19 @@ export interface ResolvedPanel {
   border: BorderSettings;
 }
 
+/** Formats whose back carries no barcode unless the user adds one: a tape, a floppy and every NFC piece. */
+const NO_BACK_BARCODE: TemplateKind[] = ['cassette', 'floppy', 'nfc-card', 'nfc-sticker', 'nfc-box'];
+
+/** The code a panel starts with when nobody has chosen one: an EAN-13 barcode on the back of every case but the formats above. */
+export function defaultCodeKind(kind: TemplateKind | undefined, id: PanelId): CodeSettings['kind'] {
+  return kind && id === 'back' && !NO_BACK_BARCODE.includes(kind) ? 'ean13' : DEFAULT_CODE.kind;
+}
+
 /**
  * Effective settings for one panel, layered field by field: built-in default → shared → item override.
  * If a shared image choice (e.g. "logo" or "screenshot:3") doesn't exist on this item, the panel's default is used.
  */
-export function resolvePanel(shared: SharedSettings, item: MediaItem | null, id: PanelId): ResolvedPanel {
+export function resolvePanel(shared: SharedSettings, item: MediaItem | null, id: PanelId, templateKind?: TemplateKind): ResolvedPanel {
   const s = shared.panels[id];
   const o = item?.panels?.[id];
 
@@ -42,7 +50,8 @@ export function resolvePanel(shared: SharedSettings, item: MediaItem | null, id:
     imageUrl,
     transform: { ...DEFAULT_TRANSFORM, ...s?.transform, ...o?.transform },
     logo: { ...DEFAULT_LOGO, ...s?.logo, ...o?.logo },
-    code: { ...DEFAULT_CODE, ...s?.code, ...o?.code },
+    // An explicit choice (even "none") at the design or item level wins over the format's default.
+    code: { ...DEFAULT_CODE, kind: defaultCodeKind(templateKind, id), ...s?.code, ...o?.code },
     border: { ...DEFAULT_BORDER, ...s?.border, ...o?.border },
   };
 }

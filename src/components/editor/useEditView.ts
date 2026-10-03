@@ -29,7 +29,7 @@ export function useEditView(panel: PanelId): EditView {
   return {
     isOverride,
     designId,
-    resolved: resolvePanel(layered, viewItem, panel),
+    resolved: resolvePanel(layered, viewItem, panel, state.template.kind),
     spine: resolveSpine(layered, isOverride ? item : null),
     own: isOverride ? item?.panels?.[panel] : designLayer(shared, designs, designId).panels[panel],
   };

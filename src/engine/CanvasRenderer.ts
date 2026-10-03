@@ -96,7 +96,7 @@ export function renderCover(
 
   // QR codes and barcodes go on top of logos.
   for (const panel of t.panels.filter((q) => !q.follows)) {
-    const { code } = resolvePanel(shared, item, panel.id);
+    const { code } = resolvePanel(shared, item, panel.id, t.kind);
     if (item && code.kind !== 'none') drawCode(ctx, t, panel, code, item, px);
   }
 
