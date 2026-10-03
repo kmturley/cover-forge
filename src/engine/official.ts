@@ -12,15 +12,11 @@ import { X360_WAVES, X360_WAVES_SIZE } from './x360Waves.generated';
 /** A flat colour, or a gradient across the shape (`x`: left to right, `y`: top to bottom) as [offset, colour] stops. */
 export type Paint = string | { x: [number, string][] } | { y: [number, string][] };
 
-/** Simple drawn marks for brands that have no supplied logo (src/brands/svg) or Simple Icons entry. */
-export type Icon = 'xsphere' | 'windows';
-
 /** One piece of a lockup. `h` is its height relative to the others (default 1); `color` overrides the lockup's. */
 export type Part =
   | { brand: string; h?: number; color?: string }
   | { logo: string; h?: number; color?: string; mono?: boolean; ink?: string; only?: number[]; crop?: [number, number, number, number] }
   | { text: string; h?: number; color?: string; weight?: number; italic?: boolean; spacing?: number }
-  | { icon: Icon; h?: number; color?: string; accent?: string }
   | { row: Part[] }
   | { stack: Part[] };
 
@@ -91,7 +87,7 @@ export type FrontHeader =
   /** Full width across the top. */
   | { shape: 'band'; depth: Depth; fill: Paint; line?: Line; decor?: 'xbox-orb' | 'x360-swoosh'; marks: FrontMark[] }
   /** A block in the top-left corner, `w` × `h`; with `wBottom` its right edge is a diagonal. */
-  | { shape: 'tab'; w: number; h: number; wBottom?: number; fill: Paint; plate?: { top: number; bottom: number; fill: string; line: string }; marks: FrontMark[] }
+  | { shape: 'tab'; w: number; h: number; wBottom?: number; /** Also paints the top bleed this far across (a share of W), so a logo flush with the top edge has none showing above it. */ lip?: number; fill: Paint; plate?: { top: number; bottom: number; fill: string; line: string }; marks: FrontMark[] }
   /** Full height down the left edge, `w` wide. Its marks run along it. */
   | { shape: 'strip'; w: number; fill: Paint; marks: SpanMark[] }
   | { shape: 'none'; marks: FrontMark[] };
@@ -132,7 +128,6 @@ const XBOX_GREEN = '#107c10';
 
 const PS4_BLUE: Paint = { x: [[0, '#2e4a8e'], [0.5, '#2063a4'], [1, '#1381c0']] };
 const X360_WHITE = '#ffffff';
-const GFW_WHITE: Paint = { y: [[0, '#f2f2f0'], [1, '#fbfbfb']] };
 
 /** A format's small spine cap and back logo (DVD, CD, VHS…), which have no front header. */
 function format(label: Part[], color: string, bg: string, cap: number, spineLabel: Part[] = label, opts: { across?: number; titleScale?: number; rotate?: number; inset?: number; from?: number; to?: number } = {}): Branding {
@@ -178,13 +173,15 @@ export const FORMAT_BRANDING: Record<TemplateKind, Branding> = {
 /** Per-platform branding for game cases, keyed by variant id. US releases, current era; see branding-spec.md. */
 export const GAME_CASE_BRANDING: Record<string, Branding> = {
   // Games for Windows (2006–2013): a white bevelled band, the logo left and "PC DVD" right.
+  // PC: just the PC CD-ROM logo, top left at a quarter of the cover's width (with a dark corner behind it that carries
+  // the colour into the bleed), and the same logo turned to read down the top of the spine.
   pc: {
     front: {
-      shape: 'band', depth: flat(0.11), fill: GFW_WHITE, line: { color: '#d0d0cc', size: 0.004 },
-      marks: [
-        { parts: [{ icon: 'windows' }, { stack: [{ text: 'Games', weight: 700, h: 0.55 }, { text: 'for Windows', weight: 400, h: 0.4 }] }], color: '#3c6fb4', h: 0.07, align: 'left', inset: 0.02, gap: 0.15 },
-        { parts: [{ text: 'PC', weight: 300 }, { text: 'DVD', weight: 800 }], color: '#8a8a8a', h: 0.03, align: 'right', inset: 0.02, gap: 0.15 },
-      ],
+      shape: 'tab', w: 0.01, lip: 0.25, h: 0.0577, fill: '#171717',
+      marks: [{ parts: [{ logo: 'pc' }], color: W, h: 0.0577, align: 'left', inset: 0, cy: 0.0577 / 2, onPanel: true }],
+    },
+    spine: {
+      marks: [{ parts: [{ logo: 'pc' }], color: W, from: 0.02, to: 0.19, across: 0.85, rotate: 90 }],
     },
   },
   // PS1 (jewel case): a black strip down the left, the PS symbol at its top and "PlayStation" reading upwards.
@@ -454,7 +451,6 @@ function setFont(ctx: Ctx, p: { weight?: number; italic?: boolean; spacing?: num
 
 interface Box { w: number; h: number; draw: (x: number, y: number) => void }
 
-const ICON_ASPECT: Record<Icon, number> = { xsphere: 1, windows: 1.05 };
 
 /** Lays out parts at `unit` pixels per relative height unit; returns the size and a function drawing it at a top-left. */
 function layout(ctx: Ctx, parts: Part[], color: string, unit: number, gapUnits: number, dir: 'row' | 'stack'): Box {
@@ -579,51 +575,6 @@ function part(ctx: Ctx, p: Part, color: string, unit: number, gapUnits: number):
       },
     };
   }
-  const w = h * ICON_ASPECT[p.icon];
-  return { w, h, draw: (x, y) => drawIcon(ctx, p.icon, x, y, w, h, fill, p.accent) };
-}
-
-function roundRect(ctx: Ctx, x: number, y: number, w: number, h: number, r: number[]) {
-  ctx.beginPath();
-  ctx.roundRect(x, y, w, h, r);
-}
-
-function drawIcon(ctx: Ctx, icon: Icon, x: number, y: number, w: number, h: number, color: string, accent = '#000000') {
-  ctx.save();
-  ctx.fillStyle = color;
-  ctx.strokeStyle = color;
-  if (icon === 'xsphere') {
-    // A sphere with a soft diagonal swoosh across its upper half.
-    const r = h / 2;
-    ctx.beginPath();
-    ctx.arc(x + r, y + r, r, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.save();
-    ctx.beginPath();
-    ctx.arc(x + r, y + r, r, 0, Math.PI * 2);
-    ctx.clip();
-    ctx.strokeStyle = accent;
-    ctx.globalAlpha = 0.8;
-    ctx.lineWidth = r * 0.3;
-    ctx.lineCap = 'round';
-    ctx.beginPath();
-    ctx.moveTo(x + r * 0.15, y + r * 1.15);
-    ctx.quadraticCurveTo(x + r * 1.0, y + r * 0.25, x + r * 1.9, y + r * 0.85);
-    ctx.stroke();
-    ctx.restore();
-  } else {
-    // The four-colour Windows flag, panes slightly rounded.
-    const g = w * 0.07;
-    const q = (w - g) / 2;
-    const qh = (h - g) / 2;
-    const rad = w * 0.015;
-    [['#f25022', 0, 0], ['#7fba00', 1, 0], ['#00a4ef', 0, 1], ['#ffb900', 1, 1]].forEach(([c, i, j]) => {
-      ctx.fillStyle = c as string;
-      roundRect(ctx, x + (i as number) * (q + g), y + (j as number) * (qh + g), q, qh, [rad]);
-      ctx.fill();
-    });
-  }
-  ctx.restore();
 }
 
 /** Measures a lockup whose total height is `heightPx`. */
@@ -777,6 +728,10 @@ function drawFront(ctx: Ctx, t: TemplateConfig, p: PanelRect, h: FrontHeader, px
     ctx.closePath();
     ctx.fillStyle = paint(ctx, h.fill, x0, ay, tw, th);
     ctx.fill();
+    if (h.lip) {
+      ctx.fillStyle = paint(ctx, h.fill, x0, ay, tw, th);
+      ctx.fillRect(ax, ay, x0 + h.lip * W - ax, y0 - ay + 1);
+    }
     const tabBox = { x: x0, w: bw };
     for (const m of h.marks) drawFrontMark(ctx, m, m.onPanel ? panelBox : tabBox, p, px, () => h.h * p.heightMm);
   } else if (h.shape === 'strip') {

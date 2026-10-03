@@ -15,6 +15,6 @@ Simple Icons removes marks at their owners' request, so the Xbox and Nintendo ma
 
 ## Additional logos
 
-The SVG files in `src/brands/svg/` (PlayStation, Nintendo Switch, Switch 2, Wii, Wii U, GameCube, the original Xbox, Xbox 360, Xbox One and Xbox Series X, the DVD Video, Blu-ray Disc, VHS, Compact Disc, Compact Cassette and contactless (NFC) symbol, plus the swoosh artwork `xbox360-waves.png`) were source from wiki pages and are
+The SVG files in `src/brands/svg/` (PlayStation, Nintendo Switch, Switch 2, Wii, Wii U, GameCube, the original Xbox, Xbox 360, Xbox One and Xbox Series X, the DVD Video, Blu-ray Disc, VHS, Compact Disc, Compact Cassette and contactless (NFC) symbol and the PC CD-ROM logo, plus the swoosh artwork `xbox360-waves.png`) were source from wiki pages and are
 turned into `src/brands/logos.generated.ts` by `npm run gen:brands`. They are used only to draw the "Branded" header and spine of the matching
 platform. They are trademarks of their respective owners (Sony Interactive Entertainment, Nintendo); CoverForge is not affiliated with or endorsed by them.

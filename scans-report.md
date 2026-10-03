@@ -30,7 +30,7 @@ Fold lines detected from the image in 0/1; estimated from a known spine width in
 | File | DPI | Width mm | Height mm | Back mm | Spine mm | Spine 2 mm | Front mm | Spine source | Band % H | Band shape | Band colour | Band end colour | Spine cap % L | Notes |
 | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
 | **Mode** | | **—** | **—** | **—** | **—** | **—** | **—** | | **—** | | **—** | **—** | **—** | |
-| app (rendered) | 300 | 273.0 | 183.0 | 129.5 | 14.0 | — | 129.5 | known | 11.0 | flat | #f3f3f2 | — | — |  |
+| app (rendered) | 300 | 273.0 | 183.0 | 129.5 | 14.0 | — | 129.5 | known | — | none | — | — | — | No header band detected on the front panel (may be sloped/curved, or none). |
 
 Fold lines detected from the image in 0/0; estimated from a known spine width in 0/0.
 
