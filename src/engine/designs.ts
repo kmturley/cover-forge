@@ -2,6 +2,7 @@ import type { MediaItem } from '../types/media';
 import type { PanelId } from '../types/template';
 import type { Design, PanelSettings, SharedSettings, SharedSpine } from '../types/editor';
 import { PANEL_IDS } from './resolve';
+import { LEGACY_FIELDS, overlayPlacement } from './box';
 
 export const DEFAULT_DESIGN_ID = 'default';
 export const DEFAULT_DESIGN_NAME = 'Default';
@@ -13,9 +14,11 @@ export function mergePanelSettings(a: PanelSettings | undefined, b: PanelSetting
   if (!a) return b;
   if (!b) return a;
   const out: PanelSettings = { ...a, ...compact(b) };
-  for (const k of ['transform', 'logo', 'code', 'border'] as const) {
-    if (a[k] || b[k]) (out as Record<string, unknown>)[k] = { ...a[k], ...compact(b[k] ?? {}) };
+  for (const k of ['transform', 'logo', 'code'] as const) {
+    // Placement comes whole from the design when it sets one (see overlayPlacement).
+    if (a[k] || b[k]) (out as Record<string, unknown>)[k] = overlayPlacement<object>(a[k], b[k], LEGACY_FIELDS[k]);
   }
+  if (a.border || b.border) out.border = { ...a.border, ...compact(b.border ?? {}) };
   return out;
 }
 

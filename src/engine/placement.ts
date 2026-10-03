@@ -1,6 +1,7 @@
 import type { PanelRect, TemplateConfig } from '../types/template';
 import { paintRect } from '../templates/geometry';
 import type { PanelTransform } from '../types/editor';
+import { boxRect, fillOver, fitInside, intersect, type RectMm } from './box';
 
 export interface Placement {
   /** mm per source pixel. */
@@ -16,38 +17,45 @@ export interface Placement {
   yMm: number;
   /** The panel's paint area (the reference for xMm/yMm). */
   area: PanelRect;
-  /** The x/y that would centre the image on the panel's paint area. */
-  centeredXMm: number;
-  centeredYMm: number;
+  /** The box the image is sized to, in canvas mm (for an older save's mm placement: the image itself). */
+  box: RectMm;
+  /** What the image is clipped to, in canvas mm: its box when it fills it, else the paint area. Never past the paint area. */
+  clip: RectMm;
 }
 
 /**
- * Where an image sits in its panel. Scale 1 is "cover" (fills the paint area, bleed included).
- * `xMm`/`yMm` are measured from the paint area's top-left corner; `null` means centred, which is the default.
+ * Where an image sits in its panel. It is sized to its box (the whole panel, bleed included, by default) without
+ * distortion: `fill` covers the box and is cropped to it, `fit` shows the whole image inside it. Centred either way.
  */
-export function computePlacement(
-  t: TemplateConfig,
-  panel: PanelRect,
-  naturalWidth: number,
-  naturalHeight: number,
-  tr: PanelTransform,
-): Placement {
+export function computePlacement(t: TemplateConfig, panel: PanelRect, naturalWidth: number, naturalHeight: number, tr: PanelTransform): Placement {
   const area = paintRect(t, panel);
-  const fit = Math.max(area.widthMm / naturalWidth, area.heightMm / naturalHeight) * tr.scale;
+  if (tr.box === undefined) return legacyPlacement(area, naturalWidth, naturalHeight, tr);
+  const box = tr.box ? boxRect(panel, tr.box) : area;
+  const fitted = tr.fit === 'fit';
+  const img = (fitted ? fitInside : fillOver)(box, naturalWidth / naturalHeight);
+  return {
+    fit: img.widthMm / naturalWidth,
+    widthMm: img.widthMm,
+    heightMm: img.heightMm,
+    xMm: img.xMm - area.xMm,
+    yMm: img.yMm - area.yMm,
+    area,
+    box,
+    clip: fitted ? area : intersect(box, area),
+  };
+}
+
+/**
+ * An older save's placement (see LegacyPlacement): scale 1 covers the paint area, and `xMm`/`yMm` put the image's
+ * top-left that far from the paint area's (centred when null). Kept so those saves render exactly as they did.
+ */
+function legacyPlacement(area: PanelRect, naturalWidth: number, naturalHeight: number, tr: PanelTransform): Placement {
+  const fit = Math.max(area.widthMm / naturalWidth, area.heightMm / naturalHeight) * (tr.scale ?? 1);
   const widthMm = naturalWidth * fit;
   const heightMm = naturalHeight * fit;
-  const centeredXMm = (area.widthMm - widthMm) / 2;
-  const centeredYMm = (area.heightMm - heightMm) / 2;
-  return {
-    fit,
-    widthMm,
-    heightMm,
-    area,
-    xMm: tr.xMm ?? centeredXMm,
-    yMm: tr.yMm ?? centeredYMm,
-    centeredXMm,
-    centeredYMm,
-  };
+  const xMm = tr.xMm ?? (area.widthMm - widthMm) / 2;
+  const yMm = tr.yMm ?? (area.heightMm - heightMm) / 2;
+  return { fit, widthMm, heightMm, xMm, yMm, area, box: { xMm: area.xMm + xMm, yMm: area.yMm + yMm, widthMm, heightMm }, clip: area };
 }
 
 export { paintRect };

@@ -18,7 +18,7 @@ export function CaseBar() {
         {entry && <TemplateIcon kind={entry.kind} />}
         <span className="case-text">
           <span>{entry?.name}</span>
-          <small>{entry?.size}</small>
+          <small>{entry?.detail}</small>
         </span>
         <span aria-hidden="true">▾</span>
       </button>

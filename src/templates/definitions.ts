@@ -124,20 +124,27 @@ const wrapPreview = (w: number, h: number, depth: number, casing: PreviewMateria
   radiusMm: radius,
 });
 
-/** US Blu-ray cases. (Ids keep their old `us-` prefix so saved sessions still match; regions aren't shown.) */
-const BLURAY: Record<string, { label: string; spine: number }> = {
+/**
+ * Blu-ray cases. Only the US standard case is offered; the others are hidden but still built, so a save or link that
+ * uses one keeps printing at the size it was designed for. An id's physical size must never change (see templates.test.ts).
+ */
+const BLURAY: Record<string, { label: string; spine: number; hidden?: boolean }> = {
   'us-11': { label: 'Blu-ray', spine: 11 },
+  'us-12.5': { label: 'Blu-ray Elite', spine: 12.5, hidden: true },
+  'eu-14': { label: 'Blu-ray (EU)', spine: 14, hidden: true },
 };
 
-const DVD: Record<string, { label: string; spine: number }> = {
+const DVD: Record<string, { label: string; spine: number; hidden?: boolean }> = {
   'std-14': { label: 'DVD', spine: 14 },
-  // The id predates the US 7 mm slim spine; kept so saved sessions still match.
-  'slim-9': { label: 'DVD Slim', spine: 7 },
+  'slim-7': { label: 'DVD Slim', spine: 7 },
+  // The 9 mm slim case offered before the 7 mm one: hidden, but saves that use it still print at 9 mm.
+  'slim-9': { label: 'DVD Slim (9 mm)', spine: 9, hidden: true },
 };
 
 /** Boxes that hold an NFC item: a slim one for a CR80 card (54 × 85.6 × 0.8 mm plus room to slide) and a small keepsake box. */
-const NFC_BOX: Record<string, { label: string; w: number; h: number; d: number }> = {
+const NFC_BOX: Record<string, { label: string; w: number; h: number; d: number; hidden?: boolean }> = {
   card: { label: 'NFC Card Box', w: 58, h: 90, d: 6 },
+  small: { label: 'NFC Small Box', w: 60, h: 60, d: 25, hidden: true },
 };
 const NFC_WALLET = { w: 58, h: 90 };
 const NFC_STICKER_MM: Record<string, number> = { '25': 25, '30': 30, '35': 35 };
@@ -331,7 +338,7 @@ export const TEMPLATE_DEFS: TemplateDef[] = [
     kind: 'dvd',
     name: 'DVD',
     group: 'Cases',
-    variants: Object.entries(DVD).map(([id, v]) => ({ id, label: v.label })),
+    variants: Object.entries(DVD).map(([id, v]) => ({ id, label: v.label, hidden: v.hidden })),
     build: (id) => {
       const v = DVD[id] ?? DVD['std-14'];
       const w = 129.5;
@@ -344,7 +351,7 @@ export const TEMPLATE_DEFS: TemplateDef[] = [
     kind: 'bluray',
     name: 'Blu-ray',
     group: 'Cases',
-    variants: Object.entries(BLURAY).map(([id, v]) => ({ id, label: v.label })),
+    variants: Object.entries(BLURAY).map(([id, v]) => ({ id, label: v.label, hidden: v.hidden })),
     build: (id) => {
       const v = BLURAY[id] ?? BLURAY['us-11'];
       const w = 128;
@@ -438,17 +445,22 @@ export const TEMPLATE_DEFS: TemplateDef[] = [
     kind: 'nfc-card',
     name: 'NFC card',
     group: 'Labels & cards',
-    variants: [{ id: 'cr80-duplex', label: 'NFC Card' }],
-    build: () =>
-      assemble({
+    variants: [
+      { id: 'cr80-duplex', label: 'NFC Card' },
+      // Front only, offered before the two-sided card: hidden, but saves that use it still print one card.
+      { id: 'cr80', label: 'NFC Card (front only)', hidden: true },
+    ],
+    build: (id) => {
+      const duplex = id !== 'cr80';
+      return assemble({
         kind: 'nfc-card',
         name: 'NFC card',
-        variantId: 'cr80-duplex',
+        variantId: duplex ? 'cr80-duplex' : 'cr80',
         bleedMm: 1,
         // Two separate cards side by side (not folded), so each gets its own bleed. The back is on the left and the
         // front on the right, like the other templates.
         pieces: [
-          { dir: 'row', specs: [{ id: 'back', label: 'Card back', w: 54, h: 85.6 }] },
+          ...(duplex ? [{ dir: 'row' as const, specs: [{ id: 'back' as const, label: 'Card back', w: 54, h: 85.6 }] }] : []),
           { dir: 'row', specs: [{ id: 'front', label: 'Card face', w: 54, h: 85.6 }] },
         ],
         preview: {
@@ -458,11 +470,12 @@ export const TEMPLATE_DEFS: TemplateDef[] = [
           bodyDepthMm: 0.76,
           body: { color: '#f4f4f2', roughness: 0.4 },
           panel: 'front',
-          backPanel: 'back',
+          backPanel: duplex ? 'back' : undefined,
           fullFace: true,
           radiusMm: 3.18,
         },
-      }),
+      });
+    },
   },
   {
     kind: 'nfc-sticker',
@@ -497,7 +510,7 @@ export const TEMPLATE_DEFS: TemplateDef[] = [
     name: 'NFC box',
     group: 'Boxes',
     variants: [
-      ...Object.entries(NFC_BOX).map(([id, v]) => ({ id, label: v.label })),
+      ...Object.entries(NFC_BOX).map(([id, v]) => ({ id, label: v.label, hidden: v.hidden })),
       { id: 'wallet', label: 'NFC Card Wallet' },
     ],
     build: (id) => {

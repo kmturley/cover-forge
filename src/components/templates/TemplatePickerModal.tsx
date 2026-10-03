@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { templateIdOf, useAppDispatch, useAppState } from '../../context/AppContext';
-import { LIBRARY, LIBRARY_GROUPS, suits } from '../../templates/library';
+import { groupFor, originalTemplateFor } from '../../templates/library';
 import type { MediaType } from '../../types/media';
 import { TemplateLibrary } from './TemplateLibrary';
 
@@ -29,9 +29,12 @@ export function TemplatePickerModal({ itemIds, onClose }: { itemIds: string[]; o
     ...(items.length > chosen.length ? [{ id: 'all' as const, label: `Whole queue (${items.length})`, ids: items.map((i) => i.id) }] : []),
   ];
   const current = [...new Set(chosen.map((i) => templateIdOf(state, i)))];
-  const targets = scopes.find((s) => s.id === scope)!.ids;
-  // The groups made for this item's media come first.
-  const first = !single || item.type === 'custom' ? [] : LIBRARY_GROUPS.filter((g) => LIBRARY.some((e) => e.group === g && suits(e, item.type)));
+  // The scope was picked from an earlier render's options; if the items changed since, fall back to the first.
+  const targets = (scopes.find((s) => s.id === scope) ?? scopes[0]).ids;
+  // When every item is the same kind of media: its group comes first, marked recommended, with its original case marked.
+  const type = chosen.every((i) => i.type === item.type) ? item.type : null;
+  const recommended = type ? groupFor(type) : null;
+  const original = type ? originalTemplateFor(type) : null;
 
   function pick(id: string) {
     dispatch({ type: 'setItemTemplate', items: targets, template: id });
@@ -51,7 +54,7 @@ export function TemplatePickerModal({ itemIds, onClose }: { itemIds: string[]; o
             ))}
           </div>
         )}
-        <TemplateLibrary selected={current.length === 1 ? current : []} onPick={pick} first={first} />
+        <TemplateLibrary selected={current.length === 1 ? current : []} onPick={pick} recommended={recommended} original={original} />
         <div className="modal-actions">
           <button onClick={onClose}>Cancel</button>
         </div>

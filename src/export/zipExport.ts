@@ -3,7 +3,7 @@ import { saveAs } from 'file-saver';
 import type { MediaItem } from '../types/media';
 import { paginate } from './imposition';
 import { computeLayout, fitsLabelSheet, getLabelSheet } from './sheets';
-import { buildItemPdf, buildSheetsPdf } from './pdfExport';
+import { buildItemPdf, buildSheetsPdf, type SheetSection } from './pdfExport';
 import { buildItemSvg, buildSheetSvg } from './svgExport';
 import {
   canvasToBlob,
@@ -64,15 +64,17 @@ export async function exportCurrent(all: ExportBase, item: MediaItem, s: ExportS
   saveAs(await canvasToBlob(canvas, s.format as RasterFormat, s.jpegQuality), `${slug(item.title)}.${rasterExt(s.format as RasterFormat)}`);
 }
 
-/** All print sheets as a multi-page PDF, one per template in the queue. */
+/**
+ * All print sheets as one multi-page PDF, each template's sheets in turn. One file, not one per template: a browser
+ * blocks a second download that doesn't follow a click, and by then the click is long past.
+ */
 export async function exportSheetsPdf(all: ExportBase, items: MediaItem[], s: ExportSettings): Promise<void> {
-  const groups = groupByTemplate(all, items);
-  for (const { base, items: group } of groups) {
+  const sections: SheetSection[] = [];
+  for (const { base, items: group } of groupByTemplate(all, items)) {
     const layout = computeLayout(base.template, s.paper, s.labelSheet);
-    const pages = paginate(await renderItems(base, group, s, false), layout.placements.length);
-    const name = groups.length > 1 ? `coverforge-sheets-${slug(base.template.id)}.pdf` : 'coverforge-sheets.pdf';
-    saveAs(buildSheetsPdf(pages, layout, base.template, sheetGuides(s, base)), name);
+    sections.push({ pages: paginate(await renderItems(base, group, s, false), layout.placements.length), layout, template: base.template, guides: sheetGuides(s, base) });
   }
+  saveAs(buildSheetsPdf(sections), 'coverforge-sheets.pdf');
 }
 
 /**
@@ -128,7 +130,7 @@ async function addSheets(sheetsDir: JSZip, base: SceneBase, items: MediaItem[], 
     pages.forEach((page, i) => sheetsDir.file(`sheet_${i + 1}.svg`, buildSheetSvg(page, layout, base.template, sheetGuides(s, base))));
   } else if (isPdf(s)) {
     const pages = paginate(rendered, layout.placements.length);
-    sheetsDir.file('sheets.pdf', buildSheetsPdf(pages, layout, base.template, sheetGuides(s, base)));
+    sheetsDir.file('sheets.pdf', buildSheetsPdf([{ pages, layout, template: base.template, guides: sheetGuides(s, base) }]));
   } else {
     // Raster sheets bake guides into the pixels; re-render with guides only when requested.
     const source = sheetGuides(s, base) ? await renderItems(base, items, s, true) : rendered;

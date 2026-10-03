@@ -17,52 +17,52 @@ const shared = (panels: SharedSettings['panels'] = {}): SharedSettings => ({
 
 describe('resolvePanel', () => {
   it('uses built-in defaults when nothing is set', () => {
-    expect(resolvePanel(shared(), item(), 'front')).toMatchObject({ imageRef: 'cover', imageUrl: 'cover.jpg', backgroundColor: null });
-    expect(resolvePanel(shared(), item(), 'back').imageRef).toBe('hero');
-    expect(resolvePanel(shared(), item(), 'spine').imageRef).toBeNull();
+    expect(resolvePanel(shared(), item(), 'front', null)).toMatchObject({ imageRef: 'cover', imageUrl: 'cover.jpg', backgroundColor: null });
+    expect(resolvePanel(shared(), item(), 'back', null).imageRef).toBe('hero');
+    expect(resolvePanel(shared(), item(), 'spine', null).imageRef).toBeNull();
   });
 
   it('shared beats default; item override beats shared; None is respected', () => {
     const s = shared({ back: { image: 'screenshot:1' }, front: { image: null } });
-    expect(resolvePanel(s, item(), 'back').imageUrl).toBe('s1.jpg');
-    expect(resolvePanel(s, item(), 'front').imageUrl).toBeNull();
+    expect(resolvePanel(s, item(), 'back', null).imageUrl).toBe('s1.jpg');
+    expect(resolvePanel(s, item(), 'front', null).imageUrl).toBeNull();
     const o = item({ panels: { back: { image: 'cover' } } });
-    expect(resolvePanel(s, o, 'back').imageUrl).toBe('cover.jpg');
+    expect(resolvePanel(s, o, 'back', null).imageUrl).toBe('cover.jpg');
   });
 
   it('falls back to the panel default when a shared image is missing on this item', () => {
     const s = shared({ back: { image: 'screenshot:5' }, spine: { image: 'logo' } });
-    const r = resolvePanel(s, item(), 'back');
+    const r = resolvePanel(s, item(), 'back', null);
     expect(r.imageRef).toBe('hero');
     expect(r.imageUrl).toBe('hero.jpg');
-    expect(resolvePanel(s, item(), 'spine').imageUrl).toBeNull(); // spine default is no image
+    expect(resolvePanel(s, item(), 'spine', null).imageUrl).toBeNull(); // spine default is no image
   });
 });
 
 describe('resolvePanel logo layering', () => {
   it('has no logo by default and inherits the shared brand field by field', () => {
-    expect(resolvePanel(shared(), item(), 'front').logo.brand).toBeNull();
+    expect(resolvePanel(shared(), item(), 'front', null).logo.brand).toBeNull();
     const s = shared({ front: { logo: { brand: 'steam', color: '#ff0000' } } });
     const o = item({ panels: { front: { logo: { color: '#00ff00', opacity: 0.5 } } } });
-    expect(resolvePanel(s, item(), 'front').logo).toMatchObject({ brand: 'steam', color: '#ff0000', opacity: 1 });
-    expect(resolvePanel(s, o, 'front').logo).toMatchObject({ brand: 'steam', color: '#00ff00', opacity: 0.5 });
+    expect(resolvePanel(s, item(), 'front', null).logo).toMatchObject({ brand: 'steam', color: '#ff0000', opacity: 1 });
+    expect(resolvePanel(s, o, 'front', null).logo).toMatchObject({ brand: 'steam', color: '#00ff00', opacity: 0.5 });
   });
 
   it('lets an item hide a shared logo with brand: null, and other panels are unaffected', () => {
     const s = shared({ front: { logo: { brand: 'steam' } }, back: { logo: { brand: 'steam' } } });
     const o = item({ panels: { front: { logo: { brand: null } } } });
-    expect(resolvePanel(s, o, 'front').logo.brand).toBeNull();
-    expect(resolvePanel(s, o, 'back').logo.brand).toBe('steam');
+    expect(resolvePanel(s, o, 'front', null).logo.brand).toBeNull();
+    expect(resolvePanel(s, o, 'back', null).logo.brand).toBe('steam');
   });
 });
 
 describe('resolvePanel code layering', () => {
   it('has no code by default, inherits shared fields, and lets an item override individual ones', () => {
-    expect(resolvePanel(shared(), item(), 'back').code.kind).toBe('none');
+    expect(resolvePanel(shared(), item(), 'back', null).code.kind).toBe('none');
     const s = shared({ back: { code: { kind: 'qr', pattern: 'https://x/{appId}', color: '#112233' } } });
     const o = item({ panels: { back: { code: { pattern: 'other' } } } });
-    expect(resolvePanel(s, item(), 'back').code).toMatchObject({ kind: 'qr', pattern: 'https://x/{appId}', color: '#112233', background: '#ffffff' });
-    expect(resolvePanel(s, o, 'back').code).toMatchObject({ kind: 'qr', pattern: 'other', color: '#112233' });
+    expect(resolvePanel(s, item(), 'back', null).code).toMatchObject({ kind: 'qr', pattern: 'https://x/{appId}', color: '#112233', background: '#ffffff' });
+    expect(resolvePanel(s, o, 'back', null).code).toMatchObject({ kind: 'qr', pattern: 'other', color: '#112233' });
   });
 });
 
@@ -76,5 +76,61 @@ describe('default back barcode', () => {
     expect(resolvePanel(shared, null, 'front', 'dvd').code.kind).toBe('none');
     expect(resolvePanel({ panels: { back: { code: { kind: 'none' } } }, spine: {} } as never, null, 'back', 'dvd').code.kind).toBe('none');
     expect(resolvePanel({ panels: { back: { code: { kind: 'qr' } } }, spine: {} } as never, null, 'back', 'dvd').code.kind).toBe('qr');
+  });
+});
+
+describe('placement across layers', () => {
+  const box = (xStart: number, xEnd: number) => ({ xStart, xEnd, yStart: 0, yEnd: 100 });
+
+  it('takes a box whole from the top layer that sets one', () => {
+    const s = shared({ back: { transform: { box: box(0, 50), opacity: 0.5 } } });
+    const r = resolvePanel(s, item({ panels: { back: { transform: { box: box(50, 100) } } } }), 'back', null);
+    expect(r.transform).toMatchObject({ box: box(50, 100), opacity: 0.5 });
+  });
+
+  it('an item’s box replaces an older save’s mm placement below it, and an item’s mm placement hides a box below it', () => {
+    const older = shared({ back: { transform: { xMm: 5, scale: 2 } as never } });
+    const boxed = resolvePanel(older, item({ panels: { back: { transform: { box: box(0, 50) } } } }), 'back', null).transform;
+    expect(boxed.box).toEqual(box(0, 50));
+    expect(boxed).not.toHaveProperty('xMm');
+    expect(boxed).not.toHaveProperty('scale');
+    const mm = resolvePanel(shared({ back: { transform: { box: box(0, 50) } } }), item({ panels: { back: { transform: { xMm: 3 } as never } } }), 'back', null).transform;
+    expect(mm.box).toBeUndefined();
+    expect(mm.xMm).toBe(3);
+  });
+
+  it('keeps an older save’s field-by-field mm merge, so it renders as it did', () => {
+    const s = shared({ back: { logo: { brand: 'steam', widthMm: 10 } as never } });
+    const r = resolvePanel(s, item({ panels: { back: { logo: { xMm: 4 } as never } } }), 'back', null);
+    expect(r.logo).toMatchObject({ widthMm: 10, xMm: 4 });
+    expect(r.logo.box).toBeUndefined();
+  });
+
+  it('treats a box that can’t be drawn (a corrupt save) as automatic', () => {
+    for (const bad of [{ xStart: 50, xEnd: 10, yStart: 0, yEnd: 100 }, { xStart: 'a', xEnd: 1, yStart: 0, yEnd: 1 }, { xStart: 0, xEnd: Infinity, yStart: 0, yEnd: 1 }]) {
+      const r = resolvePanel(shared({ back: { code: { kind: 'qr', box: bad as never } } }), item(), 'back', null);
+      expect(r.code.box).toBeNull();
+    }
+  });
+});
+
+describe('default front and back images', () => {
+  const back = (assets: Partial<MediaItem['assets']>) => resolvePanel(shared(), item({ assets: { cover: null, hero: null, logo: null, screenshots: [], ...assets } }), 'back', null).imageUrl;
+  const front = (assets: Partial<MediaItem['assets']>) => resolvePanel(shared(), item({ assets: { cover: null, hero: null, logo: null, screenshots: [], ...assets } }), 'front', null).imageUrl;
+
+  it('maps a back from several images: the hero, else the next image', () => {
+    expect(back({ cover: 'c.jpg', hero: 'h.jpg', screenshots: ['s.jpg'] })).toBe('h.jpg');
+    expect(back({ cover: 'c.jpg', screenshots: ['s.jpg'] })).toBe('s.jpg');
+  });
+
+  it('reuses the only image on both front and back', () => {
+    expect(front({ cover: 'c.jpg' })).toBe('c.jpg');
+    expect(back({ cover: 'c.jpg' })).toBe('c.jpg');
+    expect(front({ hero: 'h.jpg' })).toBe('h.jpg'); // e.g. a custom item with only a wide image
+  });
+
+  it('still follows an explicit choice', () => {
+    const r = resolvePanel(shared({ back: { image: null } }), item(), 'back', null);
+    expect(r.imageUrl).toBeNull();
   });
 });

@@ -97,6 +97,14 @@ describe('music provider (MusicBrainz + Cover Art Archive)', () => {
     expect(item.assets).toMatchObject({ cover: 'https://a/1.jpg', hero: null, screenshots: [] });
   });
 
+  it('maps a back from the other scans when none is tagged Back: the tray card, else anything but the disc', async () => {
+    const scan = (name: string, types: string[]) => ({ front: types.includes('Front'), back: false, types, image: `https://a/${name}.jpg`, thumbnails: {} });
+    mockFetch([['release-group/rg4', { images: [scan('front', ['Front']), scan('disc', ['Medium']), scan('booklet', ['Booklet']), scan('tray', ['Tray'])] }]]);
+    expect((await musicProvider.createItem({ id: 'rg4', title: 'X' })).assets.hero).toBe('https://a/tray.jpg');
+    mockFetch([['release-group/rg5', { images: [scan('front', ['Front']), scan('disc', ['Medium']), scan('booklet', ['Booklet'])] }]]);
+    expect((await musicProvider.createItem({ id: 'rg5', title: 'X' })).assets.hero).toBe('https://a/booklet.jpg');
+  });
+
   it('explains when an album has no artwork', async () => {
     mockFetch([['release-group/none', () => new Response('nope', { status: 404 })]]);
     await expect(musicProvider.createItem({ id: 'none', title: 'X' })).rejects.toThrow(/No cover art/);

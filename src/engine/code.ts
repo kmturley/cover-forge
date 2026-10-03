@@ -4,6 +4,7 @@ import type { MediaItem } from '../types/media';
 import { QUIET, encodeBars, encodeQr } from '../codes/encode';
 import { barcodeValue, fillPattern } from '../codes/pattern';
 import { paintRect } from './placement';
+import { boxRect, fitInside, intersect, type RectMm } from './box';
 
 /** Space kept clear of a panel's edge; a code that doesn't fit inside it is not drawn. */
 export const CODE_SAFETY_MM = 3;
@@ -32,24 +33,64 @@ export interface CodePlacement {
   xMm: number;
   yMm: number;
   area: PanelRect;
-  /** false = it doesn't fit inside the panel's safe area, so it is omitted. */
+  /** false = too small to scan inside the panel's safe area (under MIN_CODE_MM for its kind), so it is omitted. */
   fits: boolean;
+  /** The box the symbol is fitted into, in canvas mm (for an older save's mm placement: the symbol itself). */
+  box: RectMm;
 }
+
+/** Below this width (quiet zones included) a code is left off rather than printed too small for a phone or scanner to read. */
+export const MIN_CODE_MM: Record<Drawable, number> = { qr: 8, ean13: 20, upca: 20, code128: 20 };
 
 export function defaultCodeWidth(kind: Drawable): number {
   return DEFAULT_WIDTH_MM[kind];
 }
 
-/** Placement and whether it fits. Default position: bottom-right, inside the safety margin. */
+/** The panel inside its safety margin: a code never reaches the trim, where a cut through it would stop it scanning. */
+const safeArea = (panel: PanelRect): RectMm => ({
+  xMm: panel.xMm + CODE_SAFETY_MM,
+  yMm: panel.yMm + CODE_SAFETY_MM,
+  widthMm: panel.widthMm - CODE_SAFETY_MM * 2,
+  heightMm: panel.heightMm - CODE_SAFETY_MM * 2,
+});
+
+/**
+ * Placement and whether it prints. The symbol (quiet zones included) is as large as fits inside its box and the
+ * panel's safe area, centred, keeping its proportions. With no box, the kind's standard size in the bottom-right corner.
+ */
 export function computeCodePlacement(t: TemplateConfig, panel: PanelRect, code: CodeSettings): CodePlacement | null {
   if (code.kind === 'none') return null;
   const area = paintRect(t, panel);
-  const widthMm = code.widthMm ?? DEFAULT_WIDTH_MM[code.kind];
-  const heightMm = widthMm / ASPECT[code.kind];
-  const fits = widthMm + CODE_SAFETY_MM * 2 <= panel.widthMm && heightMm + CODE_SAFETY_MM * 2 <= panel.heightMm;
-  const defaultX = panel.xMm + panel.widthMm - DEFAULT_MARGIN_MM - widthMm - area.xMm;
-  const defaultY = panel.yMm + panel.heightMm - DEFAULT_MARGIN_MM - heightMm - area.yMm;
-  return { widthMm, heightMm, xMm: code.xMm ?? defaultX, yMm: code.yMm ?? defaultY, area, fits };
+  const aspect = ASPECT[code.kind];
+  if (code.box === undefined) return legacyCodePlacement(area, panel, code, aspect);
+  const box = code.box ? boxRect(panel, code.box) : defaultCodeRect(panel, DEFAULT_WIDTH_MM[code.kind], aspect);
+  const room = intersect(box, safeArea(panel));
+  const r = fitInside(room, aspect);
+  const fits = room.widthMm > 0 && room.heightMm > 0 && r.widthMm >= MIN_CODE_MM[code.kind];
+  return { widthMm: r.widthMm, heightMm: r.heightMm, xMm: r.xMm - area.xMm, yMm: r.yMm - area.yMm, area, fits, box };
+}
+
+/** The kind's standard size, in the panel's bottom-right corner (canvas mm). */
+function defaultCodeRect(panel: PanelRect, widthMm: number, aspect: number): RectMm {
+  const heightMm = widthMm / aspect;
+  return { xMm: panel.xMm + panel.widthMm - DEFAULT_MARGIN_MM - widthMm, yMm: panel.yMm + panel.heightMm - DEFAULT_MARGIN_MM - heightMm, widthMm, heightMm };
+}
+
+/**
+ * An older save's mm placement (see LegacyPlacement): its width, at its position from the paint area, kept whole
+ * inside the safe area. Omitted when that width doesn't fit the safe area at all.
+ */
+function legacyCodePlacement(area: PanelRect, panel: PanelRect, code: CodeSettings, aspect: number): CodePlacement {
+  const kind = code.kind as Drawable;
+  const widthMm = code.widthMm ?? DEFAULT_WIDTH_MM[kind];
+  const heightMm = widthMm / aspect;
+  const safe = safeArea(panel);
+  const fits = widthMm <= safe.widthMm && heightMm <= safe.heightMm;
+  const auto = defaultCodeRect(panel, widthMm, aspect);
+  const clamp = (v: number, lo: number, hi: number) => (fits ? Math.min(hi, Math.max(lo, v)) : v);
+  const x = clamp(code.xMm != null ? area.xMm + code.xMm : auto.xMm, safe.xMm, safe.xMm + safe.widthMm - widthMm);
+  const y = clamp(code.yMm != null ? area.yMm + code.yMm : auto.yMm, safe.yMm, safe.yMm + safe.heightMm - heightMm);
+  return { widthMm, heightMm, xMm: x - area.xMm, yMm: y - area.yMm, area, fits, box: { xMm: x, yMm: y, widthMm, heightMm } };
 }
 
 /**

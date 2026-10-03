@@ -24,6 +24,14 @@ describe('encodeConfig / decodeConfig', () => {
     expect(await decodeConfig('not!!valid')).toBeNull();
     expect(await decodeConfig('AAAA')).toBeNull();
   });
+
+  it('refuses a config that inflates past the limit, rather than inflating all of it', async () => {
+    const big = { pad: 'x'.repeat(200_000) }; // compresses to a few hundred bytes
+    const text = await encodeConfig(big);
+    expect(text.length).toBeLessThan(2000);
+    expect(await decodeConfig(text, 100_000)).toBeNull();
+    expect(await decodeConfig(text)).toEqual(big);
+  });
 });
 
 describe('share link', () => {

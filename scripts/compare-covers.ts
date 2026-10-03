@@ -258,7 +258,7 @@ async function main() {
     }
     await compare(folder, includeScans);
   }
-  if (refresh && existsSync(OUT)) execFileSync('node', ['scripts/measure-covers.ts'], { stdio: 'inherit' });
+  if (refresh && existsSync(OUT)) execFileSync(process.execPath, ['--import', 'tsx', 'scripts/measure-covers.ts'], { stdio: 'inherit' }); // same runner as npm run measure:covers
 }
 
 await main();

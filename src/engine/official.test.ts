@@ -65,6 +65,12 @@ describe('branding', () => {
     expect(FORMAT_BRANDING.dvd.front.shape).toBe('none');
   });
 
+  it('holds a slope at its end values outside its points', () => {
+    const s = slope([[0.2, 0.1], [0.5, 0.3]]);
+    expect(s(0)).toBe(0.1);
+    expect(s(0.9)).toBe(0.3);
+  });
+
   it('draws curved and sloped lower edges', () => {
     expect(arc(0.035, 0.095)(0)).toBeCloseTo(0.035);
     expect(arc(0.035, 0.095)(0.5)).toBeCloseTo(0.095);

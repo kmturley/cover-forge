@@ -73,7 +73,9 @@ export const flat = (h: number): Depth => () => h;
 /** Straight lines between [x, depth] points (GameCube's slope, Wii's S-curve). */
 export const slope = (points: [number, number][]): Depth => (x) => {
   const i = points.findIndex(([px]) => px >= x);
-  if (i <= 0) return points[Math.max(i, 0)][1];
+  // Before the first point or past the last, the depth holds at that end's value.
+  if (i === -1) return points[points.length - 1][1];
+  if (i === 0) return points[0][1];
   const [x0, d0] = points[i - 1];
   const [x1, d1] = points[i];
   return d0 + ((d1 - d0) * (x - x0)) / (x1 - x0);
@@ -788,7 +790,9 @@ function drawDecor(ctx: Ctx, decor: 'xbox-orb' | 'x360-swoosh', x0: number, y0: 
   const sx = (x: number) => right - (X360_WAVES_SIZE.w - x) * k;
   const sy = (y: number) => y0 + y * k;
   const edgeAt = (pts: [number, number][], y: number) => {
-    const i = Math.max(1, pts.findIndex((p) => p[1] >= y));
+    // Past the last point, keep to the last segment rather than wrapping round to the first.
+    const j = pts.findIndex((p) => p[1] >= y);
+    const i = j === -1 ? pts.length - 1 : Math.max(1, j);
     const [a, b] = [pts[i - 1], pts[i]];
     return a[0] + ((b[0] - a[0]) * (y - a[1])) / (b[1] - a[1] || 1);
   };

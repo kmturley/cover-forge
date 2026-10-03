@@ -2,11 +2,11 @@ import type { MediaItem } from '../types/media';
 import type { Design, PanelSettings, SharedSettings, StyleOverlay } from '../types/editor';
 import type { TemplateKind } from '../types/template';
 import { DEFAULT_KIND, defaultVariantId, isTemplateKind, variantsFor } from '../templates';
-import { entryFor, upgradeTemplateId, type LastTemplates } from '../templates/library';
+import { entryFor, getEntry, upgradeTemplateId, type LastTemplates } from '../templates/library';
 import { migrateItem, sortItems } from './items';
 import { syncTemplate } from './templateOf';
 import { TEMPLATE_DEFS } from '../templates';
-import { PANEL_IDS } from '../engine/resolve';
+import { PANEL_IDS, defaultCodeKind } from '../engine/resolve';
 import type { MediaType } from '../types/media';
 import type { AppState, ViewMode } from './AppContext';
 
@@ -138,6 +138,25 @@ function restoreLastTemplates(raw: unknown): LastTemplates {
 }
 
 /**
+ * A save from before per-item templates was made with older defaults: no barcode on the back, and "Subtitle · Title"
+ * on every spine. Pins them in its Default design, where it needs them, so reopening it doesn't change the covers.
+ * Anything the save set itself wins.
+ */
+function pinLegacyDefaults(shared: SharedSettings, items: MediaItem[]): SharedSettings {
+  const kindOf = (i: MediaItem) => getEntry(i.templateId)?.kind;
+  const gainsBarcode = items.some((i) => defaultCodeKind(kindOf(i), 'back') !== 'none');
+  // Music spines already default to "Artist · Title"; elsewhere the subtitle would now be dropped.
+  const losesSubtitle = items.some((i) => i.type !== 'music' && i.subtitle);
+  let next = shared;
+  if (gainsBarcode) {
+    const back = next.panels.back ?? {};
+    next = { ...next, panels: { ...next.panels, back: { ...back, code: { kind: 'none', ...back.code } } } };
+  }
+  if (losesSubtitle) next = { ...next, spine: { textTemplate: '{subtitle} · {title}', ...next.spine } };
+  return next;
+}
+
+/**
  * Applies a parsed session on top of `defaults`, field by field. Anything missing or invalid falls back
  * to the default, so a corrupt or older document degrades gracefully instead of crashing the app.
  * Version 1 (no shared layer) is migrated: its global spine font/colour become the shared spine style.
@@ -173,6 +192,8 @@ export function restoreSession(raw: unknown, defaults: AppState): AppState {
     };
   }
 
+  if (legacy) shared = pinLegacyDefaults(shared, finalItems);
+
   return syncTemplate({
     ...defaults,
     items: finalItems,
@@ -206,5 +227,47 @@ export function saveSession(state: AppState): boolean {
     return true;
   } catch {
     return false;
+  }
+}
+
+/** The visitor's own session, set aside when a shared link's session replaced it (see backupBeforeLink). */
+export const BACKUP_KEY = 'coverforge:sessionBeforeLink';
+/** Marks the saved session as one that came from a link, so a second link doesn't back it up over the visitor's own. */
+const FROM_LINK_KEY = 'coverforge:sessionFromLink';
+
+/**
+ * A shared link's session replaces the saved one (and is then autosaved over it). Before that happens, keep the
+ * visitor's own session aside so it can be restored. Only their own: if the saved session itself came from a link,
+ * the backup already holds theirs. Idempotent, so a double mount (React StrictMode) is harmless.
+ */
+export function backupBeforeLink(): void {
+  try {
+    if (localStorage.getItem(FROM_LINK_KEY) !== '1') {
+      const own = localStorage.getItem(STORAGE_KEY);
+      if (own) localStorage.setItem(BACKUP_KEY, own);
+      localStorage.setItem(FROM_LINK_KEY, '1');
+    }
+  } catch {
+    // Storage blocked: nothing was saved to lose.
+  }
+}
+
+/** The session set aside by backupBeforeLink, if there is one. */
+export function loadBackup(defaults: AppState): AppState | null {
+  try {
+    const text = localStorage.getItem(BACKUP_KEY);
+    return text ? restoreSession(JSON.parse(text), defaults) : null;
+  } catch {
+    return null;
+  }
+}
+
+/** Forgets the backup: the visitor restored it, or chose to keep the linked session as their own. */
+export function clearBackup(): void {
+  try {
+    localStorage.removeItem(BACKUP_KEY);
+    localStorage.removeItem(FROM_LINK_KEY);
+  } catch {
+    // Nothing to clear.
   }
 }

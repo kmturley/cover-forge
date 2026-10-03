@@ -76,7 +76,8 @@ export function fillSpineText(template: string, item: MediaItem): string {
     if (i % 2 === 0) {
       if (piece) parts.push({ text: piece, sep: SEPARATOR.test(piece) });
     } else {
-      const value = piece in vars ? vars[piece] : `{${piece}}`;
+      // Own keys only: `{constructor}` must not find Object.prototype's.
+      const value = Object.hasOwn(vars, piece) ? vars[piece] : `{${piece}}`;
       if (value) parts.push({ text: value, sep: false });
     }
   }
