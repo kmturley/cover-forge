@@ -65,3 +65,16 @@ describe('resolvePanel code layering', () => {
     expect(resolvePanel(s, o, 'back').code).toMatchObject({ kind: 'qr', pattern: 'other', color: '#112233' });
   });
 });
+
+describe('default back barcode', () => {
+  const shared = { panels: {}, spine: {} } as never;
+  it('puts an EAN-13 on the back of every case except tapes, floppies and NFC pieces', () => {
+    for (const kind of ['bluray', 'dvd', 'vhs', 'cd', 'vinyl', 'game-case'] as const) expect(resolvePanel(shared, null, 'back', kind).code.kind, kind).toBe('ean13');
+    for (const kind of ['cassette', 'floppy', 'nfc-card', 'nfc-sticker', 'nfc-box'] as const) expect(resolvePanel(shared, null, 'back', kind).code.kind, kind).toBe('none');
+  });
+  it('only the back gets it, and an explicit choice (even none) wins', () => {
+    expect(resolvePanel(shared, null, 'front', 'dvd').code.kind).toBe('none');
+    expect(resolvePanel({ panels: { back: { code: { kind: 'none' } } }, spine: {} } as never, null, 'back', 'dvd').code.kind).toBe('none');
+    expect(resolvePanel({ panels: { back: { code: { kind: 'qr' } } }, spine: {} } as never, null, 'back', 'dvd').code.kind).toBe('qr');
+  });
+});

@@ -20,9 +20,7 @@ export interface PanelRect {
   follows?: PanelId;
 }
 
-export type Region = 'US' | 'EU';
-
-export type TemplateKind = 'bluray' | 'dvd' | 'vhs' | 'cd' | 'cassette' | 'floppy' | 'nfc-card' | 'nfc-sticker' | 'nfc-box' | 'vinyl';
+export type TemplateKind = 'bluray' | 'dvd' | 'vhs' | 'cd' | 'cassette' | 'floppy' | 'nfc-card' | 'nfc-sticker' | 'nfc-box' | 'vinyl' | 'game-case';
 
 /** Which 3D face a panel is mapped onto (BoxGeometry face order). */
 export type BoxFace = '+x' | '-x' | '+y' | '-y' | '+z' | '-z';
@@ -91,7 +89,6 @@ export interface TemplateConfig {
   id: string;
   kind: TemplateKind;
   name: string;
-  region?: Region;
   variantId: string;
   bleedMm: number;
   /** Full canvas size, bleed margin included. */
@@ -107,6 +104,6 @@ export interface TemplateConfig {
 
 export interface TemplateVariant {
   id: string;
+  /** Its name as people know it ("DVD Slim", "PS4", '12" LP'): standard names, not measurements. */
   label: string;
-  region?: Region;
 }

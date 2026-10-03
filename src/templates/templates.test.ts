@@ -1,32 +1,72 @@
 import { describe, expect, it } from 'vitest';
-import { TEMPLATE_DEFS, buildTemplate, canvasSizePx, defaultVariantId, regionsOf, variantsFor } from './index';
+import { TEMPLATE_DEFS, buildTemplate, canvasSizePx, defaultVariantId, variantsFor } from './index';
 import { edgeSegments, neighbour, paintRect } from './geometry';
 
 describe('blu-ray template', () => {
   it('matches the spec for the US standard case', () => {
     const t = buildTemplate('bluray', 'us-11');
     expect(t.totalWidthMm).toBe(273); // 128 + 11 + 128 + 3 mm bleed each side
-    expect(t.totalHeightMm).toBe(154);
-    expect(canvasSizePx(t)).toEqual({ width: 3224, height: 1819 });
+    expect(t.totalHeightMm).toBe(155);
+    expect(canvasSizePx(t)).toEqual({ width: 3224, height: 1831 });
   });
 
   it('lays panels out contiguously, back | spine | front', () => {
-    const t = buildTemplate('bluray', 'eu-14');
+    const t = buildTemplate('bluray', 'us-11');
     const [back, spine, front] = t.panels;
     expect([back.id, spine.id, front.id]).toEqual(['back', 'spine', 'front']);
     expect(spine.xMm).toBe(back.xMm + back.widthMm);
     expect(front.xMm).toBe(spine.xMm + spine.widthMm);
-    expect(spine.widthMm).toBe(14);
+    expect(spine.widthMm).toBe(11);
   });
 
-  it('filters variants by region and falls back for unknown variants', () => {
-    expect(regionsOf('bluray')).toEqual(['US', 'EU']);
-    expect(variantsFor('bluray', 'US').map((v) => v.id)).toEqual(['us-11', 'us-12.5']);
-    expect(variantsFor('bluray', 'EU').map((v) => v.id)).toEqual(['eu-14']);
-    expect(defaultVariantId('bluray', 'EU')).toBe('eu-14');
-    expect(buildTemplate('bluray', 'nope').variantId).toBe('us-11');
-    expect(regionsOf('dvd')).toEqual([]);
-    expect(variantsFor('dvd', 'US')).toHaveLength(2); // regions don't filter templates that have none
+  it('offers the US cases only, and falls back for unknown variants', () => {
+    expect(variantsFor('bluray').map((v) => v.id)).toEqual(['us-11']);
+    expect(defaultVariantId('bluray')).toBe('us-11');
+    expect(buildTemplate('bluray', 'eu-14').variantId).toBe('us-11');
+    expect(buildTemplate('bluray', 'us-12.5').variantId).toBe('us-11');
+  });
+});
+
+describe('game case sizes (see branding-spec.md)', () => {
+  const front = (v: string) => {
+    const t = buildTemplate('game-case', v);
+    const f = t.panels.find((p) => p.id === 'front')!;
+    const s = t.panels.find((p) => p.id === 'spine')!;
+    return [f.widthMm, f.heightMm, s.widthMm];
+  };
+
+  // The full cover (back + spine + front, trimmed) must match the US cover art sizes in branding-spec.md.
+  const cover = (kind: Parameters<typeof buildTemplate>[0], v?: string) => {
+    const t = buildTemplate(kind, v);
+    const row = t.panels.filter((p) => ['back', 'spine', 'front'].includes(p.id));
+    return [row.reduce((w, p) => w + p.widthMm, 0), row[0].heightMm];
+  };
+
+  it.each([
+    ['dvd', 'std-14', 273, 183],
+    ['dvd', 'slim-9', 266, 183],
+    ['bluray', 'us-11', 267, 149],
+    ['game-case', 'pc', 273, 183],
+    ['game-case', 'ps2', 273, 183],
+    ['game-case', 'xbox', 273, 183],
+    ['game-case', 'xbox-360', 273, 183],
+    ['game-case', 'gamecube', 273, 183],
+    ['game-case', 'wii', 273, 183],
+    ['game-case', 'ps3', 273, 149],
+    ['game-case', 'xbox-one', 267, 149],
+    ['game-case', 'xbox-series', 267, 149],
+    ['game-case', 'ps4', 273, 161],
+    ['game-case', 'ps5', 273, 161],
+  ] as const)('%s %s: %d × %d mm cover', (kind, v, w, h) => {
+    expect(cover(kind, v)).toEqual([w, h]);
+  });
+
+  it('keeps the Switch sizes', () => expect(front('switch')).toEqual([99, 161, 10]));
+
+  it('prints PS1 covers for a CD jewel case', () => {
+    const t = buildTemplate('game-case', 'ps1');
+    expect(t.panels.map((p) => p.id)).toEqual(['spine', 'back', 'spineRight', 'front']);
+    expect(t.id).toBe('game-case-ps1');
   });
 });
 
@@ -70,7 +110,11 @@ describe('template dimensions', () => {
     expect(w).toBeCloseTo(103.2 + 6);
     expect(h).toBeCloseTo(101.6 + 6);
   });
-  it('CR80 card: portrait 54 × 85.6 mm plus 1 mm bleed', () => expect(size('nfc-card', 'cr80')).toEqual([56, 87.6]));
+  it('CR80 card: two portrait 54 × 85.6 mm cards plus 1 mm bleed', () => {
+    const t = buildTemplate('nfc-card');
+    expect(t.panels.map((q) => [q.widthMm, q.heightMm])).toEqual([[54, 85.6], [54, 85.6]]);
+    expect(t.totalHeightMm).toBeCloseTo(87.6);
+  });
   it('3.5" floppy label: 69.85 mm square plus 1 mm bleed', () => {
     const [w, h] = size('floppy');
     expect(w).toBeCloseTo(71.85);
@@ -79,11 +123,11 @@ describe('template dimensions', () => {
   it('CD: booklet and tray card are separate pieces with room for both bleeds', () => {
     const t = buildTemplate('cd');
     const [front, spine, back, spineRight] = ['front', 'spine', 'back', 'spineRight'].map((id) => t.panels.find((p) => p.id === id)!);
-    expect(spine.xMm - (front.xMm + front.widthMm)).toBeGreaterThanOrEqual(t.bleedMm * 2);
+    expect(front.xMm - (spineRight.xMm + spineRight.widthMm)).toBeGreaterThanOrEqual(t.bleedMm * 2);
     expect(back.xMm).toBe(spine.xMm + spine.widthMm);
     expect(spineRight.xMm).toBe(back.xMm + back.widthMm);
     expect(spine.widthMm + back.widthMm + spineRight.widthMm).toBe(150); // the standard tray card
-    expect(neighbour(t.panels, front, 'right')).toBeUndefined(); // separate piece: not a fold
+    expect(neighbour(t.panels, front, 'left')).toBeUndefined(); // separate piece: not a fold
   });
 });
 
@@ -191,21 +235,21 @@ describe('NFC box net', () => {
     expect(m.label).toMatch(/NFC/);
   });
 
-  it('has a slim card box, a small box and a wallet, each with its own layout', () => {
-    for (const v of ['card', 'small', 'wallet']) {
+  it('has a slim card box and a wallet, each with its own layout', () => {
+    for (const v of ['card', 'wallet']) {
       const box = buildTemplate('nfc-box', v);
       expect(box.variantId).toBe(v);
       expect(box.preview.kind).toBe('box');
     }
-    expect(buildTemplate('nfc-box', 'small').panels.find((q) => q.id === 'top')!.heightMm).toBe(25);
+    expect(buildTemplate('nfc-box', 'small').variantId).toBe('card'); // the keepsake box is gone
     expect(buildTemplate('nfc-box', 'nonsense').variantId).toBe('card');
   });
 
-  it('the wallet is a spineless slip cover: front | back | glue tab, folded between front and back', () => {
+  it('the wallet is a spineless slip cover: back | front | glue tab, folded between back and front', () => {
     const w = buildTemplate('nfc-box', 'wallet');
-    expect(w.panels.map((q) => q.id)).toEqual(['front', 'back', 'glue']);
+    expect(w.panels.map((q) => q.id)).toEqual(['back', 'front', 'glue']);
     expect(w.panels.some((q) => q.text)).toBe(false);
-    expect(neighbour(w.panels, w.panels[0], 'right')?.id).toBe('back');
+    expect(neighbour(w.panels, w.panels[0], 'right')?.id).toBe('front');
     expect(edgeSegments(w).filter((s) => s.kind === 'fold')).toHaveLength(2);
     expect(w.preview).toMatchObject({ kind: 'box', faces: { '+z': 'front', '-z': 'back' } });
     expect(w.marks).toHaveLength(1);
@@ -225,10 +269,10 @@ describe('NFC sticker', () => {
 });
 
 describe('NFC card back', () => {
-  it('front + back (the default) has a second, separate card; front only has just the one', () => {
-    expect(buildTemplate('nfc-card', 'cr80').panels).toHaveLength(1);
+  it('has the back on the left and the front on the right, as two separate cards', () => {
     const t = buildTemplate('nfc-card', 'cr80-duplex');
-    expect(t.panels.map((q) => q.id)).toEqual(['front', 'back']);
+    expect(t.panels.map((q) => q.id)).toEqual(['back', 'front']);
+    expect(t.panels[1].xMm).toBeGreaterThan(t.panels[0].xMm);
     expect(t.totalWidthMm).toBeGreaterThan(54 * 2 + 2);
     expect(neighbour(t.panels, t.panels[0], 'right')).toBeUndefined(); // two cards, not a fold
     expect(t.preview).toMatchObject({ kind: 'slab', panel: 'front', backPanel: 'back' });
@@ -236,6 +280,8 @@ describe('NFC card back', () => {
 
   it('is the default NFC card variant', () => {
     expect(defaultVariantId('nfc-card')).toBe('cr80-duplex');
-    expect(buildTemplate('nfc-card').panels.map((q) => q.id)).toEqual(['front', 'back']);
+    expect(buildTemplate('nfc-card').panels.map((q) => q.id)).toEqual(['back', 'front']);
+    // There is no front-only variant.
+    expect(variantsFor('nfc-card').map((v) => v.id)).toEqual(['cr80-duplex']);
   });
 });

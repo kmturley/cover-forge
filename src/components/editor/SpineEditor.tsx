@@ -1,6 +1,6 @@
 import { useAppDispatch, useAppState, useSelectedItem } from '../../context/AppContext';
 import { useEditView } from './useEditView';
-import { defaultCapHeightMm, defaultSpineText } from '../../engine/SpineTypography';
+import { SPINE_VARIABLES, defaultCapHeightMm, defaultSpineTemplate, spineText } from '../../engine/SpineTypography';
 import type { SpineSettings } from '../../types/editor';
 import { NumberSlider } from './NumberSlider';
 
@@ -11,7 +11,11 @@ export const FONTS = [
   ['Impact, "Arial Black", sans-serif', 'Impact'],
 ];
 
-/** Spine text controls. Font, colour and height follow the edit mode; the text itself is always per item. */
+/**
+ * Spine text controls. The design holds the text with variables (`{title}`, or `{creator} · {title}` by default for
+ * music) for all its items; "This item" replaces it with the item's own text (variables still work). Font, colour
+ * and height follow the edit mode too.
+ */
 export function SpineTextControls({ target }: { target: string | null }) {
   const { editMode, template, selectedPanel } = useAppState();
   const item = useSelectedItem();
@@ -26,13 +30,27 @@ export function SpineTextControls({ target }: { target: string | null }) {
   return (
     <>
       {editMode === 'override' ? (
-        <label className="field">
-          <span>Text (this item)</span>
-          <input type="text" value={eff.text ?? defaultSpineText(item)} onChange={(e) => patch({ text: e.target.value })} />
-        </label>
+        <>
+          <label className="field">
+            <span>Text (this item)</span>
+            <input type="text" value={eff.text ?? eff.textTemplate ?? defaultSpineTemplate(item)} onChange={(e) => patch({ text: e.target.value })} />
+          </label>
+          {eff.text !== undefined && <button onClick={() => patch({ text: undefined })}>Use the design’s text</button>}
+        </>
       ) : (
-        <p className="muted">Each spine shows its own title. Switch to “This item” to change one.</p>
+        <label className="field">
+          <span>Text (every item in this design)</span>
+          <input type="text" value={eff.textTemplate ?? defaultSpineTemplate(item)} onChange={(e) => patch({ textTemplate: e.target.value })} />
+        </label>
       )}
+      <p className="spine-vars">
+        {SPINE_VARIABLES.map((v) => (
+          <code key={v.name} title={v.label}>{`{${v.name}}`}</code>
+        ))}
+      </p>
+      <p className="muted small">
+        Shows: “{spineText(item, editMode === 'override' ? eff : { textTemplate: eff.textTemplate })}”
+      </p>
       <NumberSlider
         label="Text height (shrinks to fit)"
         unit="mm"

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { TEMPLATE_DEFS, buildTemplate } from '../templates';
-import { FACE_ORDER, TARGET_SIZE_UNITS, createBodyGeometry, createLabelGeometry, createLabelSliceGeometry, createSlabBodyGeometry, createSlabFaceGeometry, insetFaces, labelWrap, modelSizeMm, panelUvRange, previewScale, printedFaces, slabOutline } from './PreviewGeometry';
+import { FACE_ORDER, TARGET_SIZE_UNITS, createBodyGeometry, createInsetGeometry, createLabelGeometry, createLabelSliceGeometry, createSlabBodyGeometry, createSlabFaceGeometry, insetFaces, labelWrap, modelSizeMm, panelUvRange, previewScale, printedFaces, slabOutline } from './PreviewGeometry';
 
 describe('panelUvRange', () => {
   it('excludes bleed and splits the texture back | spine | front', () => {
@@ -12,7 +12,7 @@ describe('panelUvRange', () => {
     expect(back.u1).toBeCloseTo(spine.u0);
     expect(spine.u1).toBeCloseTo(front.u0);
     expect(front.u1).toBeCloseTo(270 / 273);
-    expect(front.v1).toBeCloseTo(1 - 3 / 154);
+    expect(front.v1).toBeCloseTo(1 - 3 / 155);
   });
 
   it('finds panels in the J-card strip and rejects unknown ones', () => {
@@ -26,13 +26,13 @@ describe('panelUvRange', () => {
 
 describe('createBodyGeometry', () => {
   it('sizes the box from the spec and maps the front face into the front UV range', () => {
-    const t = buildTemplate('bluray', 'eu-14');
+    const t = buildTemplate('bluray', 'us-11');
     const geo = createBodyGeometry(t, t.preview);
     geo.computeBoundingBox();
     const size = geo.boundingBox!.getSize(geo.boundingBox!.min.clone());
     expect(size.x).toBeCloseTo(128);
-    expect(size.y).toBeCloseTo(148);
-    expect(size.z).toBeCloseTo(14);
+    expect(size.y).toBeCloseTo(149);
+    expect(size.z).toBeCloseTo(11);
 
     const front = panelUvRange(t, 'front');
     const uv = geo.getAttribute('uv');
@@ -51,7 +51,7 @@ describe('createBodyGeometry', () => {
   });
 
   it('a card prints its front over the whole face, while a floppy uses a separate label', () => {
-    expect(printedFaces(buildTemplate('nfc-card', 'cr80').preview)).toEqual({ '+z': 'front' });
+    expect(printedFaces(buildTemplate('nfc-card').preview)).toEqual({ '+z': 'front', '-z': 'back' });
     expect(printedFaces(buildTemplate('floppy').preview)).toEqual({});
     const floppy = buildTemplate('floppy');
     const label = createLabelGeometry(floppy, 'front');
@@ -106,7 +106,7 @@ describe('slab bodies (cards, disks, stickers)', () => {
   };
 
   it('a card keeps its real 3.18 mm corners (the outline has arcs, not a thin box edge)', () => {
-    const { spec } = slab('nfc-card', 'cr80');
+    const { spec } = slab('nfc-card', 'cr80-duplex');
     const pts = slabOutline(spec).getPoints(12);
     expect(pts.length).toBeGreaterThan(30);
     // The corner sits 3.18 mm in from the corner point: nothing lies at the sharp corner itself.
@@ -148,9 +148,25 @@ describe('inset faces', () => {
   });
 
   it('leaves every other case, box and card printed straight onto its faces', () => {
-    for (const [kind, id] of [['dvd', 'std-14'], ['bluray', 'us-11'], ['vhs', 'std-25'], ['cassette', 'std'], ['nfc-box', 'card'], ['nfc-box', 'small'], ['nfc-card', 'cr80']] as const) {
+    for (const [kind, id] of [['dvd', 'std-14'], ['bluray', 'us-11'], ['vhs', 'std-25'], ['cassette', 'std'], ['nfc-box', 'card'], ['nfc-card', 'cr80-duplex']] as const) {
       const t = buildTemplate(kind, id);
       expect(insetFaces(t, t.preview), `${kind}/${id}`).toEqual([]);
     }
+  });
+
+  it('draws an inset plane at the panel\'s own true height, not stretched or squeezed to the body\'s', () => {
+    // The CD tray card (118 mm) is genuinely shorter than the modelled case (120 mm) — the disc-tray
+    // mechanism trims its usable height (see jewelCase()'s comment in definitions.ts). It's drawn at its
+    // own true height, centred, the same way its 6.5 mm width already reads true against the 10 mm depth
+    // (see createInsetGeometry's comment) — not stretched or squeezed to chase alignment with faces it
+    // doesn't actually share an edge with in real life.
+    const t = buildTemplate('cd', 'jewel');
+    const spine = t.panels.find((p) => p.id === 'spine')!;
+    const spec = t.preview as Extract<typeof t.preview, { kind: 'box' }>;
+    expect(spine.heightMm).toBeLessThan(spec.heightMm);
+    const geo = createInsetGeometry(t, 'spine');
+    const pos = geo.getAttribute('position');
+    const ys = Array.from({ length: pos.count }, (_, i) => pos.getY(i));
+    expect(Math.max(...ys) - Math.min(...ys)).toBeCloseTo(spine.heightMm);
   });
 });

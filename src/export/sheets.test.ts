@@ -51,26 +51,20 @@ describe('imposeOnLabels', () => {
     expect(layout.warnings?.some((w) => w.includes('assumed'))).toBe(true); // 5196 is only partly verified
   });
 
-  it('CR80 on 5395: 8 per sheet, fits entirely inside each label, bleed allowed into the gap', () => {
-    const t = buildTemplate('nfc-card', 'cr80');
-    const layout = imposeOnLabels(LABEL_SHEETS.find((s) => s.id === 'avery-5395')!, t);
+  it('NFC card on 5395: 8 labels per sheet, each with a crop; the back-and-front artwork is trimmed to the label', () => {
+    const layout = imposeOnLabels(LABEL_SHEETS.find((s) => s.id === 'avery-5395')!, buildTemplate('nfc-card'));
     expect(layout.placements).toHaveLength(8);
-    for (const p of layout.placements) {
-      expect(p.rotated).toBe(true); // portrait art on landscape labels is turned
-      expect(p.crop!.widthMm).toBeCloseTo(t.totalHeightMm); // the whole artwork fits (label is bigger than the card)
-      expect(p.crop!.heightMm).toBeCloseTo(t.totalWidthMm);
-    }
-    expect(layout.warnings).toEqual([]);
+    expect(layout.placements.every((p) => !!p.crop)).toBe(true);
+    expect(layout.warnings![0]).toMatch(/trimmed/);
   });
 
-  it('CR80 on 5371: warns that a 2" card is shorter than a CR80', () => {
-    const layout = imposeOnLabels(LABEL_SHEETS.find((s) => s.id === 'avery-5371')!, buildTemplate('nfc-card', 'cr80'));
+  it('NFC card on 5371: 10 labels per sheet', () => {
+    const layout = imposeOnLabels(LABEL_SHEETS.find((s) => s.id === 'avery-5371')!, buildTemplate('nfc-card'));
     expect(layout.placements).toHaveLength(10);
-    expect(layout.warnings![0]).toMatch(/trimmed by up to 1\.6 mm/);
   });
 
   it('never lets adjacent printed areas overlap', () => {
-    for (const [kind, id, sheetId] of [['floppy', undefined, 'avery-5196'], ['nfc-card', 'cr80', 'avery-5395'], ['nfc-card', 'cr80', 'avery-5371']] as const) {
+    for (const [kind, id, sheetId] of [['floppy', undefined, 'avery-5196'], ['nfc-card', undefined, 'avery-5395'], ['nfc-card', undefined, 'avery-5371']] as const) {
       const layout = imposeOnLabels(LABEL_SHEETS.find((s) => s.id === sheetId)!, buildTemplate(kind, id));
       for (const [i, a] of layout.placements.entries()) {
         for (const b of layout.placements.slice(i + 1)) {
@@ -93,6 +87,6 @@ describe('computeLayout', () => {
   });
 
   it('auto multi-up packs small labels onto plain paper', () => {
-    expect(computeLayout(buildTemplate('nfc-card', 'cr80'), 'A4').placements.length).toBeGreaterThanOrEqual(10);
+    expect(computeLayout(buildTemplate('nfc-card'), 'A4').placements.length).toBeGreaterThanOrEqual(4);
   });
 });

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { BRANDS, BRAND_GROUPS, brandAspect, getBrand } from './index';
+import { BRANDS, BRAND_GROUPS, LOGOS, brandAspect, getBrand, getLogo } from './index';
 
 describe('brand data', () => {
   it('has unique ids and well-formed entries', () => {
@@ -26,5 +26,51 @@ describe('brand data', () => {
 
   it('derives aspect ratios from the tight bounds', () => {
     expect(brandAspect(getBrand('steam')!)).toBeGreaterThan(0.5);
+  });
+});
+
+describe('supplied logos', () => {
+  it('has unique ids and layers with bounds inside the logo', () => {
+    expect(LOGOS.length).toBeGreaterThan(0);
+    expect(new Set(LOGOS.map((l) => l.id)).size).toBe(LOGOS.length);
+    for (const l of LOGOS) {
+      expect(l.layers.length, l.id).toBeGreaterThan(0);
+      expect(l.bbox[2] - l.bbox[0], l.id).toBeGreaterThan(0);
+      for (const layer of l.layers) {
+        expect(layer.box[0], l.id).toBeGreaterThanOrEqual(l.bbox[0] - 0.01);
+        expect(layer.box[3], l.id).toBeLessThanOrEqual(l.bbox[3] + 0.01);
+      }
+    }
+  });
+
+  it('drops the red square behind the Switch logos and flattens gradients', () => {
+    const sw = getLogo('switch2')!;
+    expect(sw.layers).toHaveLength(3);
+    expect(sw.layers.every((layer) => layer.fill === undefined)).toBe(true);
+    expect(getLogo('gamecube')!.layers.every((layer) => layer.fill === undefined || /^#[0-9a-f]{6}$|^none$/.test(layer.fill))).toBe(true);
+  });
+
+  it('resolves a gradient that borrows its stops from another', () => {
+    // The Sony diamond's inner shape fills with a gradient defined by reference to another one.
+    const diamond = getLogo('sony-logo')!.layers[2];
+    expect(diamond.fill).toMatch(/^#[0-9a-f]{6}$/);
+  });
+
+  it('keeps the two colours of Wii U', () => {
+    expect(new Set(getLogo('wii-u')!.layers.map((layer) => layer.fill))).toEqual(new Set(['#009ac7', '#8b8b8b']));
+  });
+
+  it('reads styled, transformed and gradient-filled shapes (the Xbox logo)', () => {
+    const xbox = getLogo('xbox')!;
+    expect(xbox.layers.length).toBeGreaterThan(8);
+    // The 3D X keeps its linear gradients; the wordmark letters are one flat green.
+    expect(xbox.layers.filter((layer) => layer.gradient).length).toBeGreaterThanOrEqual(6);
+    expect(xbox.layers.some((layer) => layer.fill === '#94c83f' && !layer.gradient)).toBe(true);
+    // Scaled paths are baked in, so every shape sits inside the logo's bounds.
+    for (const layer of xbox.layers) expect(layer.box[2]).toBeLessThanOrEqual(xbox.bbox[2] + 0.01);
+  });
+
+  it('skips SVGs that only wrap bitmaps', () => {
+    expect(getLogo('xbox-button')).toBeUndefined();
   });
 });

@@ -26,11 +26,6 @@ describe('reducer', () => {
     expect(s.selectedItemId).toBe('a');
   });
 
-  it('switching region resets the spine to that region default', () => {
-    const s = reducer(reducer(initialState, { type: 'setTemplate', kind: 'bluray' }), { type: 'setRegion', region: 'EU' });
-    expect(s.variantId).toBe('eu-14');
-    expect(s.template.panels.find((p) => p.id === 'spine')?.widthMm).toBe(14);
-  });
 });
 
 describe('shared and override settings', () => {
@@ -105,37 +100,64 @@ describe('shared and override settings', () => {
 });
 
 describe('templates', () => {
-  it('switching template rebuilds the layout and keeps a panel the new template also has', () => {
-    let s = reducer(initialState, { type: 'selectPanel', panel: 'spine' });
-    s = reducer(s, { type: 'setTemplate', kind: 'dvd' });
-    expect(s.templateKind).toBe('dvd');
-    expect(s.template.kind).toBe('dvd');
-    expect(s.selectedPanel).toBe('spine');
-    expect(s.variantId).toBe('std-14');
+  const typed = (id: string, type: MediaItem['type']): MediaItem => ({ ...item(id), type });
+
+  it('gives each new item its original case by default', () => {
+    let s = reducer(initialState, { type: 'addItem', item: typed('g', 'game') });
+    s = reducer(s, { type: 'addItem', item: typed('m', 'movie') });
+    s = reducer(s, { type: 'addItem', item: typed('c', 'music') });
+    expect(s.items.map((i) => [i.id, i.templateId])).toEqual([['c', 'cd-jewel'], ['g', 'game-case-pc'], ['m', 'dvd-std-14']]);
   });
 
-  it('falls back to the first panel when the selected one does not exist in the new template', () => {
-    let s = reducer(initialState, { type: 'selectPanel', panel: 'back' });
-    s = reducer(s, { type: 'setTemplate', kind: 'floppy' });
-    expect(s.template.panels.map((p) => p.id)).toEqual(['front']);
+  it('keeps a template the added item already names', () => {
+    const s = reducer(initialState, { type: 'addItem', item: { ...typed('g', 'game'), templateId: 'game-case-ps2' } });
+    expect(s.items[0].templateId).toBe('game-case-ps2');
+  });
+
+  it('new items start with the case last picked for their media type', () => {
+    let s = reducer(initialState, { type: 'addItem', item: typed('a', 'game') });
+    s = reducer(s, { type: 'addItem', item: typed('m', 'movie') });
+    s = reducer(s, { type: 'setItemTemplate', items: ['a'], template: 'game-case-ps4' });
+    expect(s.lastTemplates).toEqual({ game: 'game-case-ps4' });
+    s = reducer(s, { type: 'addItem', item: typed('b', 'game') });
+    s = reducer(s, { type: 'addItem', item: typed('n', 'movie') });
+    expect(Object.fromEntries(s.items.map((i) => [i.id, i.templateId]))).toEqual({ a: 'game-case-ps4', b: 'game-case-ps4', m: 'dvd-std-14', n: 'dvd-std-14' });
+  });
+
+  it('a bulk change sets the last case for every type it touched', () => {
+    let s = reducer(initialState, { type: 'addItem', item: typed('a', 'game') });
+    s = reducer(s, { type: 'addItem', item: typed('m', 'movie') });
+    s = reducer(s, { type: 'setItemTemplate', items: ['a', 'm'], template: 'bluray-us-11' });
+    expect(s.lastTemplates).toEqual({ game: 'bluray-us-11', movie: 'bluray-us-11' });
+  });
+
+  it('the editor template follows the selected item, and falls back to the first panel it has', () => {
+    let s = reducer(initialState, { type: 'addItem', item: { ...typed('a', 'game'), templateId: 'dvd-slim-9' } });
+    s = reducer(s, { type: 'addItem', item: { ...typed('b', 'game'), templateId: 'floppy-face' } });
+    s = reducer(s, { type: 'selectItem', id: 'a' });
+    s = reducer(s, { type: 'selectPanel', panel: 'spine' });
+    expect(s.template.id).toBe('dvd-slim-9');
+    expect(s.template.panels[1].widthMm).toBe(7);
+    s = reducer(s, { type: 'selectItem', id: 'b' });
+    expect(s.template.id).toBe('floppy-face');
     expect(s.selectedPanel).toBe('front');
+  });
+
+  it('sets a template on many items at once, and ignores unknown templates', () => {
+    let s = reducer(initialState, { type: 'addItem', item: typed('a', 'game') });
+    s = reducer(s, { type: 'addItem', item: typed('b', 'movie') });
+    s = reducer(s, { type: 'setItemTemplate', items: ['a', 'b'], template: 'vhs-std-25' });
+    expect(s.items.map((i) => i.templateId)).toEqual(['vhs-std-25', 'vhs-std-25']);
+    expect(s.templateId).toBe('vhs-std-25');
+    expect(s.template.kind).toBe('vhs');
+    expect(reducer(s, { type: 'setItemTemplate', items: ['a'], template: 'laserdisc' })).toBe(s);
   });
 
   it('shared settings survive a template change (same panel id, new template)', () => {
     let s = reducer(initialState, { type: 'updatePanel', id: null, panel: 'front', patch: { backgroundColor: '#123456' } });
-    s = reducer(s, { type: 'setTemplate', kind: 'cassette' });
+    s = reducer(s, { type: 'setItemTemplate', items: [], template: 'cassette-std' });
+    expect(s.template.kind).toBe('cassette');
     expect(s.shared.panels.front?.backgroundColor).toBe('#123456');
-  });
-
-  it('keeps the region when moving between templates and only offers valid variants', () => {
-    let s = reducer(initialState, { type: 'setRegion', region: 'EU' });
-    s = reducer(s, { type: 'setTemplate', kind: 'vhs' });
-    expect(s.region).toBe('EU');
-    s = reducer(s, { type: 'setTemplate', kind: 'bluray' });
-    expect(s.variantId).toBe('eu-14');
-    expect(reducer(s, { type: 'setVariant', id: 'us-11' })).toBe(s); // not valid for EU
-    const slim = reducer(reducer(initialState, { type: 'setTemplate', kind: 'dvd' }), { type: 'setVariant', id: 'slim-9' });
-    expect(slim.template.panels[1].widthMm).toBe(9);
   });
 });
 

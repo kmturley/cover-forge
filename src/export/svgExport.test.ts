@@ -13,7 +13,7 @@ describe('buildItemSvg', () => {
     expect(blob.type).toBe('image/svg+xml');
     const text = await blob.text();
     expect(text).toMatch(/^<\?xml/);
-    expect(text).toContain('width="273mm" height="154mm" viewBox="0 0 273 154"');
+    expect(text).toContain('width="273mm" height="155mm" viewBox="0 0 273 155"');
     expect(text).toContain('base64,IMG1');
     expect(count(text, /<image /g)).toBe(1);
     expect(text).not.toContain('<line');
@@ -30,7 +30,7 @@ describe('buildItemSvg', () => {
   });
 
   it('a single-panel label has cut lines only', async () => {
-    const text = await buildItemSvg(fakeCanvas(), buildTemplate('nfc-card', 'cr80'), true).text();
+    const text = await buildItemSvg(fakeCanvas(), buildTemplate('floppy'), true).text();
     expect(count(text, /stroke-dasharray/g)).toBe(0);
     expect(count(text, /<line /g)).toBe(4);
   });
@@ -59,8 +59,8 @@ describe('buildSheetSvg', () => {
   });
 
   it('omits guides on die-cut label sheets even if asked (their placements carry a crop)', () => {
-    const t = buildTemplate('nfc-card', 'cr80');
-    const layout = computeLayout(t, 'Letter', 'avery-5395');
+    const t = buildTemplate('floppy');
+    const layout = computeLayout(t, 'Letter', 'avery-5196');
     expect(layout.placements.every((p) => !!p.crop)).toBe(true);
   });
 });

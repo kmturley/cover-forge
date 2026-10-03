@@ -3,7 +3,7 @@ import { Canvas } from '@react-three/fiber';
 import { ContactShadows, Environment, OrbitControls } from '@react-three/drei';
 import { MeshStandardMaterial, type BufferGeometry, type Texture } from 'three';
 import type { TemplateConfig } from '../types/template';
-import { FACE_ORDER, createBodyGeometry, createLabelGeometry, createLabelSliceGeometry, createSlabBodyGeometry, createSlabFaceGeometry, bodyPrintedFaces, insetFaces, insetPlacement, labelWrap, modelSizeMm, previewScale } from './PreviewGeometry';
+import { FACE_ORDER, createBodyGeometry, createInsetGeometry, createLabelGeometry, createLabelSliceGeometry, createSlabBodyGeometry, createSlabFaceGeometry, bodyPrintedFaces, insetFaces, insetPlacement, labelWrap, modelSizeMm, previewScale } from './PreviewGeometry';
 import { createBodyMaterial, createSleeveMaterial } from './PreviewMaterials';
 
 /** Three-quarter view showing the left edge (-X), top edge (+Y) and front (+Z). Tune via the console log. */
@@ -20,7 +20,7 @@ function Model({ texture, template }: { texture: Texture; template: TemplateConf
   const pieces = useMemo(() => {
     const out: { geometry: BufferGeometry; position: [number, number, number]; rotation: [number, number, number] }[] = [];
     if (spec.kind === 'box') {
-      for (const { face, panel } of insetFaces(template, spec)) out.push({ geometry: createLabelGeometry(template, panel), ...insetPlacement(spec, face) });
+      for (const { face, panel } of insetFaces(template, spec)) out.push({ geometry: createInsetGeometry(template, panel), ...insetPlacement(spec, face) });
       for (const d of spec.decals ?? []) {
         const panel = template.panels.find((p) => p.id === d.panel);
         if (!panel) continue;

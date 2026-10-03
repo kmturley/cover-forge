@@ -8,9 +8,20 @@ import { paintRect } from './placement';
 /** Space kept clear of a panel's edge; a code that doesn't fit inside it is not drawn. */
 export const CODE_SAFETY_MM = 3;
 const DEFAULT_MARGIN_MM = 8;
-const DEFAULT_WIDTH_MM = { qr: 30, ean13: 37.3, upca: 37.3, code128: 45 } as const;
-/** Width / height of the whole symbol including quiet zones and (for EAN/UPC) the digits. */
-const ASPECT = { qr: 1, ean13: 37.29 / 25.93, upca: 37.29 / 25.93, code128: 3 } as const;
+/** Whitespace round a barcode's quiet zones, so it reads clearly on a busy back cover (mm at the default size). */
+const BARCODE_PAD_MM = 1.5;
+/**
+ * Printed barcodes are shorter than the full GS1 symbol: on retail covers the bars are about 13 mm tall at the standard
+ * 37.29 mm width, with the digits below. The symbol is then set in a little white margin.
+ */
+const BARS_MM = 13;
+const SYMBOL_W_MM = 37.29;
+const SYMBOL_H_MM = BARS_MM + 3.08; // bars + the row of digits
+const BOX_W_MM = SYMBOL_W_MM + BARCODE_PAD_MM * 2;
+const BOX_H_MM = SYMBOL_H_MM + BARCODE_PAD_MM * 2;
+const DEFAULT_WIDTH_MM = { qr: 30, ean13: BOX_W_MM, upca: BOX_W_MM, code128: 45 } as const;
+/** Width / height of the whole symbol including quiet zones, the white margin and (for EAN/UPC) the digits. */
+const ASPECT = { qr: 1, ean13: BOX_W_MM / BOX_H_MM, upca: BOX_W_MM / BOX_H_MM, code128: 3 } as const;
 
 type Drawable = Exclude<CodeSettings['kind'], 'none'>;
 
@@ -78,16 +89,22 @@ function drawQr(ctx: CanvasRenderingContext2D, text: string, w: number, h: numbe
   ctx.fill();
 }
 
-function drawBarcode(ctx: CanvasRenderingContext2D, kind: 'ean13' | 'upca' | 'code128', value: string, w: number, h: number, px: number): void {
+function drawBarcode(ctx: CanvasRenderingContext2D, kind: 'ean13' | 'upca' | 'code128', value: string, boxW: number, boxH: number, px: number): void {
+  let [w, h] = [boxW, boxH];
   const bars = encodeBars(kind, value);
   if (!bars) return;
   const [ql, qr] = QUIET[kind];
+  const withDigits = kind !== 'code128';
+  // Barcodes sit in a margin of white; everything below is laid out inside it.
+  const pad = withDigits ? (w * BARCODE_PAD_MM) / BOX_W_MM : w * 0.03;
+  ctx.translate(pad * px, pad * px);
+  [w, h] = [w - pad * 2, h - pad * 2];
   const total = bars.modules.length + ql + qr;
   const m = w / total;
-  const withDigits = kind !== 'code128';
-  // GS1 proportions at 100% (X = 0.33 mm, symbol 25.93 mm tall): bars 22.85 mm, guard bars 5 modules longer, digits below.
-  const barH = h * (22.85 / 25.93);
-  const guardExtra = withDigits ? h * (1.65 / 25.93) : 0;
+  // The digits take 3.08 mm of the 37.29 mm width; the guard bars reach 1.65 mm down into that row. The bars fill the rest.
+  const digitsH = withDigits ? w * (3.08 / SYMBOL_W_MM) : 0;
+  const barH = h - digitsH;
+  const guardExtra = withDigits ? w * (1.65 / SYMBOL_W_MM) : 0;
   const top = 0;
 
   // Group consecutive dark modules into single bars.

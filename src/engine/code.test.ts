@@ -21,7 +21,10 @@ describe('computeCodePlacement', () => {
     expect(right).toBeCloseTo(panel('back').xMm + panel('back').widthMm - 8);
     expect(bottom).toBeCloseTo(panel('back').yMm + panel('back').heightMm - 8);
     const ean = computeCodePlacement(t, panel('back'), { ...DEFAULT_CODE, kind: 'ean13' })!;
-    expect(ean.widthMm / ean.heightMm).toBeCloseTo(37.29 / 25.93);
+    // Shorter than the full GS1 symbol (about 13 mm of bars), set in a little white margin.
+    expect(ean.widthMm).toBeCloseTo(37.29 + 3);
+    expect(ean.heightMm).toBeLessThan(20);
+    expect(ean.widthMm / ean.heightMm).toBeGreaterThan(2);
   });
 
   it('omits a code that does not fit inside the safe area (e.g. a QR code on an 11 mm spine)', () => {

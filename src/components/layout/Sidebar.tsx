@@ -1,7 +1,7 @@
 import { useRef, type ReactNode } from 'react';
 import { useSidebarWidth } from './useSidebarWidth';
 
-const LIMITS = { defaultWidth: { left: 290, right: 260 }, min: 220, max: 560 };
+const LIMITS = { defaultWidth: { left: 290, right: 320 }, min: 220, max: 560 };
 
 const ChevronLeft = () => (
   <svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">

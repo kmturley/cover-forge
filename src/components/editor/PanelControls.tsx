@@ -8,6 +8,8 @@ import { computePlacement } from '../../engine/placement';
 import { BASE_BACKGROUND, panelHasOverride } from '../../engine/resolve';
 import { designHasPanel } from '../../engine/designs';
 import { DesignBar } from './DesignBar';
+import { CaseBar } from '../templates/CaseBar';
+import { BrandedToggle } from './BrandedToggle';
 import { useEditView } from './useEditView';
 import { readImageFile } from '../../api/upload';
 import { srcOf } from '../../storage/localImages';
@@ -58,6 +60,8 @@ export function PanelControls() {
   return (
     <section className="controls">
       <div className="controls-head">
+        <CaseBar />
+        <BrandedToggle />
         <DesignBar panel={panel} />
         <div className="seg wide" role="tablist" aria-label="Panel to edit">
           {template.panels.filter((tab) => !tab.follows).map((tab) => {

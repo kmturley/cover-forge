@@ -24,4 +24,6 @@ export interface MediaItem {
   spineOverride?: Partial<SpineSettings>;
   /** The design this item uses on top of the Default one; unset = Default. */
   designId?: string;
+  /** The template (case) this item is printed for, a library id such as `game-case-ps4`. Set when it is added. */
+  templateId?: string;
 }

@@ -13,29 +13,42 @@ const item: MediaItem = {
 describe('session', () => {
   it('round-trips through JSON', () => {
     let s = reducer(initialState, { type: 'addItem', item });
-    s = reducer(s, { type: 'setTemplate', kind: 'bluray' });
-    s = reducer(s, { type: 'setRegion', region: 'EU' });
+    s = reducer(s, { type: 'setItemTemplate', items: ['steam-1'], template: 'bluray-us-11' });
+    s = reducer(s, { type: 'setBanner', banner: false });
     s = reducer(s, { type: 'updatePanel', id: null, panel: 'front', patch: { backgroundColor: '#123456', transform: { scale: 1.2 } } });
-    s = reducer(s, { type: 'updateSpine', id: null, patch: { textHeightMm: 5 } });
+    s = reducer(s, { type: 'updateSpine', id: null, patch: { textHeightMm: 5, textTemplate: '{title} ({year})' } });
     s = reducer(s, { type: 'updatePanel', id: 'steam-1', panel: 'spine', patch: { backgroundColor: '#ff0000', image: 'logo', transform: { xMm: 1, opacity: 0.5 } } });
     const back = restoreSession(JSON.parse(JSON.stringify(serializeSession(s))), initialState);
     expect(back).toEqual(s);
   });
 
-  it('round-trips the template kind and variant', () => {
-    let s = reducer(initialState, { type: 'setTemplate', kind: 'dvd' });
-    s = reducer(s, { type: 'setVariant', id: 'slim-9' });
+  it('round-trips the empty-queue template', () => {
+    const s = reducer(initialState, { type: 'setItemTemplate', items: [], template: 'dvd-slim-9' });
     const back = restoreSession(JSON.parse(JSON.stringify(serializeSession(s))), initialState);
-    expect(back.templateKind).toBe('dvd');
-    expect(back.variantId).toBe('slim-9');
+    expect(back.templateId).toBe('dvd-slim-9');
     expect(back.template.id).toBe('dvd-slim-9');
+    expect(back.lastTemplates).toEqual({});
   });
 
   it('repairs an unknown template kind or variant', () => {
     const s = restoreSession({ app: 'coverforge', version: 2, items: [], options: { templateKind: 'laserdisc', variantId: 'x' } }, initialState);
-    expect(s.templateKind).toBe('dvd');
+    expect(s.templateId).toBe('dvd-std-14');
     const t = restoreSession({ app: 'coverforge', version: 2, items: [], options: { templateKind: 'vhs', variantId: 'bogus' } }, initialState);
-    expect(t.variantId).toBe('std-25');
+    expect(t.templateId).toBe('vhs-std-25');
+    const u = restoreSession({ app: 'coverforge', version: 2, items: [{ ...item, templateId: 'nope' }], options: { templateId: 'cd-jewel', lastTemplates: { game: 'x', music: 'cd-jewel', bogus: 'cd-jewel' } } }, initialState);
+    expect(u.items[0].templateId).toBe('cd-jewel');
+    expect(u.lastTemplates).toEqual({ music: 'cd-jewel' });
+  });
+
+  it('moves a save from before per-item templates onto its one template, which new items keep getting', () => {
+    const old = { app: 'coverforge', version: 2, items: [item], options: { templateKind: 'game-case', variantId: 'ps4', styleOverlay: 'digital', view: '3d' } };
+    const s = restoreSession(old, initialState);
+    expect(s.items[0].templateId).toBe('game-case-ps4');
+    expect(s.template.id).toBe('game-case-ps4');
+    expect(s.lastTemplates).toEqual({ game: 'game-case-ps4' });
+    expect(s.banner).toBe(true);
+    const retro = restoreSession({ ...old, items: [], options: { ...old.options, styleOverlay: 'retro' } }, initialState);
+    expect([retro.banner, retro.lastTemplates]).toEqual([false, {}]);
   });
 
   it('does not persist guides: they start off every visit', () => {
@@ -63,7 +76,7 @@ describe('session', () => {
     const s = restoreSession(doc, initialState);
     expect(s.items).toHaveLength(1);
     expect(s.selectedItemId).toBe('steam-1');
-    expect(s.variantId).toBe('eu-14'); // the legacy 11 mm spine isn't valid for EU
+    expect(s.templateId).toBe('bluray-us-11'); // EU cases are no longer offered: the US standard instead
     expect(s.view).toBe(initialState.view);
     expect(s.showGuides).toBe(initialState.showGuides);
     expect(s.shared.panels).toEqual({ front: { image: 'hero' } }); // unknown panel dropped
@@ -79,8 +92,9 @@ describe('session', () => {
       options: { region: 'US', spineMm: 12.5, backgroundColor: '#222', spine: { fontFamily: 'Georgia, serif', textHeightMm: 6, color: '#ff0' } },
     };
     const s = restoreSession(v1, initialState);
-    expect(s.variantId).toBe('us-12.5');
-    expect(s.templateKind).toBe('bluray');
+    // Blu-ray Elite (12.5 mm) was removed; it becomes the standard Blu-ray.
+    expect(s.templateId).toBe('bluray-us-11');
+    expect(s.items[0].templateId).toBe('bluray-us-11');
     expect(s.shared.spine).toEqual({ fontFamily: 'Georgia, serif', color: '#ff0' });
     expect(s.items[0].panels?.back?.transform).toEqual({ scale: 2 });
   });

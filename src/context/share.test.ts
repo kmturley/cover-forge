@@ -27,14 +27,14 @@ describe('encodeConfig / decodeConfig', () => {
 });
 
 describe('share link', () => {
-  const state = reducer(reducer(initialState, { type: 'addItem', item: item() }), { type: 'setTemplate', kind: 'cd' });
+  const state = reducer(reducer(initialState, { type: 'addItem', item: item() }), { type: 'setItemTemplate', items: ['steam-1091500'], template: 'cd-jewel' });
 
   it('reopens the same configuration', async () => {
     const link = await buildShareLink(state, 'https://x.dev/cover-forge/?old=1#h');
     expect(link.url.startsWith('https://x.dev/cover-forge/?c=')).toBe(true);
     const startup = await readStartup(new URL(link.url).search);
     const restored = restoreSession(startup.session, initialState);
-    expect(restored.templateKind).toBe('cd');
+    expect(restored.template.kind).toBe('cd');
     expect(restored.items.map((i) => i.title)).toEqual(['Cyberpunk 2077']);
     expect(restored.selectedItemId).toBe('steam-1091500');
   });
@@ -59,26 +59,25 @@ describe('share link', () => {
 
 describe('plain link parameters', () => {
   it('parses known values and ignores bad ones', () => {
-    expect(parseParams('?template=dvd&variant=slim-9&style=retro&view=3d&app=1091500,abc,570,1091500')).toEqual({
-      template: 'dvd',
-      variant: 'slim-9',
-      region: undefined,
-      style: 'retro',
+    expect(parseParams('?template=game-case-ps4&banner=0&view=3d&app=1091500,abc,570,1091500')).toEqual({
+      template: 'game-case-ps4',
+      banner: false,
       view: '3d',
       apps: [1091500, 570],
     });
-    expect(parseParams('?template=nope&view=4d&region=XX')).toMatchObject({ template: undefined, view: undefined, region: undefined, apps: [] });
+    expect(parseParams('?template=nope&view=4d&banner=yes')).toMatchObject({ template: undefined, view: undefined, banner: undefined, apps: [] });
   });
 
-  it('applies template, size, style and view', () => {
-    const s = applyParams(initialState, parseParams('?template=dvd&variant=slim-9&style=digital&view=3d'));
-    expect([s.templateKind, s.variantId, s.styleOverlay, s.view]).toEqual(['dvd', 'slim-9', 'digital', '3d']);
-    expect(s.template.kind).toBe('dvd');
+  it('reads older links: a kind with its variant, an ignored region, one style, and removed templates', () => {
+    expect(parseParams('?template=dvd&variant=slim-9&style=retro')).toMatchObject({ template: 'dvd-slim-9', banner: false });
+    expect(parseParams('?template=bluray&region=EU&style=digital')).toMatchObject({ template: 'bluray-us-11', banner: true });
+    expect(parseParams('?template=game-case-ps1-pal').template).toBe('game-case-ps1');
+    expect(parseParams('?template=cd&variant=slim-9').template).toBe('cd-jewel'); // not a CD size: the CD's default
   });
 
-  it('falls back to the template default when the size is not valid for it', () => {
-    const s = applyParams(initialState, parseParams('?template=cd&variant=slim-9'));
-    expect([s.templateKind, s.variantId]).toEqual(['cd', 'jewel']);
+  it('applies template, banner and view', () => {
+    const s = applyParams(initialState, parseParams('?template=dvd-slim-9&banner=0&view=2d'));
+    expect([s.templateId, s.template.id, s.banner, s.view]).toEqual(['dvd-slim-9', 'dvd-slim-9', false, '2d']);
   });
 
   it('changes nothing when there are no parameters', () => {
@@ -88,19 +87,24 @@ describe('plain link parameters', () => {
 
 describe('loadState', () => {
   it('replaces the whole session', () => {
-    const other = restoreSession(serializeSession(reducer(initialState, { type: 'setTemplate', kind: 'cassette' })), initialState);
-    expect(reducer(initialState, { type: 'loadState', state: other }).templateKind).toBe('cassette');
+    const other = restoreSession(serializeSession(reducer(initialState, { type: 'setItemTemplate', items: [], template: 'cassette-std' })), initialState);
+    expect(reducer(initialState, { type: 'loadState', state: other }).template.kind).toBe('cassette');
   });
 });
 
 describe('readable share link', () => {
   const steam = (id: number, title: string): MediaItem => ({ id: `steam-${id}`, type: 'game', title, sourceId: String(id), assets: { cover: `https://shared.steamstatic.com/store_item_assets/steam/apps/${id}/library_600x900_2x.jpg`, hero: null, logo: null, screenshots: [] } });
-  const base = reducer(reducer(reducer(initialState, { type: 'addItem', item: steam(570, 'Dota 2') }), { type: 'addItem', item: steam(1091500, 'Cyberpunk') }), { type: 'setTemplate', kind: 'cd' });
+  const base = reducer(reducer(reducer(initialState, { type: 'addItem', item: steam(570, 'Dota 2') }), { type: 'addItem', item: steam(1091500, 'Cyberpunk') }), { type: 'setItemTemplate', items: ['steam-570', 'steam-1091500'], template: 'cd-jewel' });
 
   it('uses plain parameters for untouched Steam games, with the selected game last', async () => {
     const { url } = await buildShareLink(reducer(base, { type: 'selectItem', id: 'steam-570' }), 'https://x.dev/');
-    expect(url).toBe('https://x.dev/?template=cd&variant=jewel&region=US&style=clean&view=3d&app=1091500,570');
+    expect(url).toBe('https://x.dev/?template=cd-jewel&banner=1&view=3d&app=1091500,570');
     expect(parseParams(new URL(url).search).apps).toEqual([1091500, 570]);
+  });
+
+  it('needs the packed link when the games use different templates', async () => {
+    const mixed = reducer(base, { type: 'setItemTemplate', items: ['steam-570'], template: 'game-case-ps4' });
+    expect((await buildShareLink(mixed, 'https://x.dev/')).url).toContain('?c=');
   });
 
   it('falls back to the packed link once anything is customised', async () => {

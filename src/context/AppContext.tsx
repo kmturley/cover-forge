@@ -1,9 +1,13 @@
 import { createContext, useContext, useEffect, useMemo, useReducer, useState, type Dispatch, type ReactNode } from 'react';
 import type { MediaItem } from '../types/media';
-import type { PanelId, Region, TemplateConfig, TemplateKind } from '../types/template';
-import type { Design, PanelSettings, SharedSettings, SpineSettings, StyleOverlay } from '../types/editor';
+import type { PanelId, TemplateConfig } from '../types/template';
+import type { Design, PanelSettings, SharedSettings, SpineSettings } from '../types/editor';
 import { DEFAULT_DESIGN_ID } from '../engine/designs';
-import { DEFAULT_KIND, buildTemplate, defaultVariantId, regionsOf, variantsFor } from '../templates';
+import { DEFAULT_TEMPLATE_ID, buildTemplateById } from '../templates';
+import { syncTemplate } from './templateOf';
+
+export { templateIdOf, templateOf } from './templateOf';
+import { defaultTemplateFor, isTemplateId, type LastTemplates } from '../templates/library';
 import { sortItems } from './items';
 import { loadSession, restoreSession, saveSession } from './session';
 import { applyParams, type Startup } from './share';
@@ -21,12 +25,14 @@ export interface AppState {
   panelPulse: number;
   /** UI-only (not persisted). */
   editMode: EditMode;
-  templateKind: TemplateKind;
-  /** Only meaningful for templates whose variants are regional (Blu-ray). */
-  region: Region;
-  variantId: string;
+  /** The template for an empty queue (and any item without one). Also the last one picked, which new items prefer. */
+  templateId: string;
+  /** The selected item's template, built (`templateId`'s when nothing is selected). Derived: the reducer keeps it in step. */
   template: TemplateConfig;
-  styleOverlay: StyleOverlay;
+  /** The case last picked per media type, which new items of that type start with. */
+  lastTemplates: LastTemplates;
+  /** Draw each template's official banner (platform or format header). */
+  banner: boolean;
   /** UI-only (not persisted): guides are a preview aid, so they start off on every visit. */
   showGuides: boolean;
   view: ViewMode;
@@ -48,10 +54,9 @@ export type Action =
   | { type: 'loadState'; state: AppState }
   | { type: 'selectPanel'; panel: PanelId }
   | { type: 'setEditMode'; mode: EditMode }
-  | { type: 'setTemplate'; kind: TemplateKind }
-  | { type: 'setRegion'; region: Region }
-  | { type: 'setVariant'; id: string }
-  | { type: 'setStyleOverlay'; style: StyleOverlay }
+  /** Gives the items a template (none = just the empty-queue one); new items of their types then start with it too. */
+  | { type: 'setItemTemplate'; items: string[]; template: string }
+  | { type: 'setBanner'; banner: boolean }
   | { type: 'setShowGuides'; show: boolean }
   | { type: 'setView'; view: ViewMode }
   | { type: 'setAutoRotate'; autoRotate: boolean }
@@ -75,11 +80,10 @@ export const initialState: AppState = {
   selectedPanel: 'front',
   panelPulse: 0,
   editMode: 'shared',
-  templateKind: DEFAULT_KIND,
-  region: 'US',
-  variantId: defaultVariantId(DEFAULT_KIND),
-  template: buildTemplate(DEFAULT_KIND, defaultVariantId(DEFAULT_KIND)),
-  styleOverlay: 'clean',
+  templateId: DEFAULT_TEMPLATE_ID,
+  template: buildTemplateById(DEFAULT_TEMPLATE_ID),
+  lastTemplates: {},
+  banner: true,
   showGuides: false,
   view: '3d',
   autoRotate: true,
@@ -123,24 +127,22 @@ function mergePanel(existing: PanelSettings | undefined, patch: Partial<PanelSet
   return compact(next);
 }
 
-/** Switches template, keeping the selected panel if the new template has it (otherwise the first panel). */
-export function withTemplate(state: AppState, kind: TemplateKind, region: Region, variantId: string): AppState {
-  const template = buildTemplate(kind, variantId);
-  const selectedPanel = template.panels.some((p) => p.id === state.selectedPanel) ? state.selectedPanel : template.panels[0].id;
-  return { ...state, templateKind: kind, region, variantId: template.variantId, template, selectedPanel };
-}
-
 function updateItem(state: AppState, id: string, f: (i: MediaItem) => MediaItem): AppState {
   return { ...state, items: state.items.map((i) => (i.id === id ? f(i) : i)) };
 }
 
 export function reducer(state: AppState, action: Action): AppState {
+  return syncTemplate(apply(state, action));
+}
+
+function apply(state: AppState, action: Action): AppState {
   switch (action.type) {
     case 'addItem': {
       if (state.items.some((i) => i.id === action.item.id)) {
         return { ...state, selectedItemId: action.item.id };
       }
-      return { ...state, items: sortItems([...state.items, action.item]), selectedItemId: action.item.id };
+      const templateId = isTemplateId(action.item.templateId) ? action.item.templateId : defaultTemplateFor(action.item.type, state.lastTemplates, state.templateId);
+      return { ...state, items: sortItems([...state.items, { ...action.item, templateId }]), selectedItemId: action.item.id };
     }
     case 'removeItem': {
       const items = state.items.filter((i) => i.id !== action.id);
@@ -157,18 +159,15 @@ export function reducer(state: AppState, action: Action): AppState {
       return { ...state, selectedPanel: action.panel, panelPulse: state.panelPulse + 1 };
     case 'setEditMode':
       return { ...state, editMode: action.mode };
-    case 'setTemplate': {
-      const region = regionsOf(action.kind).includes(state.region) ? state.region : (regionsOf(action.kind)[0] ?? state.region);
-      return withTemplate(state, action.kind, region, defaultVariantId(action.kind, region));
+    case 'setItemTemplate': {
+      if (!isTemplateId(action.template)) return state;
+      const ids = new Set(action.items);
+      const lastTemplates = { ...state.lastTemplates };
+      for (const i of state.items) if (ids.has(i.id)) lastTemplates[i.type] = action.template;
+      return { ...state, templateId: action.template, lastTemplates, items: state.items.map((i) => (ids.has(i.id) ? { ...i, templateId: action.template } : i)) };
     }
-    case 'setRegion':
-      return withTemplate(state, state.templateKind, action.region, defaultVariantId(state.templateKind, action.region));
-    case 'setVariant': {
-      const ok = variantsFor(state.templateKind, state.region).some((v) => v.id === action.id);
-      return ok ? withTemplate(state, state.templateKind, state.region, action.id) : state;
-    }
-    case 'setStyleOverlay':
-      return { ...state, styleOverlay: action.style };
+    case 'setBanner':
+      return { ...state, banner: action.banner };
     case 'setShowGuides':
       return { ...state, showGuides: action.show };
     case 'setView':
