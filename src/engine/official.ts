@@ -130,7 +130,7 @@ const PS4_BLUE: Paint = { x: [[0, '#2e4a8e'], [0.5, '#2063a4'], [1, '#1381c0']] 
 const X360_WHITE = '#ffffff';
 
 /** A format's small spine cap and back logo (DVD, CD, VHS…), which have no front header. */
-function format(label: Part[], color: string, bg: string, cap: number, spineLabel: Part[] = label, opts: { across?: number; titleScale?: number; rotate?: number; inset?: number; from?: number; to?: number } = {}): Branding {
+function format(label: Part[], color: string, bg: string, cap: number, spineLabel: Part[] = label, opts: { across?: number; titleScale?: number; rotate?: 0 | 90 | -90; inset?: number; from?: number; to?: number } = {}): Branding {
   return {
     front: { shape: 'none', marks: [] },
     spine: cap ? { cap: { length: cap, fill: bg }, marks: [{ parts: spineLabel, color, from: opts.from ?? opts.inset ?? 0.015, to: opts.to ?? cap - (opts.inset ?? 0.015), across: opts.across ?? 0.7, rotate: opts.rotate ?? 0 }], titleScale: opts.titleScale } : undefined,
@@ -510,10 +510,11 @@ function part(ctx: Ctx, p: Part, color: string, unit: number, gapUnits: number):
       },
     };
   }
-  if ('logo' in p) {
+  {
+    // What is left is a supplied logo.
     const l = getLogo(p.logo);
     if (!l) return { w: 0, h: 0, draw: () => {} };
-    const used = l.layers.map((layer, i) => i).filter((i) => !p.only || p.only.includes(i));
+    const used = l.layers.map((_, i) => i).filter((i) => !p.only || p.only.includes(i));
     const boxes = used.map((i) => l.layers[i].box);
     const [lx0, ly0, lx1, ly1] = [Math.min(...boxes.map((b) => b[0])), Math.min(...boxes.map((b) => b[1])), Math.max(...boxes.map((b) => b[2])), Math.max(...boxes.map((b) => b[3]))];
     // `crop` keeps only a share of the artwork, as fractions of its bounds: [left, top, right, bottom].
