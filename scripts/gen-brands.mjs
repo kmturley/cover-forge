@@ -215,12 +215,14 @@ function parseLogo(svg, id) {
     const fill = colour(rawFill);
     const gradient = gradientOf(rawFill, [x0, y0, x1, y1], shift ? IDENTITY : total);
     const stroke = prop('stroke') === 'none' ? undefined : prop('stroke');
+    const reach = stroke ? Number(prop('stroke-width')?.replace('px', '') ?? 1) / 2 : 0;
     layers.push({
       d,
       ...(fill !== null && { fill }),
       ...(gradient && { gradient }),
       ...(stroke && { stroke: colour(stroke), strokeWidth: Number(prop('stroke-width')?.replace('px', '') ?? 1), ...(prop('stroke-linecap') && prop('stroke-linecap') !== 'butt' && { strokeCap: prop('stroke-linecap') }) }),
-      box: [x0 + ox, y0 + oy, x1 + ox, y1 + oy],
+      // A stroke reaches half its width past the path's own bounds.
+      box: [x0 + ox - reach, y0 + oy - reach, x1 + ox + reach, y1 + oy + reach],
       offset: [ox, oy],
     });
   }

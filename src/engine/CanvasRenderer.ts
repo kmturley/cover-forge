@@ -12,7 +12,7 @@ import { drawLogo } from './logo';
 import { drawCode } from './code';
 import { drawBorder } from './border';
 import { getBrand } from '../brands';
-import { drawOfficial, spineTitleCase, spineTitleColor, spineTitleStartMm } from './official';
+import { drawOfficial, spineTitleCase, spineTitleColor, spineTitleScale, spineTitleStartMm } from './official';
 
 export interface Scene {
   template: TemplateConfig;
@@ -83,7 +83,7 @@ export function renderCover(
     const settings = { ...chosen, color: spineTitleColor(t.kind, t.variantId, digital, chosen.color) };
     for (const p of t.panels) {
       // Branded spines have a cap and marks at their start; keep the title clear of them.
-      if (p.text) drawSpineText(ctx, p, spineTitleCase(t.kind, t.variantId, digital, spineText(item, settings)), settings, px, p.text, { start: spineTitleStartMm(t.kind, t.variantId, digital, p.text === 'vertical' ? p.heightMm : p.widthMm), end: 0 });
+      if (p.text) drawSpineText(ctx, p, spineTitleCase(t.kind, t.variantId, digital, spineText(item, settings)), settings, px, p.text, { start: spineTitleStartMm(t.kind, t.variantId, digital, p.text === 'vertical' ? p.heightMm : p.widthMm), end: 0 }, spineTitleScale(t.kind, t.variantId, digital));
     }
   }
 

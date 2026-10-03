@@ -37,7 +37,7 @@ describe('branding', () => {
 
   it('only leaves room for the cap when Branded is on', () => {
     expect(spineTitleStartMm('bluray', 'us-11', false, 148)).toBe(0);
-    expect(spineTitleStartMm('bluray', 'us-11', true, 148)).toBeCloseTo(0.12 * 148);
+    expect(spineTitleStartMm('bluray', 'us-11', true, 148)).toBeCloseTo(0.1 * 148);
     // PS4 caps the top 22.8% of the spine; the title starts past it.
     expect(spineTitleStartMm('game-case', 'ps4', true, 160)).toBeCloseTo(0.2477 * 160);
     // Switch spines are red along their length; the title starts under the icon.

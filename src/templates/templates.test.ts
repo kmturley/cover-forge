@@ -110,7 +110,11 @@ describe('template dimensions', () => {
     expect(w).toBeCloseTo(103.2 + 6);
     expect(h).toBeCloseTo(101.6 + 6);
   });
-  it('CR80 card: portrait 54 × 85.6 mm plus 1 mm bleed', () => expect(size('nfc-card', 'cr80')).toEqual([56, 87.6]));
+  it('CR80 card: two portrait 54 × 85.6 mm cards plus 1 mm bleed', () => {
+    const t = buildTemplate('nfc-card');
+    expect(t.panels.map((q) => [q.widthMm, q.heightMm])).toEqual([[54, 85.6], [54, 85.6]]);
+    expect(t.totalHeightMm).toBeCloseTo(87.6);
+  });
   it('3.5" floppy label: 69.85 mm square plus 1 mm bleed', () => {
     const [w, h] = size('floppy');
     expect(w).toBeCloseTo(71.85);
@@ -231,21 +235,21 @@ describe('NFC box net', () => {
     expect(m.label).toMatch(/NFC/);
   });
 
-  it('has a slim card box, a small box and a wallet, each with its own layout', () => {
-    for (const v of ['card', 'small', 'wallet']) {
+  it('has a slim card box and a wallet, each with its own layout', () => {
+    for (const v of ['card', 'wallet']) {
       const box = buildTemplate('nfc-box', v);
       expect(box.variantId).toBe(v);
       expect(box.preview.kind).toBe('box');
     }
-    expect(buildTemplate('nfc-box', 'small').panels.find((q) => q.id === 'top')!.heightMm).toBe(25);
+    expect(buildTemplate('nfc-box', 'small').variantId).toBe('card'); // the keepsake box is gone
     expect(buildTemplate('nfc-box', 'nonsense').variantId).toBe('card');
   });
 
-  it('the wallet is a spineless slip cover: front | back | glue tab, folded between front and back', () => {
+  it('the wallet is a spineless slip cover: back | front | glue tab, folded between back and front', () => {
     const w = buildTemplate('nfc-box', 'wallet');
-    expect(w.panels.map((q) => q.id)).toEqual(['front', 'back', 'glue']);
+    expect(w.panels.map((q) => q.id)).toEqual(['back', 'front', 'glue']);
     expect(w.panels.some((q) => q.text)).toBe(false);
-    expect(neighbour(w.panels, w.panels[0], 'right')?.id).toBe('back');
+    expect(neighbour(w.panels, w.panels[0], 'right')?.id).toBe('front');
     expect(edgeSegments(w).filter((s) => s.kind === 'fold')).toHaveLength(2);
     expect(w.preview).toMatchObject({ kind: 'box', faces: { '+z': 'front', '-z': 'back' } });
     expect(w.marks).toHaveLength(1);
@@ -265,10 +269,10 @@ describe('NFC sticker', () => {
 });
 
 describe('NFC card back', () => {
-  it('front + back (the default) has a second, separate card; front only has just the one', () => {
-    expect(buildTemplate('nfc-card', 'cr80').panels).toHaveLength(1);
+  it('has the back on the left and the front on the right, as two separate cards', () => {
     const t = buildTemplate('nfc-card', 'cr80-duplex');
-    expect(t.panels.map((q) => q.id)).toEqual(['front', 'back']);
+    expect(t.panels.map((q) => q.id)).toEqual(['back', 'front']);
+    expect(t.panels[1].xMm).toBeGreaterThan(t.panels[0].xMm);
     expect(t.totalWidthMm).toBeGreaterThan(54 * 2 + 2);
     expect(neighbour(t.panels, t.panels[0], 'right')).toBeUndefined(); // two cards, not a fold
     expect(t.preview).toMatchObject({ kind: 'slab', panel: 'front', backPanel: 'back' });
@@ -276,6 +280,8 @@ describe('NFC card back', () => {
 
   it('is the default NFC card variant', () => {
     expect(defaultVariantId('nfc-card')).toBe('cr80-duplex');
-    expect(buildTemplate('nfc-card').panels.map((q) => q.id)).toEqual(['front', 'back']);
+    expect(buildTemplate('nfc-card').panels.map((q) => q.id)).toEqual(['back', 'front']);
+    // There is no front-only variant.
+    expect(variantsFor('nfc-card').map((v) => v.id)).toEqual(['cr80-duplex']);
   });
 });

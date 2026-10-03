@@ -102,17 +102,23 @@ export function drawSpineText(
   px: number,
   /** 'vertical' reads top-to-bottom (rotated 90° CW) along a tall spine; 'horizontal' runs along a wide, short one (J-card). */
   orientation: 'vertical' | 'horizontal' = 'vertical',
-  /** Space to leave clear at the start (top / left) and end of the spine, e.g. for a cap. */
-  inset: { start: number; end: number } = { start: 0, end: 0 },
+  /** Space a cap or mark takes at the start (top / left) and end of the spine. The text stays centred on the spine and shrinks to keep clear of it. */
+  space: { start: number; end: number } = { start: 0, end: 0 },
+  /** Scales the automatic size (not a size the user set). */
+  scale = 1,
 ): void {
   if (!text) return;
+  // Centred whatever sits at either end: the clearance is the larger of the two, applied to both sides.
+  const clear = Math.max(space.start, space.end);
+  const inset = { start: clear, end: clear };
   const marginMm = SPINE_MARGIN_MM;
   const vertical = orientation === 'vertical';
   const lengthMm = vertical ? box.heightMm : box.widthMm; // the direction the text runs
   const thicknessMm = vertical ? box.widthMm : box.heightMm; // the direction that limits glyph height
   const maxLengthPx = (lengthMm - marginMm * 2 - inset.start - inset.end) * px;
+  // The size ignores the branding (a Branded spine's title is as big as an unbranded one); only a title too long to fit shrinks.
   // Cap height ≈ 0.72 em. Never let the glyphs fill more than 80% of the spine's thickness.
-  const capHeightMm = Math.min(s.textHeightMm ?? defaultCapHeightMm(box, orientation, inset), thicknessMm * 0.8);
+  const capHeightMm = Math.min(s.textHeightMm ?? defaultCapHeightMm(box, orientation) * scale, thicknessMm * 0.8);
   let sizePx = (capHeightMm * px) / CAP_HEIGHT_EM;
 
   ctx.save();
@@ -128,9 +134,7 @@ export function drawSpineText(
     ctx.font = `700 ${sizePx}px ${s.fontFamily}`;
   }
   const capPx = ctx.measureText('H').actualBoundingBoxAscent || sizePx * CAP_HEIGHT_EM;
-  // Shift the text's centre along its run so it sits in the space left after the insets.
-  const shift = (inset.start - inset.end) / 2;
-  ctx.translate((box.xMm + box.widthMm / 2 + (vertical ? 0 : shift)) * px, (box.yMm + box.heightMm / 2 + (vertical ? shift : 0)) * px);
+  ctx.translate((box.xMm + box.widthMm / 2) * px, (box.yMm + box.heightMm / 2) * px);
   if (vertical) ctx.rotate(Math.PI / 2);
   if (s.rotationDeg) ctx.rotate((s.rotationDeg * Math.PI) / 180);
   ctx.fillText(text, 0, capPx / 2);

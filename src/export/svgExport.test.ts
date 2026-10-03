@@ -30,7 +30,7 @@ describe('buildItemSvg', () => {
   });
 
   it('a single-panel label has cut lines only', async () => {
-    const text = await buildItemSvg(fakeCanvas(), buildTemplate('nfc-card', 'cr80'), true).text();
+    const text = await buildItemSvg(fakeCanvas(), buildTemplate('floppy'), true).text();
     expect(count(text, /stroke-dasharray/g)).toBe(0);
     expect(count(text, /<line /g)).toBe(4);
   });
@@ -59,8 +59,8 @@ describe('buildSheetSvg', () => {
   });
 
   it('omits guides on die-cut label sheets even if asked (their placements carry a crop)', () => {
-    const t = buildTemplate('nfc-card', 'cr80');
-    const layout = computeLayout(t, 'Letter', 'avery-5395');
+    const t = buildTemplate('floppy');
+    const layout = computeLayout(t, 'Letter', 'avery-5196');
     expect(layout.placements.every((p) => !!p.crop)).toBe(true);
   });
 });

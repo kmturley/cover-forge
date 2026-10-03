@@ -138,7 +138,6 @@ const DVD: Record<string, { label: string; spine: number }> = {
 /** Boxes that hold an NFC item: a slim one for a CR80 card (54 × 85.6 × 0.8 mm plus room to slide) and a small keepsake box. */
 const NFC_BOX: Record<string, { label: string; w: number; h: number; d: number }> = {
   card: { label: 'NFC Card Box', w: 58, h: 90, d: 6 },
-  small: { label: 'NFC Keepsake Box', w: 60, h: 60, d: 25 },
 };
 const NFC_WALLET = { w: 58, h: 90 };
 const NFC_STICKER_MM: Record<string, number> = { '25': 25, '30': 30, '35': 35 };
@@ -211,7 +210,8 @@ function tuckBox(b: TuckBox): TemplateConfig {
 }
 
 /**
- * A slip-cover wallet with no spine: one strip [ front | back | glue tab ] folded once between front and back. The
+ * A slip-cover wallet with no spine: one strip [ back | front | glue tab ] folded once between back and front (front on
+ * the right, like every other template). The
  * tab is stuck inside the far edge, leaving a flat pocket open at the top for the card.
  */
 function wallet(name: string, w: number, h: number, marks: (panels: PanelRect[]) => TemplateMark[]): TemplateConfig {
@@ -224,8 +224,8 @@ function wallet(name: string, w: number, h: number, marks: (panels: PanelRect[])
       {
         dir: 'row',
         specs: [
-          { id: 'front', label: 'Front', w, h },
           { id: 'back', label: 'Back', w, h },
+          { id: 'front', label: 'Front', w, h },
           { id: 'glue', label: 'Glue tab', w: 8, h },
         ],
       },
@@ -438,21 +438,18 @@ export const TEMPLATE_DEFS: TemplateDef[] = [
     kind: 'nfc-card',
     name: 'NFC card',
     group: 'Labels & cards',
-    variants: [
-      { id: 'cr80-duplex', label: 'NFC Card' },
-      { id: 'cr80', label: 'NFC Card (front only)' },
-    ],
-    build: (id) => {
-      const duplex = id === 'cr80-duplex';
-      return assemble({
+    variants: [{ id: 'cr80-duplex', label: 'NFC Card' }],
+    build: () =>
+      assemble({
         kind: 'nfc-card',
         name: 'NFC card',
-        variantId: duplex ? 'cr80-duplex' : 'cr80',
+        variantId: 'cr80-duplex',
         bleedMm: 1,
-        // Two separate cards side by side (not folded), so each gets its own bleed.
+        // Two separate cards side by side (not folded), so each gets its own bleed. The back is on the left and the
+        // front on the right, like the other templates.
         pieces: [
+          { dir: 'row', specs: [{ id: 'back', label: 'Card back', w: 54, h: 85.6 }] },
           { dir: 'row', specs: [{ id: 'front', label: 'Card face', w: 54, h: 85.6 }] },
-          ...(duplex ? [{ dir: 'row' as const, specs: [{ id: 'back' as const, label: 'Card back', w: 54, h: 85.6 }] }] : []),
         ],
         preview: {
           kind: 'slab',
@@ -461,12 +458,11 @@ export const TEMPLATE_DEFS: TemplateDef[] = [
           bodyDepthMm: 0.76,
           body: { color: '#f4f4f2', roughness: 0.4 },
           panel: 'front',
-          backPanel: duplex ? 'back' : undefined,
+          backPanel: 'back',
           fullFace: true,
           radiusMm: 3.18,
         },
-      });
-    },
+      }),
   },
   {
     kind: 'nfc-sticker',

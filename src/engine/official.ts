@@ -107,6 +107,8 @@ export interface SpineBranding {
   marks: SpanMark[];
   /** Where the title may start (fraction of L). Default: just past the cap and the marks. */
   titleFrom?: number;
+  /** Scales the title's automatic size (the VHS spine's is a little larger). */
+  titleScale?: number;
   /** The title's colour when the chosen one wouldn't show on `fill` (dark grey on Wii's white spine). */
   titleColor?: string;
   /** Forces the title's letter case on this spine (PS1's is always printed in caps). */
@@ -133,36 +135,43 @@ const X360_WHITE = '#ffffff';
 const GFW_WHITE: Paint = { y: [[0, '#f2f2f0'], [1, '#fbfbfb']] };
 
 /** A format's small spine cap and back logo (DVD, CD, VHS…), which have no front header. */
-function format(label: Part[], color: string, bg: string, cap: number): Branding {
+function format(label: Part[], color: string, bg: string, cap: number, spineLabel: Part[] = label, opts: { across?: number; titleScale?: number; rotate?: number; inset?: number; from?: number; to?: number } = {}): Branding {
   return {
     front: { shape: 'none', marks: [] },
-    spine: cap ? { cap: { length: cap, fill: bg }, marks: [{ parts: label, color, from: 0.015, to: cap - 0.015, across: 0.7, rotate: 0 }] } : undefined,
+    spine: cap ? { cap: { length: cap, fill: bg }, marks: [{ parts: spineLabel, color, from: opts.from ?? opts.inset ?? 0.015, to: opts.to ?? cap - (opts.inset ?? 0.015), across: opts.across ?? 0.7, rotate: opts.rotate ?? 0 }], titleScale: opts.titleScale } : undefined,
     back: [{ parts: label, color, h: 0.035, align: 'left', inset: 0.05, cy: 0.94, plate: bg }],
   };
 }
 
+/** The contactless symbol that follows the word NFC: the card is touch enabled. */
+const NFC_WAVES: Part[] = [{ logo: 'nfc', h: 0.82 }];
+
 /** A plain band with a text label, for formats with no retail convention (floppy, NFC). */
-function labelBand(text: string, bg: string, fg: string, h: number, cap: number): Branding {
+function labelBand(text: string, bg: string, fg: string, h: number, cap: number, after: Part[] = [], scale = 1, spineBg = true, align: 'left' | 'center' = 'left'): Branding {
+  const label: Part[] = [{ text, weight: 700, h: after.length ? 0.92 : 1 }, ...after];
+  // The spine label stays centred in the cap (nudged down a touch) and shrinks with `scale`.
+  const half = (cap / 2 - 0.015) * scale;
+  const down = after.length ? 0.004 : 0;
   return {
-    front: { shape: 'band', depth: flat(h), fill: bg, marks: [{ parts: [{ text, weight: 700 }], color: fg, h: h * 0.45, align: 'left', inset: 0.05 }] },
-    spine: cap ? { cap: { length: cap, fill: bg }, marks: [{ parts: [{ text, weight: 700 }], color: fg, from: 0.015, to: cap - 0.015, rotate: 90 }] } : undefined,
+    front: { shape: 'band', depth: flat(h), fill: bg, marks: [{ parts: label, color: fg, h: h * 0.45 * scale, align, ...(align === 'left' && { inset: 0.05 }), cy: h / 2 + (after.length ? 0.005 : 0) }] },
+    spine: cap ? { ...(spineBg && { cap: { length: cap, fill: bg } }), marks: [{ parts: label, color: fg, from: cap / 2 - half + down, to: cap / 2 + half + down, rotate: 90 }] } : undefined,
   };
 }
 
 export const FORMAT_BRANDING: Record<TemplateKind, Branding> = {
   bluray: {
-    front: { shape: 'band', depth: flat(0.08), fill: '#0a4da2', marks: [{ parts: [{ text: 'Blu-ray Disc', weight: 700 }], color: W, h: 0.035, align: 'center' }] },
-    spine: { cap: { length: 0.1, fill: '#0a4da2' }, marks: [{ parts: [{ text: 'BD', weight: 800 }], color: W, from: 0.02, to: 0.08, across: 0.7, rotate: 0 }] },
+    front: { shape: 'band', depth: flat(0.08), fill: '#0a4da2', marks: [{ parts: [{ logo: 'bluray' }], color: W, h: 0.06, align: 'center' }] },
+    spine: { cap: { length: 0.08, fill: '#0a4da2' }, marks: [{ parts: [{ logo: 'bluray' }], color: W, from: 0.008, to: 0.072, across: 0.85, rotate: 0 }] },
   },
-  dvd: format([{ stack: [{ text: 'DVD', weight: 800, h: 0.65 }, { text: 'VIDEO', weight: 600, h: 0.35, spacing: 0.15 }] }], W, '#141414', 0.08),
-  vhs: format([{ text: 'VHS', weight: 800 }], '#ffd200', '#141414', 0.08),
-  cd: format([{ stack: [{ text: 'COMPACT', weight: 700, h: 0.4, spacing: 0.1 }, { text: 'DISC', weight: 800, h: 0.6 }] }], W, '#141414', 0.1),
-  cassette: format([{ text: 'TAPE', weight: 800 }], '#ffd200', '#141414', 0.16),
+  dvd: format([{ stack: [{ text: 'DVD', weight: 800, h: 0.65 }, { text: 'VIDEO', weight: 600, h: 0.35, spacing: 0.15 }] }], W, '#141414', 0.08, [{ logo: 'dvd' }]),
+  vhs: format([{ logo: 'vhs' }], W, '#141414', 0.08, undefined, { across: 0.58, titleScale: 1.25 }),
+  cd: format([{ logo: 'cd' }], W, '#141414', 0.108, undefined, { across: 0.9, rotate: 90, from: 0.022, to: 0.102 }),
+  cassette: format([{ logo: 'cassette', color: W }], W, '#141414', 0.26, undefined, { across: 0.9, rotate: 90, from: 0.035, to: 0.225, titleScale: 1.3 }),
   vinyl: format([{ text: 'STEREO · 33⅓ RPM', weight: 700 }], '#f5e642', '#1a1a1a', 0),
   floppy: labelBand('FLOPPY', '#22252b', W, 0.086, 0),
-  'nfc-card': labelBand('NFC', '#1a73e8', W, 0.082, 0),
-  'nfc-sticker': labelBand('NFC', '#1a73e8', W, 0.1, 0),
-  'nfc-box': labelBand('NFC', '#1a73e8', W, 0.078, 0.13),
+  'nfc-card': labelBand('NFC', '#1a73e8', W, 0.082, 0, NFC_WAVES, 0.85),
+  'nfc-sticker': labelBand('NFC', '#1a73e8', W, 0.1, 0, NFC_WAVES, 0.85, true, 'center'),
+  'nfc-box': labelBand('NFC', '#1a73e8', W, 0.078, 0.13, NFC_WAVES, 0.85, false),
   'game-case': labelBand('GAME', '#1a1a1a', W, 0.1, 0.12),
 };
 
@@ -183,9 +192,9 @@ export const GAME_CASE_BRANDING: Record<string, Branding> = {
     front: {
       shape: 'strip', w: 0.155, fill: K,
       marks: [
-        { parts: [{ stack: [{ logo: 'playstation-mark-colour' }, { logo: 'playstation-wordmark', mono: true, crop: [0, 0, 0.94, 1], h: 0.22 }] }], color: W, frame: { color: W }, gap: 0.3, from: 0.034, to: 0.1325, across: 0.635, dx: -0.052, rotate: 0 },
-        { parts: [{ logo: 'sony-logo', ink: '#013999' }], color: W, from: 0.84, to: 0.98, across: 0.62, dx: 0.04, rotate: 0 },
-        { parts: [{ logo: 'playstation-wordmark', mono: true }], color: W, from: 0.168, to: 0.79, across: 0.85, dx: 0.06, rotate: -90 },
+        { parts: [{ stack: [{ logo: 'playstation-mark-colour' }, { logo: 'playstation-wordmark', mono: true, crop: [0, 0, 0.94, 1], h: 0.22 }] }], color: W, frame: { color: W }, gap: 0.3, from: 0.034, to: 0.1325, across: 0.635, dx: -0.005, rotate: 0 },
+        { parts: [{ logo: 'sony-logo', ink: '#013999' }], color: W, from: 0.84, to: 0.98, across: 0.62, dx: -0.0035, rotate: 0 },
+        { parts: [{ logo: 'playstation-wordmark', mono: true }], color: W, from: 0.168, to: 0.79, across: 0.85, dx: 0.064, rotate: -90 },
       ],
     },
     spine: {
@@ -205,7 +214,7 @@ export const GAME_CASE_BRANDING: Record<string, Branding> = {
     },
     spine: {
       cap: { length: 0.278, fill: K },
-      outline: { color: W, mm: 0.25, top: false, rightFrom: 0.106 },
+      outline: { color: W, mm: 0.25, top: false, rightFrom: 0.104 },
       marks: [
         { parts: [{ logo: 'playstation-mark-colour' }], color: K, plate: W, plateAcross: 0.79, from: 0.018, to: 0.0776, across: 0.6, rotate: 0 },
         { parts: [{ logo: 'playstation-2-wordmark', mono: true }], color: W, from: 0.1065, to: 0.262, rotate: 90 },
@@ -379,6 +388,11 @@ export const GAME_CASE_BRANDING: Record<string, Branding> = {
 /** The branding for a template: its platform's for game cases, else its format's. */
 export function brandingFor(kind: TemplateKind, variantId: string): Branding {
   return kind === 'game-case' ? (GAME_CASE_BRANDING[variantId] ?? FORMAT_BRANDING['game-case']) : FORMAT_BRANDING[kind];
+}
+
+/** How much to scale a spine title's automatic size by (1 unless the format asks for more). */
+export function spineTitleScale(kind: TemplateKind, variantId: string, branded: boolean): number {
+  return (branded ? brandingFor(kind, variantId).spine?.titleScale : undefined) ?? 1;
 }
 
 /** Room to leave at the start of a spine's title for the cap and marks (0 when Branded is off). */
@@ -920,10 +934,15 @@ function drawSpine(ctx: Ctx, t: TemplateConfig, p: PanelRect, s: SpineBranding, 
     const [ow, oh] = [p.widthMm * px, (s.cap && vertical ? s.cap.length * along : p.heightMm * px)];
     const rightFrom = (s.outline.rightFrom ?? 0) * along;
     ctx.fillStyle = s.outline.color;
-    if (s.outline.top !== false) ctx.fillRect(x0, y0, ow, lw);
-    ctx.fillRect(x0, y0, lw, oh);
-    ctx.fillRect(x0, y0 + oh - lw, ow, lw);
-    if (s.outline.right !== false) ctx.fillRect(x0 + ow - lw, y0 + rightFrom, lw, oh - rightFrom);
+    // Each side is snapped outwards to whole pixels, so it meets a line drawn by the neighbouring panel with no gap.
+    const edge = (x: number, y: number, w: number, h: number) => {
+      const [fx, fy] = [Math.floor(x), Math.floor(y)];
+      ctx.fillRect(fx, fy, Math.ceil(x + w) - fx, Math.ceil(y + h) - fy);
+    };
+    if (s.outline.top !== false) edge(x0, y0, ow, lw);
+    edge(x0, y0, lw, oh);
+    edge(x0, y0 + oh - lw, ow, lw);
+    if (s.outline.right !== false) edge(x0 + ow - lw, y0 + rightFrom, lw, oh - rightFrom);
   }
   for (const m of s.marks) drawSpan(ctx, m, { x: x0, y: y0, across, along }, vertical ? 'vertical' : 'horizontal', px);
 }

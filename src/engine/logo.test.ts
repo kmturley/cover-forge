@@ -44,7 +44,7 @@ describe('default logo size on small templates', () => {
     const vhs = buildTemplate('vhs', 'std-25');
     const spine = computeLogoPlacement(vhs, vhs.panels.find((p) => p.id === 'spine')!, 1, DEFAULT_LOGO);
     expect(spine.widthMm).toBeLessThanOrEqual(10);
-    const card = buildTemplate('nfc-card', 'cr80');
+    const card = buildTemplate('nfc-card');
     expect(computeLogoPlacement(card, card.panels[0], 1, DEFAULT_LOGO).widthMm).toBeLessThan(24);
   });
 });

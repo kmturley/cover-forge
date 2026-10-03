@@ -51,7 +51,7 @@ describe('createBodyGeometry', () => {
   });
 
   it('a card prints its front over the whole face, while a floppy uses a separate label', () => {
-    expect(printedFaces(buildTemplate('nfc-card', 'cr80').preview)).toEqual({ '+z': 'front' });
+    expect(printedFaces(buildTemplate('nfc-card').preview)).toEqual({ '+z': 'front', '-z': 'back' });
     expect(printedFaces(buildTemplate('floppy').preview)).toEqual({});
     const floppy = buildTemplate('floppy');
     const label = createLabelGeometry(floppy, 'front');
@@ -106,7 +106,7 @@ describe('slab bodies (cards, disks, stickers)', () => {
   };
 
   it('a card keeps its real 3.18 mm corners (the outline has arcs, not a thin box edge)', () => {
-    const { spec } = slab('nfc-card', 'cr80');
+    const { spec } = slab('nfc-card', 'cr80-duplex');
     const pts = slabOutline(spec).getPoints(12);
     expect(pts.length).toBeGreaterThan(30);
     // The corner sits 3.18 mm in from the corner point: nothing lies at the sharp corner itself.
@@ -148,7 +148,7 @@ describe('inset faces', () => {
   });
 
   it('leaves every other case, box and card printed straight onto its faces', () => {
-    for (const [kind, id] of [['dvd', 'std-14'], ['bluray', 'us-11'], ['vhs', 'std-25'], ['cassette', 'std'], ['nfc-box', 'card'], ['nfc-box', 'small'], ['nfc-card', 'cr80']] as const) {
+    for (const [kind, id] of [['dvd', 'std-14'], ['bluray', 'us-11'], ['vhs', 'std-25'], ['cassette', 'std'], ['nfc-box', 'card'], ['nfc-card', 'cr80-duplex']] as const) {
       const t = buildTemplate(kind, id);
       expect(insetFaces(t, t.preview), `${kind}/${id}`).toEqual([]);
     }
