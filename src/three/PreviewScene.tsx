@@ -4,6 +4,7 @@ import { ContactShadows, Environment, OrbitControls } from '@react-three/drei';
 import { MeshStandardMaterial, type BufferGeometry, type Texture } from 'three';
 import type { TemplateConfig } from '../types/template';
 import { FACE_ORDER, createBodyGeometry, createInsetGeometry, createLabelGeometry, createLabelSliceGeometry, createSlabBodyGeometry, createSlabFaceGeometry, bodyPrintedFaces, insetFaces, insetPlacement, labelWrap, modelSizeMm, previewScale } from './PreviewGeometry';
+import { Measurements3D } from './Measurements3D';
 import { createBodyMaterial, createSleeveMaterial } from './PreviewMaterials';
 
 /** Three-quarter view showing the left edge (-X), top edge (+Y) and front (+Z). Tune via the console log. */
@@ -114,7 +115,7 @@ function Model({ texture, template }: { texture: Texture; template: TemplateConf
   );
 }
 
-export function PreviewScene({ texture, template, autoRotate = false }: { texture: Texture; template: TemplateConfig; autoRotate?: boolean }) {
+export function PreviewScene({ texture, template, autoRotate = false, showMeasurements = false }: { texture: Texture; template: TemplateConfig; autoRotate?: boolean; showMeasurements?: boolean }) {
   const controls = useRef<ElementRef<typeof OrbitControls>>(null);
   const [, height] = modelSizeMm(template.preview);
   // Logged after each drag/zoom so a good angle can be copied into DEFAULT_CAMERA_POSITION.
@@ -126,6 +127,7 @@ export function PreviewScene({ texture, template, autoRotate = false }: { textur
     <Canvas camera={{ fov: 40, position: DEFAULT_CAMERA_POSITION }} dpr={[1, 2]}>
       <Environment preset="city" />
       <Model texture={texture} template={template} />
+      {showMeasurements && <Measurements3D spec={template.preview} template={template} />}
       <ContactShadows position={[0, (-height * previewScale(template.preview)) / 2 - 0.02, 0]} opacity={0.5} blur={2.5} scale={6} />
       <OrbitControls
         ref={controls}

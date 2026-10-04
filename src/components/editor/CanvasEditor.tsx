@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useAppDispatch, useAppState, useSelectedItem } from '../../context/AppContext';
 import { useSelectionPulse } from '../../context/useSelectionPulse';
 import { CanvasRenderer } from '../../engine/CanvasRenderer';
+import { MEASURE_MARGIN_MM, drawMeasurements } from '../../engine/MeasurementOverlay';
 
 const PADDING = 24;
 const MIN_ZOOM = 0.25;
@@ -23,11 +24,12 @@ const FIT: View = { ox: 0, oy: 0, k: 1 };
  * (about the cursor); images are positioned from the sidebar. A click selects the panel under the cursor.
  */
 export function CanvasEditor() {
-  const { template, shared, designs, showGuides, banner } = useAppState();
+  const { template, shared, designs, showGuides, showMeasurements, banner } = useAppState();
   const item = useSelectedItem();
   const dispatch = useAppDispatch();
   const wrapRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const measureRef = useRef<HTMLCanvasElement>(null);
   const rendererRef = useRef<CanvasRenderer | null>(null);
   const [box, setBox] = useState({ w: 0, h: 0 });
   const [view, setView] = useState<View>(FIT);
@@ -44,7 +46,7 @@ export function CanvasEditor() {
   }, []);
 
   useEffect(() => {
-    rendererRef.current?.setScene({ template, item, shared, designs, banner, showGuides });
+    rendererRef.current?.setScene({ template, item, shared, designs, banner, showGuides, hideOutsideCut: true });
   }, [template, item, shared, designs, banner, showGuides]);
 
   // Track the viewport size so the canvas can be fitted to it.
@@ -59,6 +61,19 @@ export function CanvasEditor() {
   const fitW = box.w ? Math.max(1, Math.min(box.w - PADDING * 2, (box.h - PADDING * 2) * aspect)) : 0;
   const w = fitW * view.k;
   const h = w / aspect;
+
+  // Dimensions live on their own canvas, larger than the cover, so they sit in the margin around it.
+  useEffect(() => {
+    const c = measureRef.current;
+    if (!c || !showMeasurements || !fitW) return;
+    const dpr = window.devicePixelRatio || 1;
+    const px = (w / template.totalWidthMm) * dpr;
+    c.width = Math.round((template.totalWidthMm + MEASURE_MARGIN_MM * 2) * px);
+    c.height = Math.round((template.totalHeightMm + MEASURE_MARGIN_MM * 2) * px);
+    const ctx = c.getContext('2d')!;
+    ctx.translate(MEASURE_MARGIN_MM * px, MEASURE_MARGIN_MM * px);
+    drawMeasurements(ctx, template, px);
+  }, [template, showMeasurements, w, fitW]);
 
   // Wheel zoom must be a non-passive native listener so it can preventDefault (stops the page scrolling).
   const boxRef = useRef(box);
@@ -127,6 +142,18 @@ export function CanvasEditor() {
         className="editor-canvas"
         style={{ left: box.w / 2 + view.ox - w / 2, top: box.h / 2 + view.oy - h / 2, width: w, height: h, visibility: fitW ? 'visible' : 'hidden' }}
       />
+      {showMeasurements && fitW > 0 && (
+        <canvas
+          ref={measureRef}
+          className="measure-canvas"
+          style={{
+            left: box.w / 2 + view.ox - w / 2 - (MEASURE_MARGIN_MM / template.totalWidthMm) * w,
+            top: box.h / 2 + view.oy - h / 2 - (MEASURE_MARGIN_MM / template.totalWidthMm) * w,
+            width: w + (MEASURE_MARGIN_MM * 2 * w) / template.totalWidthMm,
+            height: h + (MEASURE_MARGIN_MM * 2 * w) / template.totalWidthMm,
+          }}
+        />
+      )}
       {pulsed && fitW > 0 && (
         <div
           key={pulse.key}

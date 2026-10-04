@@ -36,6 +36,8 @@ export interface AppState {
   banner: boolean;
   /** UI-only (not persisted): guides are a preview aid, so they start off on every visit. */
   showGuides: boolean;
+  /** UI-only (not persisted): dimension lines in mm on the 2D and 3D views. */
+  showMeasurements: boolean;
   view: ViewMode;
   /** UI-only (not persisted): slowly spins the 3D model as a hands-free product demo. */
   autoRotate: boolean;
@@ -59,6 +61,7 @@ export type Action =
   | { type: 'setItemTemplate'; items: string[]; template: string }
   | { type: 'setBanner'; banner: boolean }
   | { type: 'setShowGuides'; show: boolean }
+  | { type: 'setShowMeasurements'; show: boolean }
   | { type: 'setView'; view: ViewMode }
   | { type: 'setAutoRotate'; autoRotate: boolean }
   | { type: 'updatePanel'; id: string | null; panel: PanelId; patch: Partial<PanelSettings>; design?: string }
@@ -86,6 +89,7 @@ export const initialState: AppState = {
   lastTemplates: {},
   banner: true,
   showGuides: false,
+  showMeasurements: false,
   view: '3d',
   autoRotate: true,
   shared: {
@@ -179,6 +183,8 @@ function apply(state: AppState, action: Action): AppState {
       return { ...state, banner: action.banner };
     case 'setShowGuides':
       return { ...state, showGuides: action.show };
+    case 'setShowMeasurements':
+      return { ...state, showMeasurements: action.show };
     case 'setView':
       return { ...state, view: action.view };
     case 'setAutoRotate':
