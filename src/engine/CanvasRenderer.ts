@@ -23,6 +23,8 @@ export interface Scene {
   /** Draw the template's official banner (platform or format header) and spine cap. */
   banner: boolean;
   showGuides: boolean;
+  /** Clear everything outside the cut lines (bleed, and any gaps between panels), so the canvas looks like the cut-out piece (the 2D view). */
+  hideOutsideCut?: boolean;
 }
 
 export type ImageLookup = (url: string | null | undefined) => HTMLImageElement | null;
@@ -101,6 +103,18 @@ export function renderCover(
   }
 
 
+  if (scene.hideOutsideCut) {
+    // Keep only what's inside the panels' trim rects. Snapped outwards to whole pixels, so touching panels leave no seam.
+    ctx.globalCompositeOperation = 'destination-in';
+    ctx.fillStyle = '#000';
+    ctx.beginPath(); // one path, so the panels' union is kept (not just the last one)
+    for (const p of t.panels) {
+      const [x0, y0] = [Math.floor(p.xMm * px), Math.floor(p.yMm * px)];
+      ctx.rect(x0, y0, Math.ceil((p.xMm + p.widthMm) * px) - x0, Math.ceil((p.yMm + p.heightMm) * px) - y0);
+    }
+    ctx.fill();
+    ctx.globalCompositeOperation = 'source-over';
+  }
   if (scene.showGuides) drawGuides(ctx, t, px);
   ctx.restore();
 }
