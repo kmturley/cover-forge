@@ -1,12 +1,15 @@
 import { useEffect, useMemo, useRef } from 'react';
-import { CanvasTexture, LinearFilter, SRGBColorSpace, type Texture } from 'three';
+import { CanvasTexture, LinearFilter, LinearMipmapLinearFilter, SRGBColorSpace, type Texture } from 'three';
 import { useAppState, useSelectedItem } from '../../context/AppContext';
 import { useSelectionPulse } from '../../context/useSelectionPulse';
 import { preloadItem, renderCover } from '../../engine/CanvasRenderer';
 import { PreviewScene } from '../../three/PreviewScene';
 
-/** Texture resolution: aim for ~2048 px across (crisp without a huge upload per edit), between 7 and 24 px/mm. */
-const previewPxPerMm = (widthMm: number) => Math.min(24, Math.max(7, 2048 / widthMm));
+/** Longest texture side. 4096 is the size every WebGL2 GPU supports, and bounds the upload and mip rebuild per edit. */
+const MAX_TEXTURE_PX = 4096;
+
+/** Texture resolution: aim for the longer side to be ~4096 px (crisp, and within GPU limits), at most 24 px/mm. */
+const previewPxPerMm = (widthMm: number, heightMm: number) => Math.min(24, MAX_TEXTURE_PX / Math.max(widthMm, heightMm));
 
 const PULSE_MS = 1200;
 
@@ -24,7 +27,7 @@ export function ThreeDPreview() {
   // A dedicated offscreen render, so the 3D texture resolution is independent of the 2D editor canvas.
   const canvas = useMemo(() => {
     const c = document.createElement('canvas');
-    const px = previewPxPerMm(template.totalWidthMm);
+    const px = previewPxPerMm(template.totalWidthMm, template.totalHeightMm);
     c.width = Math.round(template.totalWidthMm * px);
     c.height = Math.round(template.totalHeightMm * px);
     return c;
@@ -33,10 +36,11 @@ export function ThreeDPreview() {
   const texture = useMemo(() => {
     const t = new CanvasTexture(canvas);
     t.colorSpace = SRGBColorSpace;
-    t.generateMipmaps = false;
-    t.minFilter = LinearFilter;
+    // Mipmaps keep a distant or angled case from shimmering; anisotropy (clamped to what the GPU allows) keeps it sharp at an angle.
+    t.generateMipmaps = true;
+    t.minFilter = LinearMipmapLinearFilter;
     t.magFilter = LinearFilter;
-    t.anisotropy = 8;
+    t.anisotropy = 16;
     return t;
   }, [canvas]);
   useEffect(() => () => texture.dispose(), [texture]);

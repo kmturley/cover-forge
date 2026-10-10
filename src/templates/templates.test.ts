@@ -20,7 +20,7 @@ describe('blu-ray template', () => {
   });
 
   it('offers the US case only, keeps retired cases at their size, and falls back for unknown variants', () => {
-    expect(variantsFor('bluray').filter((v) => !v.hidden).map((v) => v.id)).toEqual(['us-11']);
+    expect(variantsFor('bluray').filter((v) => !v.hidden).map((v) => v.id)).toEqual(['us-11', 'slim-7']);
     expect(defaultVariantId('bluray')).toBe('us-11');
     expect(buildTemplate('bluray', 'eu-14').panels.find((p) => p.id === 'spine')!.widthMm).toBe(14);
     expect(buildTemplate('bluray', 'us-12.5').panels.find((p) => p.id === 'spine')!.widthMm).toBe(12.5);

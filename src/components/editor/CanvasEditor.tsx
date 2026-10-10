@@ -1,7 +1,8 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { useAppDispatch, useAppState, useSelectedItem } from '../../context/AppContext';
 import { useSelectionPulse } from '../../context/useSelectionPulse';
 import { CanvasRenderer } from '../../engine/CanvasRenderer';
+import { downscaleInto } from '../../engine/downscale';
 import { MEASURE_MARGIN_MM, drawMeasurements } from '../../engine/MeasurementOverlay';
 
 const PADDING = 24;
@@ -18,6 +19,20 @@ interface View {
   k: number;
 }
 const FIT: View = { ox: 0, oy: 0, k: 1 };
+/** The reduced copy is sized in steps of this many device px, so zooming does not redo the reduction on every wheel tick. */
+const DISPLAY_STEP = 32;
+
+/** The current device pixel ratio, updated when the window moves to another screen or the browser zoom changes. */
+function useDevicePixelRatio(): number {
+  const [dpr, setDpr] = useState(() => window.devicePixelRatio || 1);
+  useEffect(() => {
+    const mq = window.matchMedia(`(resolution: ${dpr}dppx)`);
+    const onChange = () => setDpr(window.devicePixelRatio || 1);
+    mq.addEventListener('change', onChange);
+    return () => mq.removeEventListener('change', onChange);
+  }, [dpr]);
+  return dpr;
+}
 
 /**
  * 2D preview. Like the 3D view, dragging moves the whole canvas and the wheel zooms the whole canvas
@@ -29,10 +44,12 @@ export function CanvasEditor() {
   const dispatch = useAppDispatch();
   const wrapRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const displayRef = useRef<HTMLCanvasElement>(null);
   const measureRef = useRef<HTMLCanvasElement>(null);
   const rendererRef = useRef<CanvasRenderer | null>(null);
   const [box, setBox] = useState({ w: 0, h: 0 });
   const [view, setView] = useState<View>(FIT);
+  const dpr = useDevicePixelRatio();
   const pulse = useSelectionPulse();
   const pulsed = pulse && template.panels.find((p) => p.id === pulse.panel);
 
@@ -62,18 +79,35 @@ export function CanvasEditor() {
   const w = fitW * view.k;
   const h = w / aspect;
 
+  // The cover is painted at print resolution, far more pixels than the screen shows. Showing it through CSS scaling looks
+  // soft and jagged, so when it is shown smaller than it is painted, a copy reduced to the exact screen size is shown instead.
+  const snap = (px: number) => Math.max(DISPLAY_STEP, Math.round(px / DISPLAY_STEP) * DISPLAY_STEP);
+  const [targetW, targetH] = [snap(w * dpr), snap(h * dpr)];
+  const scaled = fitW > 0 && targetW > 0 && targetW < template.totalWidthMm * template.dpiScale * 0.75;
+  const syncDisplay = useCallback(() => {
+    const [src, dst] = [canvasRef.current, displayRef.current];
+    if (!scaled || !src || !dst) return;
+    if (dst.width !== targetW || dst.height !== targetH) {
+      dst.width = targetW;
+      dst.height = targetH;
+    }
+    downscaleInto(src, dst);
+  }, [scaled, targetW, targetH]);
+  // Refresh the copy after every repaint, and straight away (before the browser paints) when only its size or visibility changed.
+  useEffect(() => rendererRef.current?.onPaint(syncDisplay), [syncDisplay]);
+  useLayoutEffect(syncDisplay, [syncDisplay]);
+
   // Dimensions live on their own canvas, larger than the cover, so they sit in the margin around it.
   useEffect(() => {
     const c = measureRef.current;
     if (!c || !showMeasurements || !fitW) return;
-    const dpr = window.devicePixelRatio || 1;
     const px = (w / template.totalWidthMm) * dpr;
     c.width = Math.round((template.totalWidthMm + MEASURE_MARGIN_MM * 2) * px);
     c.height = Math.round((template.totalHeightMm + MEASURE_MARGIN_MM * 2) * px);
     const ctx = c.getContext('2d')!;
     ctx.translate(MEASURE_MARGIN_MM * px, MEASURE_MARGIN_MM * px);
     drawMeasurements(ctx, template, px);
-  }, [template, showMeasurements, w, fitW]);
+  }, [template, showMeasurements, w, fitW, dpr]);
 
   // Wheel zoom must be a non-passive native listener so it can preventDefault (stops the page scrolling).
   const boxRef = useRef(box);
@@ -140,7 +174,12 @@ export function CanvasEditor() {
       <canvas
         ref={canvasRef}
         className="editor-canvas"
-        style={{ left: box.w / 2 + view.ox - w / 2, top: box.h / 2 + view.oy - h / 2, width: w, height: h, visibility: fitW ? 'visible' : 'hidden' }}
+        style={{ left: box.w / 2 + view.ox - w / 2, top: box.h / 2 + view.oy - h / 2, width: w, height: h, visibility: fitW && !scaled ? 'visible' : 'hidden' }}
+      />
+      <canvas
+        ref={displayRef}
+        className="editor-canvas"
+        style={{ left: box.w / 2 + view.ox - w / 2, top: box.h / 2 + view.oy - h / 2, width: w, height: h, visibility: scaled ? 'visible' : 'hidden' }}
       />
       {showMeasurements && fitW > 0 && (
         <canvas

@@ -17,6 +17,13 @@ const ICONS: Record<TemplateKind, ReactNode> = {
       <circle cx="13.5" cy="12" r="0.6" />
     </>,
   ),
+  uhd: svg(
+    <>
+      <rect x="5" y="2.5" width="14" height="19" rx="1.5" />
+      <path d="M8 2.5v19" />
+      <path d="M11 9v6M11 12h3M14.5 9l-2.5 3 2.5 3" />
+    </>,
+  ),
   dvd: svg(
     <>
       <rect x="5" y="2.5" width="14" height="19" rx="1.5" />

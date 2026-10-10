@@ -15,7 +15,7 @@ export type Paint = string | { x: [number, string][] } | { y: [number, string][]
 /** One piece of a lockup. `h` is its height relative to the others (default 1); `color` overrides the lockup's. */
 export type Part =
   | { brand: string; h?: number; color?: string }
-  | { logo: string; h?: number; color?: string; mono?: boolean; ink?: string; only?: number[]; crop?: [number, number, number, number] }
+  | { logo: string; h?: number; color?: string; mono?: boolean; only?: number[]; crop?: [number, number, number, number] }
   | { text: string; h?: number; color?: string; weight?: number; italic?: boolean; spacing?: number }
   | { row: Part[] }
   | { stack: Part[] };
@@ -118,15 +118,19 @@ export interface Branding {
   spine?: SpineBranding;
   /** Small format logos on the back (DVD, CD). */
   back?: FrontMark[];
+  /** Continues the front's band (fill and line, no marks) across the back cover. */
+  backBand?: boolean;
 }
 
+/** A mark's `color` only tints logo layers that have no fill of their own; logos with colours baked into the SVG (Wii, Xbox, Xbox 360…) ignore it. */
 const W = '#ffffff';
 const K = '#000000';
 const PS = { brand: 'playstation' } as const;
 const NINTENDO_RED = '#da1820';
 /** Switch 2 covers print a brighter red than the Switch's (measured on three covers and the fan template). */
 const SWITCH2_RED = '#f20c0d';
-const XBOX_GREEN = '#107c10';
+/** The Xbox One and Series covers' green, shared with the 3D case colour. */
+export const XBOX_GREEN = '#0c7a1f';
 
 const PS4_BLUE: Paint = { x: [[0, '#2e4a8e'], [0.5, '#2063a4'], [1, '#1381c0']] };
 const X360_WHITE = '#ffffff';
@@ -157,8 +161,15 @@ function labelBand(text: string, bg: string, fg: string, h: number, cap: number,
 
 export const FORMAT_BRANDING: Record<TemplateKind, Branding> = {
   bluray: {
-    front: { shape: 'band', depth: flat(0.08), fill: '#0a4da2', marks: [{ parts: [{ logo: 'bluray' }], color: W, h: 0.06, align: 'center' }] },
-    spine: { cap: { length: 0.08, fill: '#0a4da2' }, marks: [{ parts: [{ logo: 'bluray' }], color: W, from: 0.008, to: 0.072, across: 0.85, rotate: 0 }] },
+    backBand: true,
+    front: { shape: 'band', depth: flat(0.08), fill: '#0a4da2', marks: [{ parts: [{ logo: 'blu-ray' }], color: W, h: 0.06, align: 'center' }] },
+    spine: { cap: { length: 0.08, fill: '#0a4da2' }, marks: [{ parts: [{ logo: 'blu-ray' }], color: W, from: 0.008, to: 0.072, across: 0.85, rotate: 0 }] },
+  },
+  // Blu-ray 4K UHD: the Blu-ray layout with a black band, the grey logo and a grey line under the band (1 px at 96 dpi, 0.265 mm).
+  uhd: {
+    backBand: true,
+    front: { shape: 'band', depth: flat(0.08), fill: K, line: { color: '#979797', size: 0.0018 }, marks: [{ parts: [{ logo: 'blu-ray-ultra-hd-4k' }], color: W, h: 0.0448, align: 'center' }] },
+    spine: { cap: { length: 0.08, fill: K, line: { color: '#979797', size: 0.0018 } }, marks: [{ parts: [{ logo: 'blu-ray-ultra-hd' }], color: W, from: 0.88, to: 0.98, across: 0.85, rotate: 90 }], titleFrom: 0.13 },
   },
   dvd: format([{ stack: [{ text: 'DVD', weight: 800, h: 0.65 }, { text: 'VIDEO', weight: 600, h: 0.35, spacing: 0.15 }] }], W, '#141414', 0.08, [{ logo: 'dvd' }]),
   vhs: format([{ logo: 'vhs' }], W, '#141414', 0.08, undefined, { across: 0.58, titleScale: 1.25 }),
@@ -191,14 +202,14 @@ export const GAME_CASE_BRANDING: Record<string, Branding> = {
     front: {
       shape: 'strip', w: 0.155, fill: K,
       marks: [
-        { parts: [{ stack: [{ logo: 'playstation-mark-colour' }, { logo: 'playstation-wordmark', mono: true, crop: [0, 0, 0.94, 1], h: 0.22 }] }], color: W, frame: { color: W }, gap: 0.3, from: 0.034, to: 0.1325, across: 0.635, dx: -0.005, rotate: 0 },
-        { parts: [{ logo: 'sony-logo', ink: '#013999' }], color: W, from: 0.84, to: 0.98, across: 0.62, dx: -0.0035, rotate: 0 },
-        { parts: [{ logo: 'playstation-wordmark', mono: true }], color: W, from: 0.168, to: 0.79, across: 0.85, dx: 0.064, rotate: -90 },
+        { parts: [{ stack: [{ logo: 'playstation-mark-colour' }, { logo: 'playstation-wordmark', crop: [0, 0, 0.94, 1], h: 0.22 }] }], color: W, frame: { color: W }, gap: 0.3, from: 0.034, to: 0.1325, across: 0.635, dx: -0.005, rotate: 0 },
+        { parts: [{ logo: 'sony-logo' }], color: W, from: 0.84, to: 0.98, across: 0.62, dx: -0.0035, rotate: 0 },
+        { parts: [{ logo: 'playstation-wordmark' }], color: W, from: 0.168, to: 0.79, across: 0.85, dx: 0.064, rotate: -90 },
       ],
     },
     spine: {
       fill: K,
-      marks: [{ parts: [{ logo: 'playstation-wordmark', mono: true }], color: W, from: 0.028, to: 0.147, dx: -0.05, rotate: 90 }],
+      marks: [{ parts: [{ logo: 'playstation-wordmark' }], color: W, from: 0.028, to: 0.147, dx: -0.05, rotate: 90 }],
       titleCase: 'upper',
     },
   },
@@ -207,7 +218,7 @@ export const GAME_CASE_BRANDING: Record<string, Branding> = {
     front: {
       shape: 'band', depth: flat(0.104), fill: K, line: { color: W, size: 0.0016 },
       marks: [
-        { parts: [{ logo: 'playstation-2-wordmark', mono: true }], color: W, h: 0.066, align: 'left', inset: 0.038, cy: 0.058 },
+        { parts: [{ logo: 'playstation-2-wordmark' }], color: W, h: 0.066, align: 'left', inset: 0.038, cy: 0.058 },
         { parts: [{ logo: 'playstation-mark-colour' }], color: W, h: 0.066, align: 'right', inset: 0.024, cy: 0.0525 },
       ],
     },
@@ -216,7 +227,7 @@ export const GAME_CASE_BRANDING: Record<string, Branding> = {
       outline: { color: W, mm: 0.25, top: false, rightFrom: 0.104 },
       marks: [
         { parts: [{ logo: 'playstation-mark-colour' }], color: K, plate: W, plateAcross: 0.79, from: 0.018, to: 0.0776, across: 0.6, rotate: 0 },
-        { parts: [{ logo: 'playstation-2-wordmark', mono: true }], color: W, from: 0.1065, to: 0.262, rotate: 90 },
+        { parts: [{ logo: 'playstation-2-wordmark' }], color: W, from: 0.1065, to: 0.262, rotate: 90 },
       ],
     },
   },
@@ -293,7 +304,7 @@ export const GAME_CASE_BRANDING: Record<string, Branding> = {
       cap: { length: 0.0346, fill: '#019fcc', dome: 0.0075 },
       fill: W,
       titleColor: '#333333',
-      marks: [{ parts: [{ logo: 'wii-u' }], color: '#8c8c8c', from: 0.056, to: 0.191, across: 0.55, rotate: 90 }],
+      marks: [{ parts: [{ logo: 'wii-u' }], color: W, from: 0.056, to: 0.191, across: 0.55, rotate: 90 }],
     },
   },
   // Wii: a white header that stays shallow across the left half, then curves down in an S to a deep plateau on the right,
@@ -301,9 +312,9 @@ export const GAME_CASE_BRANDING: Record<string, Branding> = {
   wii: {
     front: {
       shape: 'band', depth: slope([[0.0000, 0.0288], [0.0011, 0.0261], [0.0021, 0.0250], [0.0032, 0.0243], [0.0042, 0.0237], [0.0053, 0.0233], [0.0063, 0.0229], [0.0074, 0.0226], [0.0085, 0.0224], [0.0095, 0.0222], [0.0106, 0.0221], [0.0116, 0.0220], [0.0127, 0.022], [0.45, 0.024], [0.5, 0.028], [0.55, 0.036], [0.6, 0.05], [0.65, 0.072], [0.7, 0.1], [0.75, 0.119], [0.8, 0.1255], [1, 0.1255]]), fill: W, line: { color: '#8a8f93', size: 0.004 },
-      marks: [{ parts: [{ logo: 'wii', mono: true }], color: '#838488', h: 0.066, align: 'right', inset: 0.03 }],
+      marks: [{ parts: [{ logo: 'wii' }], color: W, h: 0.066, align: 'right', inset: 0.03 }],
     },
-    spine: { fill: W, titleColor: '#333333', marks: [{ parts: [{ logo: 'wii', mono: true }], color: '#838488', from: 0.0285, to: 0.1365, across: 0.55, rotate: 90 }] },
+    spine: { fill: W, titleColor: '#333333', marks: [{ parts: [{ logo: 'wii' }], color: W, from: 0.0285, to: 0.1365, across: 0.55, rotate: 90 }] },
   },
   // GameCube: a black band with a convex lower edge and a white line tapering towards the sides, the cube and wordmark centred; a black spine cap.
   gamecube: {
@@ -322,13 +333,13 @@ export const GAME_CASE_BRANDING: Record<string, Branding> = {
   xbox: {
     front: {
       shape: 'band', depth: flat(0.1), fill: K, decor: 'xbox-orb',
-      marks: [{ parts: [{ logo: 'xbox', crop: [0, 0, 0.339, 1] }, { logo: 'xbox', crop: [0.339, 0.285, 1, 0.71], h: 0.411 }], color: '#94c83f', h: 0.0647, align: 'left', inset: 0.0415, cy: 0.0555, gap: 0.03 }],
+      marks: [{ parts: [{ logo: 'xbox', crop: [0, 0, 0.339, 1] }, { logo: 'xbox', crop: [0.339, 0.285, 1, 0.71], h: 0.411 }], color: W, h: 0.0647, align: 'left', inset: 0.0415, cy: 0.0555, gap: 0.03 }],
     },
     spine: {
       cap: { length: 0.2154, fill: K },
       marks: [
-        { parts: [{ logo: 'xbox', crop: [0, 0, 0.339, 1] }], color: '#94c83f', from: 0.046, to: 0.093, across: 0.6, rotate: 0 },
-        { parts: [{ logo: 'xbox', crop: [0.339, 0.285, 1, 0.71] }], color: '#94c83f', from: 0.0946, to: 0.1891, across: 0.55, rotate: 90 },
+        { parts: [{ logo: 'xbox', crop: [0, 0, 0.339, 1] }], color: W, from: 0.046, to: 0.093, across: 0.6, rotate: 0 },
+        { parts: [{ logo: 'xbox', crop: [0.339, 0.285, 1, 0.71] }], color: W, from: 0.0946, to: 0.1891, across: 0.55, rotate: 90 },
       ],
     },
   },
@@ -336,14 +347,14 @@ export const GAME_CASE_BRANDING: Record<string, Branding> = {
   'xbox-360': {
     front: {
       shape: 'band', depth: flat(0.121), fill: X360_WHITE, line: { color: '#8dc63f', size: 0.0016 }, decor: 'x360-swoosh',
-      marks: [{ parts: [{ logo: 'xbox360' }], color: '#92c83e', h: 0.0715, align: 'left', inset: 0.0275, cy: 0.0657 }],
+      marks: [{ parts: [{ logo: 'xbox360' }], color: W, h: 0.0715, align: 'left', inset: 0.0275, cy: 0.0657 }],
     },
     spine: {
       cap: { length: 0.261, fill: X360_WHITE },
       outline: { color: '#8dc63f', mm: 0.25, top: false, right: false },
       marks: [
-        { parts: [{ logo: 'xbox360', crop: [0, 0, 0.22, 1] }], color: '#92c83e', from: 0.0275, to: 0.0762, across: 0.63, rotate: 0 },
-        { parts: [{ logo: 'xbox360', crop: [0.22, 0.18, 1, 0.82] }], color: '#92c83e', from: 0.0804, to: 0.249, across: 0.55, rotate: 90 },
+        { parts: [{ logo: 'xbox360', crop: [0, 0, 0.22, 1] }], color: W, from: 0.0275, to: 0.0762, across: 0.63, rotate: 0 },
+        { parts: [{ logo: 'xbox360', crop: [0.22, 0.18, 1, 0.82] }], color: W, from: 0.0804, to: 0.249, across: 0.55, rotate: 90 },
       ],
     },
   },
@@ -384,9 +395,18 @@ export const GAME_CASE_BRANDING: Record<string, Branding> = {
   },
 };
 
-/** The branding for a template: its platform's for game cases, else its format's. */
+/** A variant of a format that is branded differently from the rest of its kind, by `${kind}/${variantId}`. */
+const FORMAT_VARIANT_BRANDING: Record<string, Branding> = {
+  // The slim case's spine is too narrow for the logo upright, so it runs along the spine.
+  'bluray/slim-7': {
+    ...FORMAT_BRANDING.bluray,
+    spine: { ...FORMAT_BRANDING.bluray.spine!, marks: [{ ...FORMAT_BRANDING.bluray.spine!.marks![0], from: 0.016, to: 0.064, rotate: 90 }] },
+  },
+};
+
+/** The branding for a template: its platform's for game cases, else its variant's or its format's. */
 export function brandingFor(kind: TemplateKind, variantId: string): Branding {
-  return kind === 'game-case' ? (GAME_CASE_BRANDING[variantId] ?? FORMAT_BRANDING['game-case']) : FORMAT_BRANDING[kind];
+  return kind === 'game-case' ? (Object.hasOwn(GAME_CASE_BRANDING, variantId) ? GAME_CASE_BRANDING[variantId] : FORMAT_BRANDING['game-case']) : (FORMAT_VARIANT_BRANDING[`${kind}/${variantId}`] ?? FORMAT_BRANDING[kind]);
 }
 
 /** How much to scale a spine title's automatic size by (1 unless the format asks for more). */
@@ -541,8 +561,8 @@ function part(ctx: Ctx, p: Part, color: string, unit: number, gapUnits: number):
           ctx.save();
           ctx.translate(-bx + layer.offset[0], -by + layer.offset[1]);
           if (layer.fill !== 'none') {
-            ctx.fillStyle = p.mono || !layer.fill || layer.fill === p.ink ? fill : layer.fill;
-            const grad = layer.gradient && !p.mono && layer.fill !== p.ink ? layer.gradient : undefined;
+            ctx.fillStyle = p.mono || !layer.fill ? fill : layer.fill;
+            const grad = layer.gradient && !p.mono ? layer.gradient : undefined;
             let shape = paths[i];
             if (grad) {
               let g: CanvasGradient;
@@ -567,7 +587,7 @@ function part(ctx: Ctx, p: Part, color: string, unit: number, gapUnits: number):
             } else ctx.fill(shape, l.evenodd ? 'evenodd' : 'nonzero');
           }
           if (layer.stroke !== undefined) {
-            ctx.strokeStyle = p.mono || !layer.stroke || layer.stroke === p.ink ? fill : layer.stroke;
+            ctx.strokeStyle = p.mono || !layer.stroke ? fill : layer.stroke;
             ctx.lineWidth = layer.strokeWidth ?? 1;
             ctx.lineCap = layer.strokeCap ?? 'butt';
             ctx.stroke(paths[i]);
@@ -635,6 +655,7 @@ export function drawOfficial(ctx: Ctx, t: TemplateConfig, px: number): void {
   const front = t.panels.find((p) => p.id === 'front');
   if (front) drawFront(ctx, t, front, b.front, px);
   const back = t.panels.find((p) => p.id === 'back');
+  if (back && b.backBand && b.front.shape === 'band') drawFront(ctx, t, back, { ...b.front, marks: [] }, px);
   if (back && b.back) for (const m of b.back) drawFrontMark(ctx, m, { x: back.xMm * px, w: back.widthMm * px }, back, px, () => 0);
   if (b.spine) for (const p of t.panels) if (p.text) drawSpine(ctx, t, p, b.spine, px);
   ctx.restore();

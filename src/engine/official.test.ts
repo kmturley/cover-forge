@@ -12,6 +12,10 @@ function deepest(f: FrontHeader): number {
 }
 
 describe('branding', () => {
+  it('only continues a band across the back when the front is a band', () => {
+    for (const [kind, b] of Object.entries(FORMAT_BRANDING)) if (b.backBand) expect(b.front.shape, kind).toBe('band');
+  });
+
   it('has branding for every template kind and every game case', () => {
     for (const d of TEMPLATE_DEFS) expect(FORMAT_BRANDING[d.kind], d.kind).toBeDefined();
     const cases = TEMPLATE_DEFS.find((d) => d.kind === 'game-case')!.variants.map((v) => v.id);
