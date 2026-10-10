@@ -136,6 +136,7 @@ export class CanvasRenderer {
   private raf = 0;
   private disposed = false;
   private readonly ctx: CanvasRenderingContext2D;
+  private readonly paintListeners = new Set<() => void>();
 
   constructor(private readonly canvas: HTMLCanvasElement) {
     const ctx = canvas.getContext('2d');
@@ -155,6 +156,12 @@ export class CanvasRenderer {
     this.invalidate();
   }
 
+  /** Calls `fn` after every repaint, so a view that shows a reduced copy can refresh it. Returns the unsubscribe. */
+  onPaint(fn: () => void): () => void {
+    this.paintListeners.add(fn);
+    return () => this.paintListeners.delete(fn);
+  }
+
   getScene(): Scene | null {
     return this.scene;
   }
@@ -169,10 +176,12 @@ export class CanvasRenderer {
     this.dirty = false;
     if (!this.scene || this.disposed) return;
     renderCover(this.ctx, this.scene, this.scene.template.dpiScale);
+    for (const fn of this.paintListeners) fn();
   }
 
   dispose(): void {
     this.disposed = true;
+    this.paintListeners.clear();
     cancelAnimationFrame(this.raf);
   }
 }

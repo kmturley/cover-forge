@@ -3,6 +3,7 @@
 exports[`template ids > never change the physical size of an existing template 1`] = `
 {
   "bluray-eu-14": "276 × 155 | back 128×149, spine 14×149, front 128×149",
+  "bluray-slim-7": "269 × 155 | back 128×149, spine 7×149, front 128×149",
   "bluray-us-11": "273 × 155 | back 128×149, spine 11×149, front 128×149",
   "bluray-us-12.5": "274.5 × 155 | back 128×149, spine 12.5×149, front 128×149",
   "cassette-std": "109.19999999999999 × 107.6 | back 25.4×101.6, spine 12.7×101.6, front 65.1×101.6",
@@ -35,6 +36,7 @@ exports[`template ids > never change the physical size of an existing template 1
   "nfc-sticker-25": "27 × 27 | front 25×25",
   "nfc-sticker-30": "32 × 32 | front 30×30",
   "nfc-sticker-35": "37 × 37 | front 35×35",
+  "uhd-us-11": "273 × 155 | back 128×149, spine 11×149, front 128×149",
   "vhs-std-25": "276 × 288.6 | back 105×190, spine 25×190, front 105×190, spineRight 25×190, glue 10×190, tuck 105×21.3, top 105×25, bottom 105×25, bottomTuck 105×21.3, dustTopLeft 24.2×24, dustBottomLeft 24.2×24, dustTopRight 24.2×24, dustBottomRight 24.2×24",
   "vinyl-10inch": "533 × 268 | back 262×262, spine 3×262, front 262×262",
   "vinyl-12inch": "637 × 320 | back 314×314, spine 3×314, front 314×314",

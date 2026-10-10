@@ -1,4 +1,5 @@
 import type { PanelId, PanelRect, PreviewMaterial, PreviewSpec, SpineOrientation, TemplateConfig, TemplateKind, TemplateMark, TemplateVariant } from '../types/template';
+import { XBOX_GREEN } from '../engine/official';
 
 export const PX_PER_MM = 300 / 25.4;
 
@@ -125,13 +126,19 @@ const wrapPreview = (w: number, h: number, depth: number, casing: PreviewMateria
 });
 
 /**
- * Blu-ray cases. Only the US standard case is offered; the others are hidden but still built, so a save or link that
+ * Blu-ray cases. The US standard and slim cases are offered; the others are hidden but still built, so a save or link that
  * uses one keeps printing at the size it was designed for. An id's physical size must never change (see templates.test.ts).
  */
 const BLURAY: Record<string, { label: string; spine: number; hidden?: boolean }> = {
   'us-11': { label: 'Blu-ray', spine: 11 },
+  'slim-7': { label: 'Blu-ray slim', spine: 7 },
   'us-12.5': { label: 'Blu-ray Elite', spine: 12.5, hidden: true },
   'eu-14': { label: 'Blu-ray (EU)', spine: 14, hidden: true },
+};
+
+/** Blu-ray 4K UHD cases: the Blu-ray case in black. */
+const UHD: Record<string, { label: string; spine: number }> = {
+  'us-11': { label: 'Blu-ray 4K UHD', spine: 11 },
 };
 
 const DVD: Record<string, { label: string; spine: number; hidden?: boolean }> = {
@@ -329,8 +336,8 @@ const GAME_CASE: Record<string, { label: string; w: number; h: number; spine: nu
   'xbox':      { label: 'Xbox',                w: 129.5, h: 183, spine: 14,   color: '#000000' },
   'xbox-360':  { label: 'Xbox 360',            w: 129.5, h: 183, spine: 14,   color: '#ffffff' },
   // The Blu-ray insert.
-  'xbox-one':  { label: 'Xbox One',            w: 128,   h: 149, spine: 11,   color: '#107c10' },
-  'xbox-series': { label: 'Xbox Series X|S',   w: 128,   h: 149, spine: 11,   color: '#107c10' },
+  'xbox-one':  { label: 'Xbox One',            w: 128,   h: 149, spine: 11,   color: XBOX_GREEN },
+  'xbox-series': { label: 'Xbox Series X|S',   w: 128,   h: 149, spine: 11,   color: XBOX_GREEN },
 };
 
 export const TEMPLATE_DEFS: TemplateDef[] = [
@@ -358,6 +365,19 @@ export const TEMPLATE_DEFS: TemplateDef[] = [
       const h = 149;
       return wrap('bluray', v.label, BLURAY[id] ? id : 'us-11', w, h, v.spine,
         wrapPreview(w, h, v.spine, { color: '#0a4da2', transmission: 0.8, roughness: 0.2 }, true, 2.5));
+    },
+  },
+  {
+    kind: 'uhd',
+    name: 'Blu-ray 4K UHD',
+    group: 'Cases',
+    variants: Object.entries(UHD).map(([id, v]) => ({ id, label: v.label })),
+    build: (id) => {
+      const v = UHD[id] ?? UHD['us-11'];
+      const w = 128;
+      const h = 149;
+      return wrap('uhd', v.label, UHD[id] ? id : 'us-11', w, h, v.spine,
+        wrapPreview(w, h, v.spine, { color: '#111111', roughness: 0.3 }, true, 2.5));
     },
   },
   {
