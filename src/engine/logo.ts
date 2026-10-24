@@ -1,6 +1,7 @@
 import type { PanelRect, TemplateConfig } from '../types/template';
 import type { LogoSettings } from '../types/editor';
-import { brandAspect, brandHeight, brandPath2D, brandWidth, type Brand } from '../brands';
+import { brandHeight, brandPath2D, brandWidth, logoHeight, logoWidth, type Mark } from '../brands';
+import { paintLogoLayers } from './logoLayers';
 import { paintRect } from './placement';
 import { boxRect, fitInside, type RectMm } from './box';
 import { defaultCapHeightMm } from './SpineTypography';
@@ -54,10 +55,11 @@ export function computeLogoPlacement(t: TemplateConfig, panel: PanelRect, aspect
   return { widthMm: r.widthMm, heightMm: r.heightMm, xMm: r.xMm - area.xMm, yMm: r.yMm - area.yMm, area, box };
 }
 
-/** Fills the brand mark, clipped to its panel so it never spills onto a neighbour. `px` is pixels per mm. */
-export function drawLogo(ctx: CanvasRenderingContext2D, t: TemplateConfig, panel: PanelRect, brand: Brand, logo: LogoSettings, px: number): void {
-  const pl = computeLogoPlacement(t, panel, brandAspect(brand), logo);
-  const k = (pl.widthMm * px) / brandWidth(brand);
+/** Fills the mark (brand icon or supplied logo), clipped to its panel so it never spills onto a neighbour. `px` is pixels per mm. */
+export function drawLogo(ctx: CanvasRenderingContext2D, t: TemplateConfig, panel: PanelRect, mark: Mark, logo: LogoSettings, px: number): void {
+  const pl = computeLogoPlacement(t, panel, mark.aspect, logo);
+  const [bx0, by0, bw, bh] = mark.kind === 'brand' ? [mark.brand.bbox[0], mark.brand.bbox[1], brandWidth(mark.brand), brandHeight(mark.brand)] : [mark.logo.bbox[0], mark.logo.bbox[1], logoWidth(mark.logo), logoHeight(mark.logo)];
+  const k = (pl.widthMm * px) / bw;
   ctx.save();
   ctx.beginPath();
   ctx.rect(pl.area.xMm * px, pl.area.yMm * px, pl.area.widthMm * px, pl.area.heightMm * px);
@@ -68,7 +70,8 @@ export function drawLogo(ctx: CanvasRenderingContext2D, t: TemplateConfig, panel
   ctx.rotate((logo.rotationDeg * Math.PI) / 180);
   ctx.scale(k, k);
   // Centre the path's tight bounds on the origin so position, size and rotation act on the visible mark.
-  ctx.translate(-(brand.bbox[0] + brandWidth(brand) / 2), -(brand.bbox[1] + brandHeight(brand) / 2));
-  ctx.fill(brandPath2D(brand));
+  ctx.translate(-(bx0 + bw / 2), -(by0 + bh / 2));
+  if (mark.kind === 'brand') ctx.fill(brandPath2D(mark.brand));
+  else paintLogoLayers(ctx, mark.logo, mark.logo.layers.map((_, i) => i), 0, 0, logo.color, false);
   ctx.restore();
 }

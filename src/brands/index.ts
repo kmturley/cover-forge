@@ -33,6 +33,16 @@ export const getLogo = (id: string | null | undefined): Logo | undefined => (id 
 export const logoWidth = (l: Logo) => l.bbox[2] - l.bbox[0];
 export const logoHeight = (l: Logo) => l.bbox[3] - l.bbox[1];
 
+/** A manually placeable mark: a single-colour brand icon or a supplied multi-colour logo. */
+export type Mark = { kind: 'brand'; brand: Brand; aspect: number } | { kind: 'logo'; logo: Logo; aspect: number };
+
+export const getMark = (id: string | null | undefined): Mark | undefined => {
+  const brand = getBrand(id);
+  if (brand) return { kind: 'brand', brand, aspect: brandAspect(brand) };
+  const logo = getLogo(id);
+  return logo ? { kind: 'logo', logo, aspect: logoWidth(logo) / logoHeight(logo) } : undefined;
+};
+
 const layerPaths = new Map<string, Path2D[]>();
 /** One Path2D per layer, created lazily and cached. */
 export function logoPaths2D(l: Logo): Path2D[] {

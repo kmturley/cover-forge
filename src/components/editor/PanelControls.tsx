@@ -21,7 +21,7 @@ import { NoneLink } from './NoneLink';
 import { LogoControls } from './LogoControls';
 import { Section } from './Section';
 import { BackgroundSummary, BorderSummary, CodeSummary, ImageSummary, LogoSummary, SpineSummary } from './Summaries';
-import { getBrand } from '../../brands';
+import { getMark } from '../../brands';
 import { defaultCapHeightMm } from '../../engine/SpineTypography';
 import { CodeControls } from './CodeControls';
 
@@ -216,7 +216,7 @@ function PanelBody({ panel }: { panel: PanelId }) {
         editing={open === 'logo'}
         onEdit={() => setOpen('logo')}
         onDone={() => setOpen(null)}
-        extra={<NoneLink selected={!getBrand(r.logo.brand)} onClick={() => patch({ logo: { brand: null } })} />}
+        extra={<NoneLink selected={!getMark(r.logo.brand)} onClick={() => patch({ logo: { brand: null } })} />}
       >
         <LogoControls panel={panel} target={target} logo={r.logo} />
       </Section>
