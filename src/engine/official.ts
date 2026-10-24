@@ -1,6 +1,7 @@
 import type { PanelRect, TemplateConfig, TemplateKind } from '../types/template';
 import { paintRect } from '../templates/geometry';
-import { brandHeight, brandPath2D, brandWidth, getBrand, getLogo, logoPaths2D } from '../brands';
+import { brandHeight, brandPath2D, brandWidth, getBrand, getLogo } from '../brands';
+import { paintLogoLayers } from './logoLayers';
 import { X360_WAVES, X360_WAVES_SIZE } from './x360Waves.generated';
 
 /**
@@ -547,7 +548,6 @@ function part(ctx: Ctx, p: Part, color: string, unit: number, gapUnits: number):
     return {
       w: bw * k, h,
       draw: (x, y) => {
-        const paths = logoPaths2D(l);
         ctx.save();
         ctx.translate(x, y);
         ctx.scale(k, k);
@@ -556,44 +556,7 @@ function part(ctx: Ctx, p: Part, color: string, unit: number, gapUnits: number):
           ctx.rect(0, 0, bw, bh);
           ctx.clip();
         }
-        used.forEach((i) => {
-          const layer = l.layers[i];
-          ctx.save();
-          ctx.translate(-bx + layer.offset[0], -by + layer.offset[1]);
-          if (layer.fill !== 'none') {
-            ctx.fillStyle = p.mono || !layer.fill ? fill : layer.fill;
-            const grad = layer.gradient && !p.mono ? layer.gradient : undefined;
-            let shape = paths[i];
-            if (grad) {
-              let g: CanvasGradient;
-              ctx.save();
-              if (grad.radial) {
-                // A radial gradient is the unit circle under a matrix, so the layer is drawn through its inverse.
-                const [a, b, c, d, e, f] = grad.radial;
-                const det = a * d - b * c;
-                const inv = { a: d / det, b: -b / det, c: -c / det, d: a / det, e: (c * f - d * e) / det, f: (b * e - a * f) / det };
-                ctx.transform(a, b, c, d, e, f);
-                g = ctx.createRadialGradient(0, 0, 0, 0, 0, 1);
-                shape = new Path2D();
-                shape.addPath(paths[i], inv as unknown as DOMMatrix);
-              } else {
-                const [x1, y1, x2, y2] = grad.line!;
-                g = ctx.createLinearGradient(x1, y1, x2, y2);
-              }
-              for (const [at, color] of grad.stops) g.addColorStop(Math.min(1, Math.max(0, at)), color);
-              ctx.fillStyle = g;
-              ctx.fill(shape, l.evenodd ? 'evenodd' : 'nonzero');
-              ctx.restore();
-            } else ctx.fill(shape, l.evenodd ? 'evenodd' : 'nonzero');
-          }
-          if (layer.stroke !== undefined) {
-            ctx.strokeStyle = p.mono || !layer.stroke ? fill : layer.stroke;
-            ctx.lineWidth = layer.strokeWidth ?? 1;
-            ctx.lineCap = layer.strokeCap ?? 'butt';
-            ctx.stroke(paths[i]);
-          }
-          ctx.restore();
-        });
+        paintLogoLayers(ctx, l, used, -bx, -by, fill, !!p.mono);
         ctx.restore();
       },
     };

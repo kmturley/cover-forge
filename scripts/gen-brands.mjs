@@ -54,6 +54,21 @@ console.log(`Wrote ${brands.length} brands from simple-icons@${version}`);
 // A gradient is flattened to the average of its stops. A background that fills the whole viewBox (the red square
 // behind the Switch logos) is dropped.
 const LOGO_LABELS = {
+  'blu-ray-ultra-hd-4k': 'Blu-ray 4K Ultra HD',
+  'blu-ray-ultra-hd': 'Blu-ray Ultra HD',
+  'blu-ray': 'Blu-ray',
+  'cassette': 'Cassette',
+  'cd': 'CD',
+  'dvd': 'DVD',
+  'nfc': 'NFC',
+  'pc': 'PC',
+  'playstation-2-wordmark': 'PlayStation 2 wordmark',
+  'sony-logo': 'Sony',
+  'vhs': 'VHS',
+  'xbox-one': 'Xbox One',
+  'xbox-seriesx-mark': 'Xbox Series X mark',
+  'xbox-seriesx': 'Xbox Series X',
+  'xbox360': 'Xbox 360',
   gamecube: 'GameCube',
   'playstation-mark-colour': 'PlayStation symbol (colour)',
   'playstation-wordmark': 'PlayStation wordmark',

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { BRANDS, BRAND_GROUPS, LOGOS, brandAspect, getBrand, getLogo } from './index';
+import { BRANDS, BRAND_GROUPS, LOGOS, brandAspect, getBrand, getLogo, getMark } from './index';
 
 describe('brand data', () => {
   it('has unique ids and well-formed entries', () => {
@@ -72,5 +72,15 @@ describe('supplied logos', () => {
 
   it('skips SVGs that only wrap bitmaps', () => {
     expect(getLogo('xbox-button')).toBeUndefined();
+  });
+});
+
+describe('placeable marks', () => {
+  it('resolves both single-colour brands and supplied logos by id', () => {
+    expect(getMark('steam')?.kind).toBe('brand');
+    const logo = getMark('blu-ray');
+    expect(logo?.kind).toBe('logo');
+    expect(logo!.aspect).toBeGreaterThan(0);
+    expect(getMark('nope')).toBeUndefined();
   });
 });

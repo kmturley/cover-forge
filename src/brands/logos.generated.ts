@@ -5,7 +5,7 @@ import type { Logo } from './types';
 export const LOGOS: Logo[] = [
   {
     "id": "blu-ray-ultra-hd-4k",
-    "label": "blu-ray-ultra-hd-4k",
+    "label": "Blu-ray 4K Ultra HD",
     "bbox": [
       17.3,
       15.4,
@@ -171,7 +171,7 @@ export const LOGOS: Logo[] = [
   },
   {
     "id": "blu-ray-ultra-hd",
-    "label": "blu-ray-ultra-hd",
+    "label": "Blu-ray Ultra HD",
     "bbox": [
       5,
       4.5,
@@ -326,7 +326,7 @@ export const LOGOS: Logo[] = [
   },
   {
     "id": "blu-ray",
-    "label": "blu-ray",
+    "label": "Blu-ray",
     "bbox": [
       0,
       0,
@@ -546,7 +546,7 @@ export const LOGOS: Logo[] = [
   },
   {
     "id": "cassette",
-    "label": "cassette",
+    "label": "Cassette",
     "bbox": [
       0,
       0,
@@ -571,7 +571,7 @@ export const LOGOS: Logo[] = [
   },
   {
     "id": "cd",
-    "label": "cd",
+    "label": "CD",
     "bbox": [
       0,
       0,
@@ -610,7 +610,7 @@ export const LOGOS: Logo[] = [
   },
   {
     "id": "dvd",
-    "label": "dvd",
+    "label": "DVD",
     "bbox": [
       0,
       0,
@@ -1076,7 +1076,7 @@ export const LOGOS: Logo[] = [
   },
   {
     "id": "nfc",
-    "label": "nfc",
+    "label": "NFC",
     "bbox": [
       0.009,
       0.007,
@@ -1105,7 +1105,7 @@ export const LOGOS: Logo[] = [
   },
   {
     "id": "pc",
-    "label": "pc",
+    "label": "PC",
     "bbox": [
       0,
       0,
@@ -1157,7 +1157,7 @@ export const LOGOS: Logo[] = [
   },
   {
     "id": "playstation-2-wordmark",
-    "label": "playstation-2-wordmark",
+    "label": "PlayStation 2 wordmark",
     "bbox": [
       189.72,
       167.126,
@@ -1472,7 +1472,7 @@ export const LOGOS: Logo[] = [
   },
   {
     "id": "sony-logo",
-    "label": "sony-logo",
+    "label": "Sony",
     "bbox": [
       1.64,
       2.02,
@@ -2049,7 +2049,7 @@ export const LOGOS: Logo[] = [
   },
   {
     "id": "vhs",
-    "label": "vhs",
+    "label": "VHS",
     "bbox": [
       0,
       0,
@@ -2211,7 +2211,7 @@ export const LOGOS: Logo[] = [
   },
   {
     "id": "xbox-one",
-    "label": "xbox-one",
+    "label": "Xbox One",
     "bbox": [
       0.038,
       0,
@@ -2562,7 +2562,7 @@ export const LOGOS: Logo[] = [
   },
   {
     "id": "xbox-seriesx-mark",
-    "label": "xbox-seriesx-mark",
+    "label": "Xbox Series X mark",
     "bbox": [
       0,
       0,
@@ -2587,7 +2587,7 @@ export const LOGOS: Logo[] = [
   },
   {
     "id": "xbox-seriesx",
-    "label": "xbox-seriesx",
+    "label": "Xbox Series X",
     "bbox": [
       -0.189,
       0.463,
@@ -3000,7 +3000,7 @@ export const LOGOS: Logo[] = [
   },
   {
     "id": "xbox360",
-    "label": "xbox360",
+    "label": "Xbox 360",
     "bbox": [
       0,
       0,

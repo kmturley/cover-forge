@@ -1,5 +1,5 @@
 import { useAppDispatch, useAppState } from '../../context/AppContext';
-import { BRAND_GROUPS, brandAspect, getBrand, type Brand } from '../../brands';
+import { BRAND_GROUPS, LOGOS, getMark, type Brand, type Logo } from '../../brands';
 import { computeLogoPlacement } from '../../engine/logo';
 import type { LogoSettings } from '../../types/editor';
 import type { PanelId } from '../../types/template';
@@ -21,6 +21,18 @@ function BrandIcon({ brand }: { brand: Brand }) {
   );
 }
 
+/** Flat preview of a supplied logo: each layer in its own colour (a gradient shows as its average), the rest in the text colour. */
+function LogoIcon({ logo }: { logo: Logo }) {
+  const [x0, y0, x1, y1] = logo.bbox;
+  return (
+    <svg viewBox={`${x0} ${y0} ${x1 - x0} ${y1 - y0}`} aria-hidden="true" fill="currentColor" fillRule={logo.evenodd ? 'evenodd' : 'nonzero'}>
+      {logo.layers.map((l, i) => (
+        <path key={i} d={l.d} transform={`translate(${l.offset[0]} ${l.offset[1]})`} fill={l.fill ?? 'currentColor'} {...(l.stroke !== undefined && { stroke: l.stroke ?? 'currentColor', strokeWidth: l.strokeWidth ?? 1 })} />
+      ))}
+    </svg>
+  );
+}
+
 interface Props {
   panel: PanelId;
   /** null = the shared layer, otherwise the selected item's id. */
@@ -32,11 +44,11 @@ interface Props {
 export function LogoControls({ panel, target, logo }: Props) {
   const { template } = useAppState();
   const dispatch = useAppDispatch();
-  const brand = getBrand(logo.brand);
+  const mark = getMark(logo.brand);
   const rect = template.panels.find((p) => p.id === panel)!;
 
   const patch = (change: Partial<LogoSettings>) => dispatch({ type: 'updatePanel', id: target, panel, patch: { logo: change } });
-  const pl = brand ? computeLogoPlacement(template, rect, brandAspect(brand), logo) : null;
+  const pl = mark ? computeLogoPlacement(template, rect, mark.aspect, logo) : null;
 
   return (
     <>
@@ -53,13 +65,23 @@ export function LogoControls({ panel, target, logo }: Props) {
             </div>
           </div>
         ))}
+        <div>
+          <p className="group-label">Template logos</p>
+          <div className="brands">
+            {LOGOS.map((l) => (
+              <button key={l.id} className={`brand-option logo-option ${l.id === logo.brand ? 'selected' : ''}`} title={l.label} aria-label={l.label} aria-pressed={l.id === logo.brand} onClick={() => patch({ brand: l.id })}>
+                <LogoIcon logo={l} />
+              </button>
+            ))}
+          </div>
+        </div>
       </div>
 
-      {brand && pl && (
+      {mark && pl && (
         <>
           <div className="field row">
             <input type="color" aria-label="Logo colour" value={logo.color} onChange={(e) => patch({ color: e.target.value })} />
-            {[...SWATCHES, { label: 'Brand', value: `#${brand.hex}` }].map((s) => (
+            {[...SWATCHES, ...(mark.kind === 'brand' ? [{ label: 'Brand', value: `#${mark.brand.hex}` }] : [])].map((s) => (
               <button key={s.label} onClick={() => patch({ color: s.value })} title={s.value}>
                 {s.label}
               </button>
@@ -74,10 +96,10 @@ export function LogoControls({ panel, target, logo }: Props) {
       )}
       <p className="muted small">
         Brand marks are trademarks of their owners (icons via Simple Icons, CC0). Use them in line with each owner's guidelines
-        {brand?.guidelines && (
+        {mark?.kind === 'brand' && mark.brand.guidelines && (
           <>
             {' '}
-            — <a href={brand.guidelines} target="_blank" rel="noreferrer">{brand.label} guidelines</a>
+            — <a href={mark.brand.guidelines} target="_blank" rel="noreferrer">{mark.brand.label} guidelines</a>
           </>
         )}
         .

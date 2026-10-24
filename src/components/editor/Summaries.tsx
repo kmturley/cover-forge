@@ -1,8 +1,7 @@
-import { getBrand } from '../../brands';
+import { getMark } from '../../brands';
 import { computeCodePlacement } from '../../engine/code';
 import { libraryImages } from '../../engine/imageLibrary';
 import { computeLogoPlacement } from '../../engine/logo';
-import { brandAspect } from '../../brands';
 import { srcOf } from '../../storage/localImages';
 import type { ResolvedPanel } from '../../engine/resolve';
 import type { MediaItem } from '../../types/media';
@@ -64,15 +63,15 @@ export function ImageSummary({ r, item }: { r: ResolvedPanel; item: MediaItem })
 }
 
 export function LogoSummary({ r, template, rect }: { r: ResolvedPanel; template: TemplateConfig; rect: PanelRect }) {
-  const brand = getBrand(r.logo.brand);
-  if (!brand) return <span className="muted">None</span>;
-  const pl = computeLogoPlacement(template, rect, brandAspect(brand), r.logo);
+  const mark = getMark(r.logo.brand);
+  if (!mark) return <span className="muted">None</span>;
+  const pl = computeLogoPlacement(template, rect, mark.aspect, r.logo);
   const placed = placedAt(r.logo.box, 'automatic position');
   return (
     <>
       <Swatch color={r.logo.color} />
       <span>
-        {brand.label} · {Math.round(pl.widthMm * 10) / 10} mm wide · {placed}
+        {mark.kind === 'brand' ? mark.brand.label : mark.logo.label} · {Math.round(pl.widthMm * 10) / 10} mm wide · {placed}
       </span>
     </>
   );

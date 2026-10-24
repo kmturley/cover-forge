@@ -11,7 +11,7 @@ import { designOf, layeredShared } from './designs';
 import { drawLogo } from './logo';
 import { drawCode } from './code';
 import { drawBorder } from './border';
-import { getBrand } from '../brands';
+import { getMark } from '../brands';
 import { drawOfficial, spineTitleCase, spineTitleColor, spineTitleScale, spineTitleStartMm } from './official';
 
 export interface Scene {
@@ -92,8 +92,8 @@ export function renderCover(
   // Brand logos sit above every image and the spine text.
   for (const panel of t.panels.filter((q) => !q.follows)) {
     const { logo } = resolvePanel(shared, item, panel.id, t.kind);
-    const brand = getBrand(logo.brand);
-    if (brand && item) drawLogo(ctx, t, panel, brand, logo, px);
+    const mark = getMark(logo.brand);
+    if (mark && item) drawLogo(ctx, t, panel, mark, logo, px);
   }
 
   // QR codes and barcodes go on top of logos.
