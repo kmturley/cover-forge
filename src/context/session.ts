@@ -11,6 +11,7 @@ import { PANEL_IDS, defaultCodeKind } from '../engine/resolve';
 import type { MediaType } from '../types/media';
 import type { AppState, ViewMode } from './AppContext';
 import { sanitizeAssets, sanitizeDiff } from '../engine/layers/sanitize';
+import { DEFAULT_SPINE_COLOR, DEFAULT_SPINE_FONT } from '../engine/layers/defaults';
 
 /**
  * Portable JSON form of a working session: the media queue, every option and the shared settings.
@@ -106,7 +107,7 @@ function restoreDesigns(raw: unknown, defaults: SharedSettings): Design[] {
   for (const d of raw) {
     if (!isObj(d) || typeof d.id !== 'string' || typeof d.name !== 'string' || d.id === 'default' || out.some((o) => o.id === d.id)) continue;
     const { panels, diff } = restoreShared({ panels: d.panels, diff: d.diff }, defaults);
-    out.push({ id: d.id, name: d.name, panels, spine: isObj(d.spine) ? (d.spine as Design['spine']) : {}, ...(diff && { diff }) });
+    out.push({ id: d.id, name: d.name, panels, spine: isObj(d.spine) ? (d.spine as Design['spine']) : {}, ...(diff && { diff }), ...(typeof d.base === 'number' && Number.isFinite(d.base) && { base: d.base }) });
   }
   return out;
 }
@@ -281,4 +282,9 @@ export function clearBackup(): void {
   } catch {
     // Nothing to clear.
   }
+}
+
+/** Designs from a file of their own (not a session): the well-formed ones, with their layers checked. */
+export function restoreDesignsFrom(raw: unknown): Design[] {
+  return restoreDesigns(raw, { panels: {}, spine: { fontFamily: DEFAULT_SPINE_FONT, color: DEFAULT_SPINE_COLOR } });
 }

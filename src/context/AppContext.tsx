@@ -3,8 +3,10 @@ import type { MediaItem } from '../types/media';
 import type { PanelId, TemplateConfig } from '../types/template';
 import type { Design, PanelSettings, SharedSettings, SpineSettings } from '../types/editor';
 import type { Asset, Layer, LayerDiff, LayerPatch } from '../types/layers';
-import { diffAdd, diffOrder, diffRemove, diffReset, diffUpdate, diffWithoutPanel } from '../engine/layers/diffEdit';
-import { DEFAULT_DESIGN_ID } from '../engine/designs';
+import { diffAdd, diffOrder, diffRemove, diffReset, diffUpdate, diffWithoutPanel, mergeDiffs } from '../engine/layers/diffEdit';
+import { DEFAULTS_VERSION } from '../engine/layers/presets';
+import { PANEL_IDS } from '../engine/resolve';
+import { DEFAULT_DESIGN_ID, designOf, mergePanelSettings } from '../engine/designs';
 import { DEFAULT_TEMPLATE_ID, buildTemplateById } from '../templates';
 import { syncTemplate } from './templateOf';
 import { LEGACY_FIELDS } from '../engine/box';
@@ -113,6 +115,10 @@ export type Action =
   | { type: 'redo' }
   /** Gives the items a design (null = Default). */
   | { type: 'assignDesign'; items: string[]; design: string | null }
+  /** Adds a ready-made design (from a preset or a file) and gives it to the items. */
+  | { type: 'addDesign'; design: Design; items: string[] }
+  /** Turns an item's own changes, laid on its design, into a new design the item then uses, with nothing left of its own. */
+  | { type: 'saveItemAsDesign'; itemId: string; id: string; name: string }
   /** Adds a design (a copy of `from`'s own settings; nothing for Default) and gives it to the items. */
   | { type: 'forkDesign'; id: string; name: string; from: string; items: string[] }
   | { type: 'renameDesign'; id: string; name: string }
@@ -373,9 +379,37 @@ function apply(state: AppState, action: Action): AppState {
         return next;
       }) };
     }
+    case 'addDesign': {
+      if (state.designs.some((d) => d.id === action.design.id)) return state;
+      return reducer({ ...state, designs: [...state.designs, action.design] }, { type: 'assignDesign', items: action.items, design: action.design.id });
+    }
+    case 'saveItemAsDesign': {
+      const item = state.items.find((i) => i.id === action.itemId);
+      if (!item || state.designs.some((d) => d.id === action.id)) return state;
+      const current = designOf(state.designs, item);
+      const panels: Design['panels'] = {};
+      for (const id of PANEL_IDS) {
+        const merged = mergePanelSettings(current?.panels[id], item.panels?.[id]);
+        if (merged) panels[id] = merged;
+      }
+      const diff = nonEmpty(mergeDiffs(current?.diff, item.diff));
+      const design: Design = { id: action.id, name: action.name, panels: structuredClone(panels), spine: compact({ ...current?.spine, ...item.spineOverride }), ...(diff && { diff: structuredClone(diff) }), base: DEFAULTS_VERSION };
+      return {
+        ...state,
+        designs: [...state.designs, design],
+        items: state.items.map((i) => {
+          if (i.id !== item.id) return i;
+          const rest = { ...i };
+          delete rest.panels;
+          delete rest.spineOverride;
+          delete rest.diff;
+          return { ...rest, designId: design.id };
+        }),
+      };
+    }
     case 'forkDesign': {
       const source = action.from === DEFAULT_DESIGN_ID ? undefined : state.designs.find((d) => d.id === action.from);
-      const design: Design = { id: action.id, name: action.name, panels: structuredClone(source?.panels ?? {}), spine: { ...source?.spine }, ...(source?.diff && { diff: structuredClone(source.diff) }) };
+      const design: Design = { id: action.id, name: action.name, panels: structuredClone(source?.panels ?? {}), spine: { ...source?.spine }, ...(source?.diff && { diff: structuredClone(source.diff) }), base: DEFAULTS_VERSION };
       return reducer({ ...state, designs: [...state.designs, design] }, { type: 'assignDesign', items: action.items, design: action.id });
     }
     case 'renameDesign':

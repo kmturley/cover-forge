@@ -366,3 +366,10 @@ h3 { font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: v
 /* A folder of layers (the Branded dress), and the layers inside it. */
 .layer-row.folder { background: var(--panel); border-style: dashed; }
 .layer-row.indented { margin-left: 18px; }
+
+/* Presets. */
+.preset-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 10px; max-height: min(60vh, 520px); overflow-y: auto; padding-right: 4px; }
+.preset-card { display: flex; flex-direction: column; align-items: stretch; gap: 6px; text-align: left; padding: 8px; border-width: 2px; border-radius: 8px; }
+.preset-card small { color: var(--muted); font-size: 11px; line-height: 1.35; }
+.preset-name { font-weight: 600; }
+.preset-preview { width: 100%; height: auto; background: var(--bg); border-radius: 4px; }

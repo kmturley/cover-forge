@@ -1,6 +1,6 @@
 # CoverForge v2: Layer-based editor, design and plan
 
-Status: **approved to build (revision 5).** Work is on branch `feature/layer-system`. Phases 0 and 1 are done, and phase 2 (the layer panel) is built; see the notes under each phase in §7.
+Status: **built (revision 6).** Work is on branch `feature/layer-system`. Phases 0–6 are done; the notes under each phase in §7 say what was built and where it differs from the plan. Phase 7 (slipcover, #13) is independent and not started.
 Covers GitHub issues [#3 Multiple images](https://github.com/kmturley/cover-forge/issues/3), [#12 Multiple backgrounds](https://github.com/kmturley/cover-forge/issues/12) and [#14 Per-panel typography](https://github.com/kmturley/cover-forge/issues/14). It also sets up [#13 Slipcover](https://github.com/kmturley/cover-forge/issues/13), which is mostly template geometry.
 
 ### What changed since the first draft
@@ -583,6 +583,8 @@ Left for phase 3 and later: dragging on the canvas, the Google Fonts picker (the
 Known limits: a layer is clipped to its panel (the old drawing wasn't), a lockup's parts are separate layers (moving a mark and its wordmark together means selecting both), and the Xbox 360's swoosh glow is 64 layers' worth of strips in a six-row approximation.
 
 **Phase 6: Presets and designs.** Built-in presets, fork and save-as, design JSON export and import, preset picker.
+
+**Phase 6 as built.** Six presets (Blank, Poster, Screenshot grid back, Retro arcade, Minimal, Gradient sleeve) are read-only diffs over the default layers, placed by percent so they fit any case; "New design from a preset" shows each drawn on the selected item and copies the chosen one into a design of the user's own. "Save this item's changes as a design" lays the item's own changes on the design it used (diffs merge, slot settings merge) so the cover looks exactly as before, and leaves the item with none. A design exports to `<name>.coverforge-design.json` (its settings, layers and the images its layers use, uploads embedded) and imports with the same validation as a session, a design id of its own, and asset ids remapped when one is already taken. Designs record the version of the default layers they were made against (`base`, `DEFAULTS_VERSION`), and a snapshot test freezes every case's default layer ids, kinds and targets so the format can't change by accident. Deviation from §2.6: an exported design is a diff plus its images, not "defaults flattened in": the frozen, versioned defaults make that unnecessary.
 
 **Phase 7 (parallel, independent): Slipcover (#13).**
 

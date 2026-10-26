@@ -69,3 +69,48 @@ export async function relinkAsset(asset: Asset, file: File): Promise<Asset> {
   if (!ref) throw new Error('This browser can’t keep uploaded files (storage is blocked).');
   return { ...asset, source: { kind: 'local', ref }, size: file.size, ...(await dimensions(file)), hash: await sha256Hex(file) };
 }
+
+const readAsDataUrl = (blob: Blob): Promise<string> =>
+  new Promise((resolve, reject) => {
+    const r = new FileReader();
+    r.onload = () => resolve(r.result as string);
+    r.onerror = () => reject(r.error);
+    r.readAsDataURL(blob);
+  });
+
+/**
+ * The assets as they can travel in a file: an upload's bytes ride along as a data URL (and are put back into browser
+ * storage by `adoptAssets` on the way in). One whose bytes aren't here stays a reference, with its name, size and hash,
+ * that can be matched to a file later.
+ */
+export async function embedAssets(assets: Record<string, Asset>): Promise<Record<string, Asset>> {
+  const out = { ...assets };
+  for (const [id, a] of Object.entries(out)) {
+    const src = a.source.kind === 'local' ? srcOf(a.source.ref) : undefined;
+    if (a.source.kind !== 'local' || !src) continue;
+    try {
+      out[id] = { ...a, source: { kind: 'url', url: await readAsDataUrl(await (await fetch(src)).blob()) } };
+    } catch {
+      // The bytes aren't available: it stays a reference.
+    }
+  }
+  return out;
+}
+
+/** Moves assets embedded as data URLs back into browser storage, so a loaded file doesn't bloat localStorage. */
+export async function adoptAssets(assets: Record<string, Asset>): Promise<Record<string, Asset>> {
+  const out: Record<string, Asset> = {};
+  for (const [id, a] of Object.entries(assets)) {
+    if (a?.source?.kind === 'url' && a.source.url.startsWith('data:image/')) {
+      try {
+        const ref = await saveLocalImage(await (await fetch(a.source.url)).blob());
+        out[id] = ref ? { ...a, source: { kind: 'local', ref } } : a;
+        continue;
+      } catch {
+        // Keep the data URL: it still renders.
+      }
+    }
+    out[id] = a;
+  }
+  return out;
+}

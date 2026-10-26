@@ -4,6 +4,7 @@ import type { Asset, LayerDiff } from '../../types/layers';
 import { newCode, newGroup, newImage, newShape, newSvg, newText } from '../layers/factory';
 import type { PanelId } from '../../types/template';
 import { LOGOS } from '../../brands';
+import { PRESETS, designFromPreset } from '../layers/presets';
 import { LIBRARY } from '../../templates/library';
 import { buildTemplateById } from '../../templates';
 import type { Scene } from '../CanvasRenderer';
@@ -188,4 +189,7 @@ const features: Fixture[] = [
   { name: 'view/hide-outside-cut', scene: scene(PS4, { hideOutsideCut: true, banner: true }), px: 2 },
 ];
 
-export const FIXTURES: Fixture[] = [...features, ...everyCase];
+/** Each built-in preset, applied to the same item on a Blu-ray case. */
+const presets: Fixture[] = PRESETS.map((p) => ({ name: `preset/${p.id}`, scene: scene(BR, { designs: [designFromPreset(p, 'd1')], item: { ...ITEM, designId: 'd1' } }), px: 2 }));
+
+export const FIXTURES: Fixture[] = [...features, ...presets, ...everyCase];

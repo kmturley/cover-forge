@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { ShapeLayer } from '../../types/layers';
 import { applyDiff } from './diff';
-import { diffAdd, diffOrder, diffRemove, diffReset, diffTouchesPanel, diffUpdate, diffWithoutPanel, mergePatch } from './diffEdit';
+import { diffAdd, diffOrder, diffRemove, diffReset, diffTouchesPanel, diffUpdate, diffWithoutPanel, mergeDiffs, mergePatch } from './diffEdit';
 
 const rect = (id: string, target: ShapeLayer['target'] = 'front'): ShapeLayer => ({
   id, type: 'shape', shape: 'rect', target, visible: true, placement: null, rotationDeg: 0, opacity: 1, fill: null,
@@ -62,5 +62,38 @@ describe('diff edits', () => {
     expect(diffTouchesPanel(d, 'spine')).toBe(false);
     expect(diffWithoutPanel(d, 'back')).toEqual({ patch: { 'front.image': { opacity: 0.5 } } });
     expect(diffWithoutPanel(undefined, 'back')).toEqual({});
+  });
+});
+
+describe('mergeDiffs', () => {
+  const base = [rect('a', 'front'), rect('b', 'front'), rect('c', 'front')];
+  const same = (under: Parameters<typeof mergeDiffs>[0], over: Parameters<typeof mergeDiffs>[1]) => {
+    const once = applyDiff(applyDiff(base, under), over);
+    const merged = applyDiff(base, mergeDiffs(under, over));
+    expect(merged).toEqual(once);
+    return merged;
+  };
+
+  it('is one diff that does what the two do in turn', () => {
+    same({ patch: { a: { fill: '#1' } }, hidden: ['b'] }, { patch: { a: { opacity: 0.5 }, c: { fill: '#3' } }, added: [{ layer: rect('x') }] });
+  });
+  it('folds a change to a layer the lower diff added into that layer', () => {
+    const out = same({ added: [{ layer: rect('n', 'front') }] }, { patch: { n: { fill: '#f00' } } }) as ShapeLayer[];
+    expect(out.find((l) => l.id === 'n')!.fill).toBe('#f00');
+  });
+  it('drops a layer the lower diff added when the upper one removes it', () => {
+    same({ added: [{ layer: rect('n') }] }, { hidden: ['n'] });
+    expect(mergeDiffs({ added: [{ layer: rect('n') }] }, { hidden: ['n'] }).added).toBeUndefined();
+  });
+  it('lets the upper layer win on the same added id (it replaces it) and on order', () => {
+    const out = applyDiff(base, mergeDiffs({ added: [{ layer: rect('n') }], order: ['n', 'a'] }, { added: [{ layer: { ...rect('n'), fill: '#0f0' } }], order: ['c', 'n'] })) as ShapeLayer[];
+    expect(out.filter((l) => l.id === 'n')).toHaveLength(1);
+    expect(out.find((l) => l.id === 'n')!.fill).toBe('#0f0');
+    expect(out.map((l) => l.id).indexOf('c')).toBeLessThan(out.map((l) => l.id).indexOf('n'));
+  });
+  it('is the other diff when one is missing', () => {
+    expect(mergeDiffs(undefined, { hidden: ['a'] })).toEqual({ hidden: ['a'] });
+    expect(mergeDiffs({ hidden: ['a'] }, undefined)).toEqual({ hidden: ['a'] });
+    expect(mergeDiffs(undefined, undefined)).toEqual({});
   });
 });

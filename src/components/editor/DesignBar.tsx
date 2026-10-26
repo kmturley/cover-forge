@@ -1,6 +1,9 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { targetDesignId, useAppDispatch, useAppState, useSelectedItem, type EditMode } from '../../context/AppContext';
 import { DEFAULT_DESIGN_ID, DEFAULT_DESIGN_NAME, usersOf } from '../../engine/designs';
+import { itemHasOverrides } from '../../engine/resolve';
+import { readDesignFile, saveDesignFile } from '../../context/designFile';
+import { PresetModal } from './PresetModal';
 import type { PanelId } from '../../types/template';
 import { NameModal } from './NameModal';
 
@@ -10,7 +13,10 @@ export function DesignBar({ panel }: { panel: PanelId | 'canvas' }) {
   const { items, designs, editMode } = state;
   const item = useSelectedItem();
   const dispatch = useAppDispatch();
-  const [naming, setNaming] = useState<'fork' | 'rename' | null>(null);
+  const [naming, setNaming] = useState<'fork' | 'rename' | 'save' | null>(null);
+  const [presets, setPresets] = useState(false);
+  const [fileError, setFileError] = useState<string | null>(null);
+  const importInput = useRef<HTMLInputElement>(null);
 
   const designId = targetDesignId(state);
   const current = designs.find((d) => d.id === designId);
@@ -53,6 +59,10 @@ export function DesignBar({ panel }: { panel: PanelId | 'canvas' }) {
         <details className="menu">
           <summary>More…</summary>
           <div className="menu-list" onClick={(e) => e.currentTarget.parentElement?.removeAttribute('open')}>
+            <button disabled={!item} onClick={() => setPresets(true)}>New design from a preset…</button>
+            {item && itemHasOverrides(item) && <button onClick={() => setNaming('save')}>Save this item’s changes as a design…</button>}
+            <button onClick={() => void saveDesignFile(current ?? { id: DEFAULT_DESIGN_ID, name, panels: state.shared.panels, spine: state.shared.spine, ...(state.shared.diff && { diff: state.shared.diff }) }, state.assets)}>Export “{name}” as a file…</button>
+            <button disabled={!item} onClick={() => importInput.current?.click()}>Import a design file…</button>
             {!isDefault && <button onClick={() => setNaming('rename')}>Rename “{name}”</button>}
             <button onClick={() => dispatch({ type: 'clearDesign', design: designId, panel })}>{panel === 'canvas' ? `Reset the layers across panels in “${name}”` : `Reset this panel in “${name}”`}</button>
             <button onClick={() => confirmThen(`Reset every panel of “${name}”?`, () => dispatch({ type: 'clearDesign', design: designId }))}>Reset all of “{name}”</button>
@@ -74,6 +84,31 @@ export function DesignBar({ panel }: { panel: PanelId | 'canvas' }) {
           onDone={(n) => dispatch({ type: 'forkDesign', id: `design-${Date.now().toString(36)}`, name: n, from: designId, items: [item.id] })}
         />
       )}
+      {naming === 'save' && item && (
+        <NameModal title="Save as a design" initial={`${item.title} look`} confirm="Save" onClose={() => setNaming(null)} onDone={(n) => dispatch({ type: 'saveItemAsDesign', itemId: item.id, id: `design-${Date.now().toString(36)}`, name: n })} />
+      )}
+      {presets && <PresetModal onClose={() => setPresets(false)} />}
+      {fileError && <p className="error small">{fileError}</p>}
+      <input
+        ref={importInput}
+        type="file"
+        accept=".json,application/json"
+        hidden
+        aria-label="Choose a design file"
+        onChange={(e) => {
+          const file = e.target.files?.[0];
+          e.target.value = '';
+          if (!file || !item) return;
+          setFileError(null);
+          readDesignFile(file, state.assets).then(
+            ({ design, assets }) => {
+              for (const a of Object.values(assets)) dispatch({ type: 'setAsset', asset: a });
+              dispatch({ type: 'addDesign', design, items: [item.id] });
+            },
+            (err: unknown) => setFileError(err instanceof Error ? err.message : 'That file couldn’t be read.'),
+          );
+        }}
+      />
       {naming === 'rename' && <NameModal title="Rename design" initial={name} confirm="Rename" onClose={() => setNaming(null)} onDone={(n) => dispatch({ type: 'renameDesign', id: designId, name: n })} />}
     </>
   );

@@ -166,4 +166,6 @@ export interface Design {
   spine: Partial<SharedSpine>;
   /** See SharedSettings.diff. */
   diff?: LayerDiff;
+  /** The version of the default layers this was made against (see DEFAULTS_VERSION). Unset on designs from before it. */
+  base?: number;
 }

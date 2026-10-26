@@ -162,3 +162,40 @@ describe('updateLayers', () => {
     expect((find(s, 'front.fill') as ShapeLayer).opacity).toBe(1);
   });
 });
+
+describe('designs from presets, files and items', () => {
+  const design = { id: 'new', name: 'New', panels: {}, spine: {}, diff: { hidden: ['front.image'] } };
+
+  it('adds a ready-made design and gives it to the items', () => {
+    let s = run(start(), { type: 'addDesign', design, items: ['a'] });
+    expect(s.designs.map((d) => d.id)).toEqual(['new']);
+    expect(s.items[0].designId).toBe('new');
+    expect(find(s, 'front.image')).toBeUndefined();
+    s = run(s, { type: 'addDesign', design, items: ['a'] });
+    expect(s.designs).toHaveLength(1);
+  });
+
+  it('turns an item’s own changes into a design, laid on the design it used, and leaves the item with none', () => {
+    let s = run(start(), { type: 'addDesign', design: { ...design, panels: { front: { backgroundColor: '#111111' } } }, items: ['a'] });
+    s = run(s, { type: 'updatePanel', id: 'a', panel: 'back', patch: { backgroundColor: '#222222' } }, { type: 'addLayer', id: 'a', layer: newShape('mine', 'front', { fill: '#33ff33' }) }, { type: 'updateLayer', id: 'a', layerId: 'back.image', patch: { opacity: 0.4 } });
+    const before = layersOf(s).map((l) => JSON.stringify(l));
+    s = run(s, { type: 'saveItemAsDesign', itemId: 'a', id: 'saved', name: 'Saved' });
+    const saved = s.designs.find((d) => d.id === 'saved')!;
+    expect(saved.panels).toMatchObject({ front: { backgroundColor: '#111111' }, back: { backgroundColor: '#222222' } });
+    expect(saved.diff?.hidden).toEqual(['front.image']);
+    expect(saved.diff?.added?.map((a) => a.layer.id)).toEqual(['mine']);
+    expect(saved.base).toBe(1);
+    expect(s.items[0]).toMatchObject({ designId: 'saved' });
+    expect(s.items[0].panels).toBeUndefined();
+    expect(s.items[0].diff).toBeUndefined();
+    // The cover looks exactly as it did.
+    expect(layersOf(s).map((l) => JSON.stringify(l))).toEqual(before);
+  });
+
+  it('does nothing for an unknown item or a taken id', () => {
+    const s = start();
+    expect(run(s, { type: 'saveItemAsDesign', itemId: 'zzz', id: 'x', name: 'x' })).toBe(s);
+    const t = run(s, { type: 'addDesign', design, items: [] });
+    expect(run(t, { type: 'saveItemAsDesign', itemId: 'a', id: 'new', name: 'x' })).toBe(t);
+  });
+});

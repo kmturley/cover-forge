@@ -82,3 +82,33 @@ export function diffWithoutPanel(d: LayerDiff | undefined, panel: PanelId | 'can
     order: d.order?.filter((id) => !gone.has(id)),
   });
 }
+
+/**
+ * `over` laid on top of `under`, as one diff: what applying `under` then `over` does. Changes to a layer `under` added are
+ * folded into that layer, and a layer `under` added that `over` takes away is dropped (a diff's own patches only reach
+ * layers from below, so this can't be a plain concatenation).
+ */
+export function mergeDiffs(under: LayerDiff | undefined, over: LayerDiff | undefined): LayerDiff {
+  if (!under) return over ?? {};
+  if (!over) return under;
+  const patch: Record<string, LayerPatch> = { ...under.patch };
+  let added = [...(under.added ?? [])];
+  const hidden = new Set(under.hidden);
+  for (const [id, p] of Object.entries(over.patch ?? {})) {
+    const at = added.findIndex((a) => a.layer.id === id);
+    if (at >= 0) added[at] = { ...added[at], layer: applyPatch(added[at].layer, p) };
+    else patch[id] = mergePatch(patch[id], p);
+  }
+  for (const id of over.hidden ?? []) {
+    if (added.some((a) => a.layer.id === id)) added = added.filter((a) => a.layer.id !== id);
+    else {
+      hidden.add(id);
+      delete patch[id];
+    }
+  }
+  const overIds = new Set((over.added ?? []).map((a) => a.layer.id));
+  added = [...added.filter((a) => !overIds.has(a.layer.id)), ...(over.added ?? [])];
+  const gone = new Set(added.map((a) => a.layer.id));
+  const order = over.order ?? under.order?.filter((id) => !hidden.has(id) || gone.has(id));
+  return tidy({ patch, hidden: [...hidden], added, order });
+}
