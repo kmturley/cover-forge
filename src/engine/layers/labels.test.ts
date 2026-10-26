@@ -4,6 +4,7 @@ import type { MediaItem } from '../../types/media';
 import { newCode, newImage, newShape, newText } from './factory';
 import { defaultLayers } from './defaults';
 import { buildTemplateById } from '../../templates';
+import { DEFAULT_SPINE_COLOR, DEFAULT_SPINE_FONT } from './defaults';
 import { isDefaultId, isEmptyLayer, layerDetail, layerName, slotName, touchedIds } from './labels';
 
 const item: MediaItem = { id: 'i', type: 'game', title: 'T', assets: { cover: 'c', hero: 'h', logo: null, screenshots: ['s'] } };
@@ -65,5 +66,9 @@ describe('touchedIds', () => {
   });
   it('is empty for a level that changes nothing', () => {
     expect(touchedIds({}).size).toBe(0);
+  });
+  it('does not count the spine font and colour the Default design always carries', () => {
+    expect(touchedIds({ spine: { fontFamily: DEFAULT_SPINE_FONT, color: DEFAULT_SPINE_COLOR } }).size).toBe(0);
+    expect(touchedIds({ spine: { fontFamily: DEFAULT_SPINE_FONT, color: '#ff0000' } }).has('spine.text')).toBe(true);
   });
 });

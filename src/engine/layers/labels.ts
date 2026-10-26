@@ -6,6 +6,7 @@ import { getMark } from '../../brands';
 import { libraryImages } from '../imageLibrary';
 import { settingsToDiff } from './fromSettings';
 import { fillLabel } from './paint';
+import { DEFAULT_SPINE_COLOR, DEFAULT_SPINE_FONT } from './defaults';
 
 export const CODE_LABELS: Record<CodeKind, string> = { none: 'None', qr: 'QR code', ean13: 'Barcode · EAN-13', upca: 'Barcode · UPC-A', code128: 'Barcode · Code 128' };
 
@@ -81,7 +82,9 @@ export function isEmptyLayer(l: Layer): boolean {
 
 /** The ids of layers a level (the Default design, a design, or an item) changes in any way. */
 export function touchedIds(level: { panels?: Partial<Record<PanelId, PanelSettings>>; spine?: Partial<SpineSettings>; diff?: LayerDiff }): Set<string> {
-  const ids = new Set<string>(Object.keys(settingsToDiff(level.panels, level.spine).patch ?? {}));
+  // The Default design always carries the starting spine font and colour; that is no change until one differs.
+  const spine = Object.fromEntries(Object.entries(level.spine ?? {}).filter(([k, v]) => !((k === 'fontFamily' && v === DEFAULT_SPINE_FONT) || (k === 'color' && v === DEFAULT_SPINE_COLOR))));
+  const ids = new Set<string>(Object.keys(settingsToDiff(level.panels, spine).patch ?? {}));
   const d = level.diff;
   for (const id of Object.keys(d?.patch ?? {})) ids.add(id);
   for (const a of d?.added ?? []) ids.add(a.layer.id);
