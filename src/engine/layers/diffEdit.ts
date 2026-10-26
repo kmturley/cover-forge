@@ -3,7 +3,7 @@ import type { Layer, LayerDiff, LayerPatch } from '../../types/layers';
 import { applyPatch } from './diff';
 
 /** Fields that merge field by field when a patch changes them (see applyPatch). */
-const NESTED = ['stroke', 'params'] as const;
+const NESTED = ['stroke', 'params', 'textStroke', 'shadow'] as const;
 
 /** A stored patch with `change` on top. A field set to `undefined` is dropped, so the layer inherits it again. */
 export function mergePatch(stored: LayerPatch | undefined, change: LayerPatch): LayerPatch {

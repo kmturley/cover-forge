@@ -125,6 +125,12 @@ export interface TextLayer extends LayerBase {
   align: 'left' | 'center' | 'right';
   weight: number;
   italic: boolean;
+  /** Extra space between letters, in thousandths of an em; 0 is none. */
+  letterSpacing: number;
+  /** An outline round the letters; none while its width is 0. */
+  textStroke: { color: string; widthMm: number };
+  /** A drop shadow behind the letters; none while its blur and both offsets are 0. */
+  shadow: { color: string; blurMm: number; xMm: number; yMm: number };
 }
 
 export interface CodeParams {

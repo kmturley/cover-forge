@@ -1,10 +1,10 @@
 import { SPINE_VARIABLES, defaultCapHeightMm, defaultSpineTemplate, spineText } from '../../../engine/SpineTypography';
-import { FONTS } from '../../../engine/fonts';
 import { canvasPanel } from '../../../engine/layers/draw';
 import { isDefaultId } from '../../../engine/layers/labels';
 import type { TextLayer } from '../../../types/layers';
 import { NumberSlider } from '../NumberSlider';
 import { RotationOpacity } from './CommonFields';
+import { FontPicker } from './FontPicker';
 import { PlacementControls } from './PlacementControls';
 import type { LayerEditor } from './useLayerEditor';
 
@@ -61,17 +61,19 @@ export function TextInspector({ layer, ed }: { layer: TextLayer; ed: LayerEditor
       />
       {layer.textHeightMm !== undefined && <button onClick={() => set({ textHeightMm: undefined })}>{spineTitle ? `Automatic size (${autoMm} mm for this template)` : 'Automatic: as large as fits the box'}</button>}
 
-      <label className="field">
+      <div className="field">
         <span>Font</span>
-        <select value={layer.fontFamily} onChange={(e) => set({ fontFamily: e.target.value })}>
-          {!FONTS.some(([v]) => v === layer.fontFamily) && <option value={layer.fontFamily}>Custom font</option>}
-          {FONTS.map(([v, l]) => (
-            <option key={v} value={v}>
-              {l}
-            </option>
-          ))}
-        </select>
-      </label>
+        <FontPicker value={layer.fontFamily} used={ed.layers.filter((l) => l.type === 'text').map((l) => (l as TextLayer).fontFamily)} onPick={(fontFamily) => set({ fontFamily })} />
+        {ed.layers.filter((l) => l.type === 'text').length > 1 && (
+          <button
+            className="link"
+            onClick={() => ed.updateMany(ed.layers.filter((l) => l.type === 'text').map((l) => l.id), { fontFamily: layer.fontFamily })}
+            title="Set this font on every text layer in this design, the spine title included"
+          >
+            Use this font on every text layer
+          </button>
+        )}
+      </div>
       <label className="field">
         <span>Text colour</span>
         <input type="color" value={layer.color} onChange={(e) => set({ color: e.target.value }, 'color')} />
@@ -96,6 +98,20 @@ export function TextInspector({ layer, ed }: { layer: TextLayer; ed: LayerEditor
             <button className={layer.weight >= 600 ? 'active' : ''} aria-pressed={layer.weight >= 600} onClick={() => set({ weight: layer.weight >= 600 ? 400 : 700 })}><b>Bold</b></button>
             <button className={layer.italic ? 'active' : ''} aria-pressed={layer.italic} onClick={() => set({ italic: !layer.italic })}><i>Italic</i></button>
           </div>
+          <NumberSlider label="Letter spacing" unit="‰" min={-100} max={500} step={5} decimals={0} value={layer.letterSpacing} onChange={(letterSpacing) => set({ letterSpacing }, 'spacing')} />
+          <h3>Outline and shadow</h3>
+          <div className="field row">
+            <input type="color" aria-label="Outline colour" value={layer.textStroke.color} onChange={(e) => set({ textStroke: { color: e.target.value } }, 'stroke-color')} />
+            <span className="muted">Outline {layer.textStroke.widthMm > 0 ? `${layer.textStroke.widthMm} mm` : 'none'}</span>
+          </div>
+          <NumberSlider label="Outline width" unit="mm" min={0} max={3} step={0.1} decimals={1} value={layer.textStroke.widthMm} onChange={(widthMm) => set({ textStroke: { widthMm } }, 'stroke-width')} />
+          <div className="field row">
+            <input type="color" aria-label="Shadow colour" value={layer.shadow.color} onChange={(e) => set({ shadow: { color: e.target.value } }, 'shadow-color')} />
+            <span className="muted">Shadow</span>
+          </div>
+          <NumberSlider label="Shadow blur" unit="mm" min={0} max={5} step={0.1} decimals={1} value={layer.shadow.blurMm} onChange={(blurMm) => set({ shadow: { blurMm } }, 'shadow-blur')} />
+          <NumberSlider label="Shadow across" unit="mm" min={-5} max={5} step={0.1} decimals={1} value={layer.shadow.xMm} onChange={(xMm) => set({ shadow: { xMm } }, 'shadow-x')} />
+          <NumberSlider label="Shadow down" unit="mm" min={-5} max={5} step={0.1} decimals={1} value={layer.shadow.yMm} onChange={(yMm) => set({ shadow: { yMm } }, 'shadow-y')} />
           <h3>Position and size of the box</h3>
           <PlacementControls placement={layer.placement} panel={panel} autoLabel={panelRect?.text ? 'Along the spine, as the title' : undefined} onChange={(placement) => set({ placement })} />
           <RotationOpacity layer={layer} ed={ed} />

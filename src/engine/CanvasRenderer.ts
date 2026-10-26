@@ -9,6 +9,8 @@ import { BASE_BACKGROUND } from './resolve';
 import { drawLayers, type ImageLookup } from './layers/draw';
 import { resolveLayers } from './layers/resolve';
 import { layerImageUrls } from './layers/images';
+import { layerFonts } from './layers/fonts';
+import { ensureFont } from '../fonts/loader';
 
 export interface Scene {
   template: TemplateConfig;
@@ -68,7 +70,8 @@ export function renderCover(
 /** Preloads every image the item uses so a subsequent synchronous render is complete. */
 export function preloadItem({ template, item, shared, designs, assets }: Pick<Scene, 'template' | 'item' | 'shared' | 'designs' | 'assets'>): Promise<unknown> {
   if (!item) return Promise.resolve();
-  return loadImages(layerImageUrls(resolveLayers({ template, item, shared, designs }), item, assets));
+  const layers = resolveLayers({ template, item, shared, designs });
+  return Promise.all([loadImages(layerImageUrls(layers, item, assets)), ...layerFonts(layers, item).map(ensureFont)]);
 }
 
 /**

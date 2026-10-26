@@ -567,6 +567,8 @@ Left for phase 3 and later: dragging on the canvas, the Google Fonts picker (the
 - Stroke, shadow, letter-spacing, "apply font to all panels", spine orientation.
 - Tier-2 SVG template generator.
 
+**Phase 4, fonts and text depth, as built.** Text can use any Google font: the picker opens on the recommended list (grouped as in §2.12) with the system fonts, and searching reaches the whole Fontsource catalogue (lazy-loaded; "couldn't reach the font list" offline). A design stores the CSS family (`"Lobster", sans-serif`); a font's files load only when text uses it, by weight, style and the character sets the words need, before drawing (so the 2D view, the 3D texture and exports all wait for them). Text boxes gained letter spacing, an outline and a drop shadow, and "Use this font on every text layer" sets one font across a design in a single undo step. The spine title keeps its fixed bold look (no spacing, outline or shadow yet).
+
 **Phase 5: Branded as editable layers.**
 - Gradient and path shapes and `group`.
 - `brandedLayers(kind, variantId)` for each platform and format, checked against `drawOfficial` by the harness.

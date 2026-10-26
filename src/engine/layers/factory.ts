@@ -1,7 +1,7 @@
 import type { PanelId } from '../../types/template';
 import type { Axis, CodeParams, GeneratedLayer, ImageLayer, ImageSource, Layer, LayerBase, Placement, ShapeLayer, TextLayer } from '../../types/layers';
 import { DEFAULT_BORDER, DEFAULT_CODE, DEFAULT_LOGO } from '../../types/editor';
-import { DEFAULT_SPINE_COLOR, DEFAULT_SPINE_FONT } from './defaults';
+import { DEFAULT_SPINE_COLOR, DEFAULT_SPINE_FONT, TEXT_EFFECTS } from './defaults';
 
 const base = (id: string, target: PanelId | 'canvas', placement: LayerBase['placement']): LayerBase => ({ id, target, visible: true, placement, rotationDeg: 0, opacity: 1 });
 
@@ -24,7 +24,7 @@ export const newImage = (id: string, target: PanelId | 'canvas', source: ImageSo
 
 export const newText = (id: string, target: PanelId | 'canvas', o: Partial<TextLayer> = {}): TextLayer => ({
   ...base(id, target, { x: { anchor: 'center', offset: 50, size: 80 }, y: { anchor: 'start', offset: 8, size: 14 } }),
-  type: 'text', text: '{title}', fontFamily: DEFAULT_SPINE_FONT, color: DEFAULT_SPINE_COLOR, align: 'center', weight: 700, italic: false, ...o,
+  type: 'text', text: '{title}', fontFamily: DEFAULT_SPINE_FONT, color: DEFAULT_SPINE_COLOR, align: 'center', weight: 700, italic: false, ...structuredClone(TEXT_EFFECTS), ...o,
 });
 
 export const newCode = (id: string, target: PanelId | 'canvas', params: Partial<CodeParams> = {}, o: Partial<GeneratedLayer> = {}): GeneratedLayer => ({

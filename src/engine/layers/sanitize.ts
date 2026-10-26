@@ -64,6 +64,18 @@ const stroke = (v: unknown) => {
   return Object.keys(out).length > 0 ? out : undefined;
 };
 
+const textStroke = (v: unknown) => {
+  if (!isObj(v)) return undefined;
+  const out = Object.fromEntries(Object.entries({ color: str(v.color, 40), widthMm: num(v.widthMm) }).filter(([, f]) => f !== undefined));
+  return Object.keys(out).length > 0 ? out : undefined;
+};
+
+const shadow = (v: unknown) => {
+  if (!isObj(v)) return undefined;
+  const out = Object.fromEntries(Object.entries({ color: str(v.color, 40), blurMm: num(v.blurMm), xMm: num(v.xMm), yMm: num(v.yMm) }).filter(([, f]) => f !== undefined));
+  return Object.keys(out).length > 0 ? out : undefined;
+};
+
 const params = (v: unknown) => {
   if (!isObj(v)) return undefined;
   const out = Object.fromEntries(Object.entries({ kind: oneOf(v.kind, CODE_KINDS), pattern: str(v.pattern, 500), color: str(v.color, 40), background: str(v.background, 40) }).filter(([, f]) => f !== undefined));
@@ -95,6 +107,9 @@ export function sanitizePatch(raw: unknown): LayerPatch {
     align: oneOf(raw.align, ['left', 'center', 'right'] as const),
     weight: ((w) => (w === undefined ? undefined : Math.min(900, Math.max(100, Math.round(w / 100) * 100))))(num(raw.weight)),
     italic: bool(raw.italic),
+    letterSpacing: num(raw.letterSpacing),
+    textStroke: textStroke(raw.textStroke),
+    shadow: shadow(raw.shadow),
     params: params(raw.params),
   };
   return Object.fromEntries(Object.entries(fields).filter(([, v]) => v !== undefined));
@@ -120,9 +135,13 @@ export function sanitizeLayer(raw: unknown): Layer | null {
   // Fields that don't belong to the type are ignored by drawing, but dropping them keeps saves tidy.
   const keep = Object.keys(layer);
   const merged = { ...layer, ...Object.fromEntries(Object.entries(fields).filter(([k]) => keep.includes(k) || k === 'name')), ...(follows && { follows }) } as Layer;
-  const nested = merged as Layer & { params?: object; stroke?: object };
+  const nested = merged as Layer & { params?: object; stroke?: object; textStroke?: object; shadow?: object };
   if (merged.type === 'generated') nested.params = { ...layer.params, ...(fields.params as object) };
   if (merged.type === 'shape') nested.stroke = { ...layer.stroke, ...(fields.stroke as object) };
+  if (merged.type === 'text') {
+    nested.textStroke = { ...(layer as typeof merged).textStroke, ...(fields.textStroke as object) };
+    nested.shadow = { ...(layer as typeof merged).shadow, ...(fields.shadow as object) };
+  }
   return merged;
 }
 

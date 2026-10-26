@@ -11,6 +11,9 @@ export const DEFAULT_SPINE_COLOR = '#ffffff';
 
 const CENTRE = { x: 50, y: 50 };
 
+/** Text starts with no letter spacing, outline or shadow. */
+export const TEXT_EFFECTS = { letterSpacing: 0, textStroke: { color: '#000000', widthMm: 0 }, shadow: { color: '#000000', blurMm: 0, xMm: 0, yMm: 0 } } as const;
+
 const base = { visible: true, placement: null, rotationDeg: 0, opacity: 1 } as const;
 
 const cache = new WeakMap<TemplateConfig, Layer[]>();
@@ -35,7 +38,7 @@ export function defaultLayers(t: TemplateConfig): Layer[] {
   const first = t.panels[0]?.id;
   if (first) out.push({ ...base, id: 'official', type: 'official', target: first });
   for (const p of t.panels) {
-    if (p.text) out.push({ ...base, id: `${p.id}.text`, type: 'text', target: p.id, fontFamily: DEFAULT_SPINE_FONT, color: DEFAULT_SPINE_COLOR, align: 'center', weight: 700, italic: false });
+    if (p.text) out.push({ ...base, id: `${p.id}.text`, type: 'text', target: p.id, fontFamily: DEFAULT_SPINE_FONT, color: DEFAULT_SPINE_COLOR, align: 'center', weight: 700, italic: false, ...TEXT_EFFECTS });
   }
   for (const p of t.panels) {
     if (!p.follows) out.push({ ...base, id: `${p.id}.logo`, type: 'image', target: p.id, source: null, fit: 'fit', focus: CENTRE, tint: DEFAULT_LOGO.color });

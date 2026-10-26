@@ -1,7 +1,7 @@
 import type { Layer, LayerDiff, LayerPatch, LegacyMm } from '../../types/layers';
 
 /** Fields whose value is itself an object that merges field by field, so a patch can change one of its parts. */
-const NESTED = ['stroke', 'params'] as const;
+const NESTED = ['stroke', 'params', 'textStroke', 'shadow'] as const;
 
 const isLegacy = (v: unknown): v is LegacyMm => !!v && typeof v === 'object' && (v as { kind?: unknown }).kind === 'legacy';
 

@@ -43,6 +43,7 @@ export function useLayerEditor() {
       dispatch({ type: 'addLayer', ...base, layer, ...(after !== undefined && { after }), ...(asset && { asset }) });
       dispatch({ type: 'selectLayer', id: layer.id });
     },
+    updateMany: (layerIds: string[], patch: LayerPatch) => dispatch({ type: 'updateLayers', ...base, layerIds, patch }),
     remove: (layerId: string) => dispatch({ type: 'removeLayer', ...base, layerId }),
     reset: (layerId: string) => dispatch({ type: 'resetLayer', ...base, layerId }),
     /** Moves a layer up (+1) or down (-1) among the ones listed, by swapping places with its neighbour. */

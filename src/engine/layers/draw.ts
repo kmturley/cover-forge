@@ -155,6 +155,11 @@ const MIN_TEXT_MM = 1.2;
 /** Where text goes on a panel that has no spine orientation when it has no placement of its own. */
 const DEFAULT_TEXT_BOX: PanelBox = { xStart: 8, xEnd: 92, yStart: 8, yEnd: 22 };
 
+/** Letter spacing where the browser supports it on the canvas (Chrome, Edge and recent Firefox and Safari); elsewhere text is set without it. */
+function setSpacing(ctx: CanvasRenderingContext2D, value: string) {
+  if ('letterSpacing' in ctx) (ctx as CanvasRenderingContext2D & { letterSpacing: string }).letterSpacing = value;
+}
+
 /** The text split into lines no wider than `maxPx` (a word longer than a line is kept whole). */
 function wrap(ctx: CanvasRenderingContext2D, text: string, maxPx: number): string[] {
   const lines: string[] = [];
@@ -181,8 +186,10 @@ function drawTextBox(env: DrawEnv, l: TextLayer, panel: PanelRect) {
   const box = boxRect(panel, isAnchored(l.placement) ? placementToBox(panel, l.placement) : DEFAULT_TEXT_BOX);
   if (box.widthMm <= 0 || box.heightMm <= 0) return;
   const font = (mm: number) => `${l.italic ? 'italic ' : ''}${l.weight} ${mm * px}px ${l.fontFamily}`;
+  const spacing = `${l.letterSpacing / 1000}em`;
   const layout = (mm: number) => {
     ctx.font = font(mm);
+    setSpacing(ctx, spacing);
     const lines = wrap(ctx, text, box.widthMm * px);
     const widest = Math.max(...lines.map((s) => ctx.measureText(s).width));
     return { lines, fits: widest <= box.widthMm * px + 0.5 && lines.length * mm * LINE_HEIGHT <= box.heightMm };
@@ -208,12 +215,31 @@ function drawTextBox(env: DrawEnv, l: TextLayer, panel: PanelRect) {
   ctx.translate((box.xMm + box.widthMm / 2) * px, (box.yMm + box.heightMm / 2) * px);
   ctx.rotate(((l.rotationDeg + (l.textRotationDeg ?? 0)) * Math.PI) / 180);
   ctx.font = font(mm);
+  setSpacing(ctx, spacing);
   ctx.fillStyle = l.color;
   ctx.textBaseline = 'middle';
   ctx.textAlign = l.align;
   const x = l.align === 'left' ? (-box.widthMm / 2) * px : l.align === 'right' ? (box.widthMm / 2) * px : 0;
   const lineMm = mm * LINE_HEIGHT;
-  lines.forEach((line, i) => ctx.fillText(line, x, ((i - (lines.length - 1) / 2) * lineMm) * px));
+  const hasStroke = l.textStroke.widthMm > 0;
+  const { blurMm, xMm, yMm } = l.shadow;
+  if (blurMm > 0 || xMm !== 0 || yMm !== 0) {
+    ctx.shadowColor = l.shadow.color;
+    ctx.shadowBlur = blurMm * px;
+    ctx.shadowOffsetX = xMm * px;
+    ctx.shadowOffsetY = yMm * px;
+  }
+  if (hasStroke) {
+    ctx.strokeStyle = l.textStroke.color;
+    ctx.lineWidth = l.textStroke.widthMm * px;
+    ctx.lineJoin = 'round';
+  }
+  lines.forEach((line, i) => {
+    const y = ((i - (lines.length - 1) / 2) * lineMm) * px;
+    // The outline goes under the fill, so it only shows outside the letters.
+    if (hasStroke) ctx.strokeText(line, x, y);
+    ctx.fillText(line, x, y);
+  });
   ctx.restore();
 }
 

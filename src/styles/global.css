@@ -340,3 +340,18 @@ h3 { font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: v
 .snap-guide.vertical { width: 1px; }
 .snap-guide.horizontal { height: 1px; }
 .drag-readout { position: absolute; transform: translateX(-50%); padding: 1px 6px; font-size: 11px; background: rgba(15,23,42,.9); color: #e2e8f0; border-radius: 4px; white-space: nowrap; }
+
+/* The font picker. */
+.font-picker { display: flex; flex-direction: column; gap: 4px; }
+.font-current { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; text-align: left; padding: 6px 10px; font-size: 15px; color: var(--text); }
+.font-current small { color: var(--muted); font-size: 11px; }
+.font-panel { border: 1px solid var(--border); border-radius: 8px; background: var(--panel); padding: 6px; }
+.font-search { display: grid; grid-template-columns: 1fr auto; gap: 6px; margin-bottom: 6px; }
+.font-search select { width: auto; }
+.font-list { max-height: 320px; overflow-y: auto; }
+.font-list .group-label { position: sticky; top: 0; background: var(--panel); padding: 4px 4px 2px; margin: 0; z-index: 1; }
+.font-row { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; width: 100%; text-align: left; background: none; border: 1px solid transparent; padding: 5px 8px; color: var(--text); }
+.font-row.selected { border-color: var(--accent); }
+.font-row:hover { background: var(--panel-2); }
+.font-sample { font-size: 16px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.font-row small { color: var(--muted); font-size: 10px; flex: none; }

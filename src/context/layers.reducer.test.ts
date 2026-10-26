@@ -149,3 +149,16 @@ it('draws the asset image layer type through the layer list', () => {
   const s = run(start(), { type: 'addLayer', id: null, layer: newImage('image-1', 'back', { kind: 'asset', id: 'x' }) });
   expect((find(s, 'image-1') as ImageLayer).source).toEqual({ kind: 'asset', id: 'x' });
 });
+
+describe('updateLayers', () => {
+  it('changes several layers in one undo step', () => {
+    let s = run(start(), { type: 'addLayer', id: null, layer: newShape('s1', 'front') }, { type: 'addLayer', id: null, layer: newShape('s2', 'back') });
+    s = run(s, { type: 'updateLayers', id: null, layerIds: ['s1', 's2', 'front.fill'], patch: { opacity: 0.5 } });
+    expect((find(s, 's1') as ShapeLayer).opacity).toBe(0.5);
+    expect((find(s, 's2') as ShapeLayer).opacity).toBe(0.5);
+    expect((find(s, 'front.fill') as ShapeLayer).opacity).toBe(0.5);
+    s = run(s, { type: 'undo' });
+    expect((find(s, 's1') as ShapeLayer).opacity).toBe(1);
+    expect((find(s, 'front.fill') as ShapeLayer).opacity).toBe(1);
+  });
+});

@@ -97,6 +97,8 @@ export type Action =
   | { type: 'addLayer'; id: string | null; design?: string; layer: Layer; after?: string; asset?: Asset }
   /** Changes a layer's fields; a field set to undefined goes back to what the layer below has. Repeats with the same `coalesce` are one undo step. */
   | { type: 'updateLayer'; id: string | null; design?: string; layerId: string; patch: LayerPatch; coalesce?: string }
+  /** The same change to several layers at once, as one undo step (a font for every text layer). */
+  | { type: 'updateLayers'; id: string | null; design?: string; layerIds: string[]; patch: LayerPatch }
   /** Takes a layer away (one from the case or a lower level is hidden, and can be brought back with resetLayer). */
   | { type: 'removeLayer'; id: string | null; design?: string; layerId: string }
   /** Drops every change at this level to a layer, slot settings included, so it looks as it does below. */
@@ -322,6 +324,8 @@ function apply(state: AppState, action: Action): AppState {
     }
     case 'updateLayer':
       return editDiff(state, action.id, action.design, (d) => diffUpdate(d, action.layerId, action.patch));
+    case 'updateLayers':
+      return editDiff(state, action.id, action.design, (d) => action.layerIds.reduce((acc, id) => diffUpdate(acc, id, action.patch), d));
     case 'removeLayer':
       return editDiff(state, action.id, action.design, (d) => diffRemove(d, action.layerId));
     case 'setLayerOrder':
