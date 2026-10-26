@@ -95,10 +95,6 @@ export function PlacementControls({ placement, panel, aspect, autoBox, autoLabel
   const lengthOf = (w: 'x' | 'y') => { const [a, b] = boxRange(box, w); return b - a; };
   const set = (w: 'x' | 'y', a: Axis) => onChange({ ...placement, [w]: a });
   const anchorBoth = (cx: (typeof ANCHORS)[number], cy: (typeof ANCHORS)[number]) => onChange(reanchor(panel, reanchor(panel, placement, 'x', cx, aspect), 'y', cy, aspect));
-  const align = (w: 'x' | 'y', a: (typeof ANCHORS)[number]) => {
-    const next = reanchor(panel, placement, w, a, aspect)[w];
-    if (next.anchor !== 'stretch') set(w, { ...next, offset: a === 'center' ? 50 : 0 });
-  };
 
   return (
     <div className="placement">
@@ -114,22 +110,6 @@ export function PlacementControls({ placement, panel, aspect, autoBox, autoLabel
               );
             }),
           )}
-        </div>
-        <div className="placement-align" role="group" aria-label="Align on the panel">
-          {(
-            [
-              ['x', 'start', 'Left'],
-              ['x', 'center', 'Centre'],
-              ['x', 'end', 'Right'],
-              ['y', 'start', 'Top'],
-              ['y', 'center', 'Middle'],
-              ['y', 'end', 'Bottom'],
-            ] as const
-          ).map(([w, a, label]) => (
-            <button key={`${w}${a}`} onClick={() => align(w, a)} title={`Align to the ${label.toLowerCase()} of the panel`}>
-              {label}
-            </button>
-          ))}
         </div>
       </div>
 
