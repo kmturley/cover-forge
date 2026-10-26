@@ -1,6 +1,7 @@
 import type { MediaItem } from '../../types/media';
 import type { Design, PanelSettings, SharedSettings } from '../../types/editor';
 import type { PanelId } from '../../types/template';
+import { LOGOS } from '../../brands';
 import { LIBRARY } from '../../templates/library';
 import { buildTemplateById } from '../../templates';
 import type { Scene } from '../CanvasRenderer';
@@ -90,6 +91,7 @@ const features: Fixture[] = [
   { name: 'logo/boxed-rotated', scene: withShared(BR, { front: { logo: { brand: 'steam', color: '#ffcc00', box: { xStart: 60, xEnd: 95, yStart: 70, yEnd: 95 }, rotationDeg: -15, opacity: 0.7 } } }), px: 2 },
   { name: 'logo/legacy-mm', scene: withShared(BR, { front: { logo: { brand: 'steam', widthMm: 30, xMm: 12, yMm: 20, box: undefined } as never } }), px: 2 },
   { name: 'logo/spine-and-back', scene: withShared(PS4, { spine: { logo: { brand: 'steam' } }, back: { logo: { brand: 'steam', color: '#000000' } } }), px: 2 },
+  { name: 'logo/supplied-multicolour', scene: withShared(BR, { front: { logo: { brand: LOGOS[0].id, box: { xStart: 15, xEnd: 85, yStart: 60, yEnd: 90 } } } }), px: 2 },
   { name: 'logo/with-branded', scene: withShared(PS4, { front: { logo: { brand: 'steam' } } }, { banner: true }), px: 2 },
 
   // Codes: each kind, boxed, rotated, default on the back, none.
