@@ -5,7 +5,7 @@ import type { PanelId } from '../../types/template';
 import { NameModal } from './NameModal';
 
 /** Which design the selected item uses (change it, or fork it), and whether edits go to the design or just this item. */
-export function DesignBar({ panel }: { panel: PanelId }) {
+export function DesignBar({ panel }: { panel: PanelId | 'canvas' }) {
   const state = useAppState();
   const { items, designs, editMode } = state;
   const item = useSelectedItem();
@@ -54,7 +54,7 @@ export function DesignBar({ panel }: { panel: PanelId }) {
           <summary>More…</summary>
           <div className="menu-list" onClick={(e) => e.currentTarget.parentElement?.removeAttribute('open')}>
             {!isDefault && <button onClick={() => setNaming('rename')}>Rename “{name}”</button>}
-            <button onClick={() => dispatch({ type: 'clearDesign', design: designId, panel })}>Reset this panel in “{name}”</button>
+            <button onClick={() => dispatch({ type: 'clearDesign', design: designId, panel })}>{panel === 'canvas' ? `Reset the layers across panels in “${name}”` : `Reset this panel in “${name}”`}</button>
             <button onClick={() => confirmThen(`Reset every panel of “${name}”?`, () => dispatch({ type: 'clearDesign', design: designId }))}>Reset all of “{name}”</button>
             {!isDefault && (
               <button onClick={() => confirmThen(`Delete “${name}”? Its ${users} item${users === 1 ? '' : 's'} go back to Default.`, () => dispatch({ type: 'deleteDesign', id: designId }))}>Delete “{name}”</button>

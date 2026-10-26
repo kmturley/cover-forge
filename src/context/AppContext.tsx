@@ -23,7 +23,9 @@ export interface AppState {
   items: MediaItem[];
   selectedItemId: string | null;
   /** UI-only (not persisted). */
-  selectedPanel: PanelId;
+  selectedPanel: PanelId | 'canvas';
+  /** UI-only (not persisted). The layer being edited, if any. */
+  selectedLayerId: string | null;
   /** UI-only (not persisted). Counts panel selections (even of the same panel), so the viewer can flash it. */
   panelPulse: number;
   /** UI-only (not persisted). */
@@ -78,7 +80,8 @@ export type Action =
   | { type: 'selectItem'; id: string | null }
   /** Replaces the whole working session (e.g. a loaded config file). */
   | { type: 'loadState'; state: AppState }
-  | { type: 'selectPanel'; panel: PanelId }
+  | { type: 'selectPanel'; panel: PanelId | 'canvas' }
+  | { type: 'selectLayer'; id: string | null }
   | { type: 'setEditMode'; mode: EditMode }
   /** Gives the items a template (none = just the empty-queue one); new items of their types then start with it too. */
   | { type: 'setItemTemplate'; items: string[]; template: string }
@@ -90,7 +93,8 @@ export type Action =
   | { type: 'updatePanel'; id: string | null; panel: PanelId; patch: Partial<PanelSettings>; design?: string; coalesce?: string }
   | { type: 'updateSpine'; id: string | null; patch: Partial<SpineSettings>; design?: string }
   /** Layer edits. `id` as for updatePanel: null edits a design (`design`, else the selected item's), a string edits that item's changes. */
-  | { type: 'addLayer'; id: string | null; design?: string; layer: Layer; after?: string }
+  /** `asset` is registered in the same step (a picture added from a file), so undo takes both back. */
+  | { type: 'addLayer'; id: string | null; design?: string; layer: Layer; after?: string; asset?: Asset }
   /** Changes a layer's fields; a field set to undefined goes back to what the layer below has. Repeats with the same `coalesce` are one undo step. */
   | { type: 'updateLayer'; id: string | null; design?: string; layerId: string; patch: LayerPatch; coalesce?: string }
   /** Takes a layer away (one from the case or a lower level is hidden, and can be brought back with resetLayer). */
@@ -111,14 +115,15 @@ export type Action =
   /** Removes a design; the items using it go back to Default. */
   | { type: 'deleteDesign'; id: string }
   /** Empties a design (or one panel of it); for Default that resets it to the built-in look. */
-  | { type: 'clearDesign'; design: string; panel?: PanelId }
+  | { type: 'clearDesign'; design: string; panel?: PanelId | 'canvas' }
   /** Removes an item's overrides for one panel (or all of them), so it follows the shared settings again. */
-  | { type: 'clearOverrides'; id: string; panel?: PanelId };
+  | { type: 'clearOverrides'; id: string; panel?: PanelId | 'canvas' };
 
 export const initialState: AppState = {
   items: [],
   selectedItemId: null,
   selectedPanel: 'front',
+  selectedLayerId: null,
   panelPulse: 0,
   editMode: 'shared',
   templateId: DEFAULT_TEMPLATE_ID,
@@ -268,7 +273,9 @@ function apply(state: AppState, action: Action): AppState {
     case 'selectItem':
       return { ...state, selectedItemId: action.id };
     case 'selectPanel':
-      return { ...state, selectedPanel: action.panel, panelPulse: state.panelPulse + 1 };
+      return { ...state, selectedPanel: action.panel, selectedLayerId: null, panelPulse: state.panelPulse + 1 };
+    case 'selectLayer':
+      return { ...state, selectedLayerId: action.id };
     case 'setEditMode':
       return { ...state, editMode: action.mode };
     case 'setItemTemplate': {
@@ -309,8 +316,10 @@ function apply(state: AppState, action: Action): AppState {
       }
       return updateItem(state, action.id, (i) => ({ ...i, spineOverride: compact({ ...i.spineOverride, ...action.patch }) }));
     }
-    case 'addLayer':
-      return editDiff(state, action.id, action.design, (d) => diffAdd(d, action.layer, action.after));
+    case 'addLayer': {
+      const next = editDiff(state, action.id, action.design, (d) => diffAdd(d, action.layer, action.after));
+      return action.asset ? { ...next, assets: { ...next.assets, [action.asset.id]: action.asset } } : next;
+    }
     case 'updateLayer':
       return editDiff(state, action.id, action.design, (d) => diffUpdate(d, action.layerId, action.patch));
     case 'removeLayer':
@@ -374,7 +383,7 @@ function apply(state: AppState, action: Action): AppState {
       const spineToo = !action.panel || action.panel === 'spine' || action.panel === 'spineRight';
       return editDesign(state, action.design, (level) => {
         const panels = { ...level.panels };
-        if (action.panel) delete panels[action.panel];
+        if (action.panel && action.panel !== 'canvas') delete panels[action.panel];
         const spine = spineToo ? (action.design === DEFAULT_DESIGN_ID ? initialState.shared.spine : {}) : level.spine;
         return { panels: action.panel ? panels : {}, spine, diff: action.panel ? nonEmpty(diffWithoutPanel(level.diff, action.panel)) : undefined };
       });
@@ -389,7 +398,7 @@ function apply(state: AppState, action: Action): AppState {
           return next;
         }
         const panels = { ...i.panels };
-        delete panels[action.panel];
+        if (action.panel !== 'canvas') delete panels[action.panel];
         next.panels = panels;
         if (action.panel === 'spine') delete next.spineOverride;
         const diff = nonEmpty(diffWithoutPanel(i.diff, action.panel));

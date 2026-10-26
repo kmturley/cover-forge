@@ -32,8 +32,14 @@ export const newCode = (id: string, target: PanelId | 'canvas', params: Partial<
   params: { kind: 'qr', pattern: DEFAULT_CODE.pattern, color: DEFAULT_CODE.color, background: DEFAULT_CODE.background, ...params }, ...o,
 });
 
-/** An id no layer in the list has, such as `image-3`. */
-export function freshId(type: string, taken: Iterable<string>): string {
+/**
+ * An id for a layer a user adds, such as `image-k3f9x2`. It is random, not a counter, because ids are shared by every
+ * design and item: two levels that each added "image-1" would collide.
+ */
+export function freshId(type: string, taken: Iterable<string> = []): string {
   const used = new Set(taken);
-  for (let n = 1; ; n++) if (!used.has(`${type}-${n}`)) return `${type}-${n}`;
+  for (;;) {
+    const id = `${type}-${Math.random().toString(36).slice(2, 8)}`;
+    if (!used.has(id)) return id;
+  }
 }

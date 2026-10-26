@@ -46,9 +46,9 @@ export function designLayer(shared: SharedSettings, designs: readonly Design[], 
   return id === DEFAULT_DESIGN_ID ? shared : (designs.find((d) => d.id === id) ?? { panels: {}, spine: {} });
 }
 
-export function designHasPanel(shared: SharedSettings, designs: readonly Design[], id: string, panel: PanelId): boolean {
+export function designHasPanel(shared: SharedSettings, designs: readonly Design[], id: string, panel: PanelId | 'canvas'): boolean {
   const layer = designLayer(shared, designs, id);
-  const p = layer.panels[panel];
+  const p = panel === 'canvas' ? undefined : layer.panels[panel];
   const hasPanel = !!p && Object.values(p).some((v) => v !== undefined);
   return hasPanel || diffTouchesPanel(layer.diff, panel) || ((panel === 'spine' || panel === 'spineRight') && id !== DEFAULT_DESIGN_ID && Object.keys(layer.spine).length > 0);
 }

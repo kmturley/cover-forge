@@ -62,14 +62,14 @@ export function diffReset(d: LayerDiff, id: string): LayerDiff {
 export const diffOrder = (d: LayerDiff, order: string[]): LayerDiff => tidy({ ...d, order });
 
 /** True when the diff changes anything about layers on `panel`. Default layers are named `<panel>.<slot>`. */
-export function diffTouchesPanel(d: LayerDiff | undefined, panel: PanelId): boolean {
+export function diffTouchesPanel(d: LayerDiff | undefined, panel: PanelId | 'canvas'): boolean {
   if (!d) return false;
   const own = (id: string) => id.startsWith(`${panel}.`);
   return !!d.added?.some((a) => a.layer.target === panel) || Object.keys(d.patch ?? {}).some(own) || !!d.hidden?.some(own);
 }
 
 /** The diff without anything about layers on `panel` (an added layer's patches and place in the order go with it). */
-export function diffWithoutPanel(d: LayerDiff | undefined, panel: PanelId): LayerDiff {
+export function diffWithoutPanel(d: LayerDiff | undefined, panel: PanelId | 'canvas'): LayerDiff {
   if (!d) return {};
   const gone = new Set((d.added ?? []).filter((a) => a.layer.target === panel).map((a) => a.layer.id));
   const own = (id: string) => id.startsWith(`${panel}.`) || gone.has(id);

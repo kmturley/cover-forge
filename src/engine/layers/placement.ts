@@ -52,3 +52,39 @@ export function placementToBox(panel: PanelSize, p: Placement, aspect?: number):
 export function boxToPlacement(b: PanelBox): Placement {
   return { x: { anchor: 'stretch', start: b.xStart, end: 100 - b.xEnd }, y: { anchor: 'stretch', start: b.yStart, end: 100 - b.yEnd } };
 }
+
+const round = (n: number) => Math.round(n * 100) / 100;
+
+/** The span a box covers on one axis, in percent from the start edge. */
+export const boxRange = (b: PanelBox, axis: 'x' | 'y'): [number, number] => (axis === 'x' ? [b.xStart, b.xEnd] : [b.yStart, b.yEnd]);
+
+/**
+ * The axis that covers `range` when placed by `anchor`, so changing how a layer is anchored never moves it. A size left
+ * at 'auto' stays auto (its length still follows the content). Numbers are kept to 0.01%.
+ */
+export function axisFromRange([a, b]: [number, number], anchor: Axis['anchor'], size: Size = round(b - a)): Axis {
+  switch (anchor) {
+    case 'start':
+      return { anchor, offset: round(a), size };
+    case 'center':
+      return { anchor, offset: round((a + b) / 2), size };
+    case 'end':
+      return { anchor, offset: round(100 - b), size };
+    case 'stretch':
+      return { anchor, start: round(a), end: round(100 - b) };
+  }
+}
+
+/**
+ * The placement with one axis anchored differently, covering the same box. `aspect` is the content's, for auto sizes.
+ * An axis that was stretched takes its current length as a number.
+ */
+export function reanchor(panel: PanelSize, p: Placement, axis: 'x' | 'y', anchor: Axis['anchor'], aspect?: number): Placement {
+  const range = boxRange(placementToBox(panel, p, aspect), axis);
+  const was = p[axis];
+  const size = anchor !== 'stretch' && was.anchor !== 'stretch' && was.size === 'auto' ? 'auto' : undefined;
+  return { ...p, [axis]: axisFromRange(range, anchor, size) };
+}
+
+/** A box as a placement that keeps it: stretched between its edges on both axes, to 0.01%. */
+export const placementOfBox = (b: PanelBox): Placement => ({ x: axisFromRange(boxRange(b, 'x'), 'stretch'), y: axisFromRange(boxRange(b, 'y'), 'stretch') });

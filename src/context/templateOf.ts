@@ -17,6 +17,6 @@ export function syncTemplate(state: AppState): AppState {
   const id = templateIdOf(state, item);
   if (state.template.id === id) return state;
   const template = buildTemplateById(id);
-  const selectedPanel = template.panels.some((p) => p.id === state.selectedPanel) ? state.selectedPanel : template.panels[0].id;
-  return { ...state, template, selectedPanel };
+  const keeps = state.selectedPanel === 'canvas' || template.panels.some((p) => p.id === state.selectedPanel);
+  return { ...state, template, selectedPanel: keeps ? state.selectedPanel : template.panels[0].id, selectedLayerId: keeps ? state.selectedLayerId : null };
 }

@@ -76,8 +76,8 @@ export function resolveSpine(shared: SharedSettings, item: MediaItem | null): Sp
 }
 
 /** True if the item overrides anything on this panel (the spine tab also covers its text styling). */
-export function panelHasOverride(item: MediaItem | null, id: PanelId): boolean {
-  const p = item?.panels?.[id];
+export function panelHasOverride(item: MediaItem | null, id: PanelId | 'canvas'): boolean {
+  const p = id === 'canvas' ? undefined : item?.panels?.[id];
   const hasPanel = !!p && Object.values(p).some((v) => v !== undefined);
   const hasSpine = (id === 'spine' || id === 'spineRight') && !!item?.spineOverride && Object.keys(item.spineOverride).length > 0;
   return hasPanel || hasSpine || diffTouchesPanel(item?.diff, id);

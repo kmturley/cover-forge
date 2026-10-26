@@ -80,6 +80,7 @@ export class CanvasRenderer {
   private dirty = false;
   private raf = 0;
   private disposed = false;
+  private painted = false;
   private readonly ctx: CanvasRenderingContext2D;
   private readonly paintListeners = new Set<() => void>();
 
@@ -101,9 +102,13 @@ export class CanvasRenderer {
     this.invalidate();
   }
 
-  /** Calls `fn` after every repaint, so a view that shows a reduced copy can refresh it. Returns the unsubscribe. */
+  /**
+   * Calls `fn` after every repaint, so a view that shows a reduced copy can refresh it, and once now if a paint has already
+   * happened (the copy can be set up after the artwork finished loading, and would otherwise stay as it was). Returns the unsubscribe.
+   */
   onPaint(fn: () => void): () => void {
     this.paintListeners.add(fn);
+    if (this.painted) fn();
     return () => this.paintListeners.delete(fn);
   }
 
@@ -121,6 +126,7 @@ export class CanvasRenderer {
     this.dirty = false;
     if (!this.scene || this.disposed) return;
     renderCover(this.ctx, this.scene, this.scene.template.dpiScale);
+    this.painted = true;
     for (const fn of this.paintListeners) fn();
   }
 

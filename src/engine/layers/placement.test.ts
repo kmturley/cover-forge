@@ -66,3 +66,41 @@ describe('boxToPlacement', () => {
     }
   });
 });
+
+import { axisFromRange, boxRange, placementOfBox, reanchor } from './placement';
+
+describe('reanchor', () => {
+  const p = { x: { anchor: 'start' as const, offset: 10, size: 30 }, y: { anchor: 'center' as const, offset: 50, size: 20 } };
+  const box = (pl: typeof p | ReturnType<typeof reanchor>) => placementToBox(panel, pl);
+
+  it('never moves the layer, whichever way it is anchored', () => {
+    for (const anchor of ['start', 'center', 'end', 'stretch'] as const) {
+      for (const axis of ['x', 'y'] as const) {
+        const next = reanchor(panel, p, axis, anchor);
+        const [a, b] = boxRange(box(p), axis);
+        const [c, d] = boxRange(box(next), axis);
+        expect([c, d].map((n) => Math.round(n * 100) / 100)).toEqual([a, b].map((n) => Math.round(n * 100) / 100));
+      }
+    }
+  });
+
+  it('gives each anchor its own numbers', () => {
+    expect(reanchor(panel, p, 'x', 'center').x).toEqual({ anchor: 'center', offset: 25, size: 30 });
+    expect(reanchor(panel, p, 'x', 'end').x).toEqual({ anchor: 'end', offset: 60, size: 30 });
+    expect(reanchor(panel, p, 'x', 'stretch').x).toEqual({ anchor: 'stretch', start: 10, end: 60 });
+  });
+
+  it('keeps an auto size auto, and turns a stretch into a number when it is anchored', () => {
+    const auto = { x: { anchor: 'center' as const, offset: 50, size: 10 }, y: { anchor: 'start' as const, offset: 5, size: 'auto' as const } };
+    expect(reanchor(panel, auto, 'y', 'end', 2).y).toMatchObject({ anchor: 'end', size: 'auto' });
+    const stretched = { x: { anchor: 'stretch' as const, start: 20, end: 30 }, y: auto.y };
+    expect(reanchor(panel, stretched, 'x', 'start').x).toEqual({ anchor: 'start', offset: 20, size: 50 });
+  });
+});
+
+describe('axisFromRange and placementOfBox', () => {
+  it('round to hundredths so typed values stay tidy', () => {
+    expect(axisFromRange([33.3333333, 66.6666666], 'center')).toEqual({ anchor: 'center', offset: 50, size: 33.33 });
+    expect(placementOfBox({ xStart: 1.234, xEnd: 98.766, yStart: 0, yEnd: 100 }).x).toEqual({ anchor: 'stretch', start: 1.23, end: 1.23 });
+  });
+});

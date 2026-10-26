@@ -1,6 +1,6 @@
 # CoverForge v2: Layer-based editor, design and plan
 
-Status: **approved to build (revision 5).** Work is on branch `feature/layer-system`. Phase 0 (pixel-regression harness) is done; phase 1 is next.
+Status: **approved to build (revision 5).** Work is on branch `feature/layer-system`. Phases 0 and 1 are done, and phase 2 (the layer panel) is built; see the notes under each phase in §7.
 Covers GitHub issues [#3 Multiple images](https://github.com/kmturley/cover-forge/issues/3), [#12 Multiple backgrounds](https://github.com/kmturley/cover-forge/issues/12) and [#14 Per-panel typography](https://github.com/kmturley/cover-forge/issues/14). It also sets up [#13 Slipcover](https://github.com/kmturley/cover-forge/issues/13), which is mostly template geometry.
 
 ### What changed since the first draft
@@ -546,6 +546,17 @@ Each phase leaves the app shippable. Phases 0–1 have no visible change.
 - Per-item overrides and "reset".
 - Undo and redo.
 - Layers that span panels: the **Canvas** tab and Target selector (§2.11), if time allows here, otherwise straight after.
+
+**Phase 2 as built.** The layer list and inspectors replace the old sections; all of §2.11 (layers across panels) and §2.10 (assembly panels) landed here, with:
+
+- diffs stored beside the slot settings (`diff` on the Default design, each design and each item), not instead of them: the slot fields remain the storage for what older saves set, and are cleared with "Back to the default". Normalising them into diffs at load can follow, now that nothing in the UI writes slots any more except the legacy reducer actions.
+- a session version 3 that reads 1 and 2, with every diff, layer and asset validated field by field on load;
+- undo and redo with coalescing, and an asset library that keeps the name, size, dimensions and hash of uploads (relinking a missing file works from "Your images");
+- placed shapes, text boxes, extra images, a focus point, hide/reorder, and a Canvas ("All panels") tab;
+- the 2D "Folds away" shading for assembly panels;
+- an e2e smoke pass in a real browser (Playwright, kept outside the repo) that added every kind of layer, undid and redid, edited per item and reset.
+
+Left for phase 3 and later: dragging on the canvas, the Google Fonts picker (the font menu is still the four built-in stacks), drag-to-reorder in the list (it has up/down buttons), and presets.
 
 **Phase 3: Canvas direct manipulation.** Select, drag, resize, snap, nudge and fill-box pan on the 2D canvas.
 

@@ -260,3 +260,72 @@ button.link.selected { color: var(--accent); text-decoration: none; cursor: defa
 .add-own { align-self: flex-start; margin: 0 0 8px; }
 .search-dropdown .provider-tabs { flex-wrap: wrap; overflow-x: visible; position: sticky; top: -8px; z-index: 1; background: var(--panel); padding: 0 0 6px; margin-bottom: 6px; }
 .search-dropdown .provider-tabs button { flex: 0 1 auto; }
+
+/* Layers: the list, its rows and the inspector for the selected one. */
+textarea { background: var(--panel-2); border: 1px solid var(--border); border-radius: 6px; padding: 5px 8px; width: 100%; font: inherit; color: inherit; resize: vertical; }
+h3 { font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); margin: 14px 0 6px; font-weight: 600; }
+.check.small { display: inline-flex; align-items: center; gap: 4px; font-size: 12px; color: var(--muted); }
+.layer-panel { padding-top: 2px; }
+.layer-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.layer-head h2 { margin: 12px 0 8px; }
+.add-menu summary { background: var(--accent); border-color: var(--accent); color: #fff; }
+.add-menu .menu-list { left: auto; right: 0; }
+.layers { list-style: none; margin: 0 0 8px; padding: 0; display: flex; flex-direction: column; gap: 3px; }
+.layer-row { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 4px; border: 1px solid var(--border); border-radius: 8px; background: var(--panel-2); padding: 2px 4px; }
+.layer-row.selected { border-color: var(--accent); }
+.layer-row.off .layer-main { opacity: .45; }
+.layer-row.empty .layer-main { opacity: .6; }
+.layer-row button { background: none; border: none; padding: 3px 5px; }
+.layer-row button:hover:not(:disabled) { background: var(--panel); }
+.layer-eye { font-size: 12px; color: var(--muted); }
+.layer-main { display: flex; align-items: center; gap: 8px; min-width: 0; text-align: left; border-radius: 6px; }
+.layer-glyph { flex: none; width: 20px; text-align: center; color: var(--muted); }
+.layer-text { display: flex; flex-direction: column; min-width: 0; }
+.layer-name { display: flex; align-items: center; gap: 6px; font-size: 13px; }
+.layer-text small { color: var(--muted); font-size: 11px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.layer-actions { display: inline-flex; align-items: center; gap: 0; }
+.layer-actions button, .layer-actions summary { font-size: 11px; color: var(--muted); padding: 3px 5px; background: none; border: none; cursor: pointer; list-style: none; }
+.layer-name .dot { display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: #f59e0b; }
+.removed { margin: 0 0 8px; font-size: 12px; color: var(--muted); }
+.removed ul { list-style: none; margin: 4px 0 0; padding: 0; }
+.removed li { display: flex; justify-content: space-between; padding: 2px 4px; }
+.inspector { border-top: 1px solid var(--border); margin-top: 10px; padding-top: 8px; }
+.inspector-head { display: grid; grid-template-columns: 1fr auto; gap: 8px; align-items: center; margin-bottom: 8px; }
+.inspector-foot { display: flex; gap: 6px; flex-wrap: wrap; border-top: 1px solid var(--border); margin-top: 14px; padding-top: 10px; }
+.inspector .seg { margin: 6px 0; }
+
+/* Placement: the anchor grid, align buttons and typed numbers. */
+.placement { display: flex; flex-direction: column; gap: 8px; }
+.placement-grid-row { display: flex; gap: 12px; align-items: center; }
+.anchor-grid { display: grid; grid-template-columns: repeat(3, 20px); gap: 4px; padding: 6px; border: 1px solid var(--border); border-radius: 6px; background: var(--panel); flex: none; }
+.anchor-grid button { width: 20px; height: 20px; padding: 0; border-radius: 4px; background: var(--panel-2); }
+.anchor-grid button.near { border-color: var(--muted); }
+.anchor-grid button.on { background: var(--accent); border-color: var(--accent); }
+.placement-align { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; flex: 1; }
+.placement-align button { padding: 3px 4px; font-size: 11px; }
+.axis { border-top: 1px solid var(--border); padding-top: 6px; }
+.axis-head { display: flex; justify-content: space-between; align-items: center; font-size: 12px; color: var(--muted); margin-bottom: 4px; }
+.axis-fields { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.size-field { display: flex; flex-direction: column; gap: 2px; }
+.num-field { display: flex; flex-direction: column; gap: 3px; font-size: 12px; color: var(--muted); min-width: 0; }
+.num-field-box { display: flex; align-items: center; gap: 4px; }
+.num-field input[type='text'] { text-align: right; padding: 3px 6px; min-width: 0; }
+.num-field .unit { color: var(--muted); font-size: 11px; width: 18px; flex: none; }
+
+/* Your images, and the focus point. */
+.assets { display: grid; grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); gap: 8px; margin: 6px 0 8px; }
+.asset { display: flex; flex-direction: column; gap: 2px; font-size: 11px; min-width: 0; }
+.asset-thumb { padding: 0; aspect-ratio: 1; overflow: hidden; border-width: 2px; background: var(--panel-2); display: flex; align-items: center; justify-content: center; }
+.asset-thumb img { width: 100%; height: 100%; object-fit: contain; }
+.asset.selected .asset-thumb { border-color: var(--accent); }
+.asset.missing .asset-thumb { border-style: dashed; color: #f59e0b; }
+.asset-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--muted); }
+.asset-actions { display: flex; gap: 8px; }
+.asset-url { display: flex; gap: 6px; margin: 6px 0; }
+.focus-pad { display: flex; gap: 10px; align-items: flex-start; margin: 8px 0; }
+.focus-image { position: relative; flex: none; width: 110px; cursor: crosshair; touch-action: none; border: 1px solid var(--border); border-radius: 4px; overflow: hidden; line-height: 0; }
+.focus-image img { width: 100%; display: block; user-select: none; }
+.focus-dot { position: absolute; width: 14px; height: 14px; margin: -7px 0 0 -7px; border-radius: 50%; border: 2px solid #fff; background: rgba(59,130,246,.7); box-shadow: 0 0 0 1px rgba(0,0,0,.6); pointer-events: none; }
+.focus-fields { display: flex; flex-direction: column; gap: 6px; flex: 1; min-width: 0; }
+.undo-redo { display: inline-flex; gap: 4px; }
+.undo-redo button { padding: 4px 8px; font-size: 12px; }

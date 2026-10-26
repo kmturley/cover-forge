@@ -3,7 +3,7 @@ import type { PanelId, PanelRect, TemplateConfig } from '../../types/template';
 import type { CodeSettings, LogoSettings, PanelTransform } from '../../types/editor';
 import { DEFAULT_CODE, DEFAULT_LOGO, DEFAULT_TRANSFORM } from '../../types/editor';
 import type { GeneratedLayer, ImageLayer, Layer, LayerPlacement, LegacyMm, Placement, ShapeLayer, TextLayer } from '../../types/layers';
-import { getMark } from '../../brands';
+import { getMark, type Mark } from '../../brands';
 import { layerImageUrl, type Assets } from './images';
 import { computePlacement, paintRect } from '../placement';
 import { boxRect } from '../box';
@@ -101,18 +101,33 @@ function drawShape(env: DrawEnv, l: ShapeLayer, panel: PanelRect) {
   ctx.restore();
 }
 
+/** An image layer's placement in the shape the image placement helpers take. `aspect` is the image's width / height. */
+export function transformOf(l: ImageLayer, panel: PanelRect, aspect: number): PanelTransform {
+  return { ...DEFAULT_TRANSFORM, ...legacyOf(l.placement), box: boxOf(panel, l.placement, aspect) as PanelTransform['box'], fit: l.fit, focus: l.focus, rotationDeg: l.rotationDeg, opacity: l.opacity };
+}
+
+/** A mark layer's placement and look in the shape the logo helpers take. */
+export function logoSettingsOf(l: ImageLayer, panel: PanelRect, mark: Mark): LogoSettings {
+  return { ...DEFAULT_LOGO, ...legacyOf(l.placement), color: l.tint, box: boxOf(panel, l.placement, mark.aspect) as LogoSettings['box'], rotationDeg: l.rotationDeg, opacity: l.opacity };
+}
+
+/** A code layer's placement and look in the shape the code helpers take. */
+export function codeSettingsOf(l: GeneratedLayer, panel: PanelRect): CodeSettings {
+  const kind = l.params.kind;
+  return { ...DEFAULT_CODE, ...l.params, ...legacyOf(l.placement), box: boxOf(panel, l.placement, kind === 'none' ? undefined : codeAspect(kind)) as CodeSettings['box'], rotationDeg: l.rotationDeg, opacity: l.opacity };
+}
+
 function drawImage(env: DrawEnv, l: ImageLayer, panel: PanelRect) {
   const { ctx, template: t, px, item } = env;
   if (l.source?.kind === 'vector') {
     const mark = getMark(l.source.id);
     if (!mark || !item) return;
-    const logo: LogoSettings = { ...DEFAULT_LOGO, ...legacyOf(l.placement), color: l.tint, box: boxOf(panel, l.placement, mark.aspect) as LogoSettings['box'], rotationDeg: l.rotationDeg, opacity: l.opacity };
-    drawLogo(ctx, t, panel, mark, logo, px);
+    drawLogo(ctx, t, panel, mark, logoSettingsOf(l, panel, mark), px);
     return;
   }
   const img = env.getImage(layerImageUrl(l, item, env.assets));
   if (!img) return;
-  const tr: PanelTransform = { ...DEFAULT_TRANSFORM, ...legacyOf(l.placement), box: boxOf(panel, l.placement, img.naturalWidth / img.naturalHeight) as PanelTransform['box'], fit: l.fit, focus: l.focus, rotationDeg: l.rotationDeg, opacity: l.opacity };
+  const tr = transformOf(l, panel, img.naturalWidth / img.naturalHeight);
   // Sized to its box (filling or fitting it) and clipped to it when filling; rotation is about the image centre.
   const pl = computePlacement(t, panel, img.naturalWidth, img.naturalHeight, tr);
   ctx.save();
@@ -129,10 +144,8 @@ function drawImage(env: DrawEnv, l: ImageLayer, panel: PanelRect) {
 
 function drawGenerated(env: DrawEnv, l: GeneratedLayer, panel: PanelRect) {
   const { item } = env;
-  const kind = l.params.kind;
-  if (!item || kind === 'none') return;
-  const code: CodeSettings = { ...DEFAULT_CODE, ...l.params, ...legacyOf(l.placement), box: boxOf(panel, l.placement, codeAspect(kind)) as CodeSettings['box'], rotationDeg: l.rotationDeg, opacity: l.opacity };
-  drawCode(env.ctx, env.template, panel, code, item, env.px);
+  if (!item || l.params.kind === 'none') return;
+  drawCode(env.ctx, env.template, panel, codeSettingsOf(l, panel), item, env.px);
 }
 
 /** Cap height as a share of the font size, for sizing text by its cap height as spine text is. */
