@@ -50,14 +50,21 @@ export function useLayerEditor() {
     remove: (layerId: string) => dispatch({ type: 'removeLayer', ...base, layerId }),
     resetMany: (layerIds: string[]) => dispatch({ type: 'resetLayers', ...base, layerIds }),
     reset: (layerId: string) => dispatch({ type: 'resetLayer', ...base, layerId }),
-    /** Moves a layer up (+1) or down (-1) among the ones listed, by swapping places with its neighbour. */
+    /**
+     * Moves a layer up (+1) or down (-1) among the ones listed. A folder's layers count as one step: moving past a
+     * folder jumps the whole folder, so the move shows even while it is closed. Within a folder, layers swap places.
+     */
     move: (layerId: string, dir: 1 | -1) => {
       const at = tabLayers.findIndex((l) => l.id === layerId);
+      const mine = tabLayers[at];
       const other = tabLayers[at - dir];
       if (at < 0 || !other) return;
-      const order = layers.map((l) => l.id);
-      const [i, j] = [order.indexOf(layerId), order.indexOf(other.id)];
-      [order[i], order[j]] = [order[j], order[i]];
+      const order = layers.map((l) => l.id).filter((id) => id !== layerId);
+      // The neighbour, or, when it is in a folder this layer isn't in, the folder's far edge.
+      const block = other.parent && other.parent !== mine.parent ? tabLayers.filter((l) => l.parent === other.parent) : [other];
+      const edge = dir === 1 ? block[0] : block[block.length - 1];
+      const i = order.indexOf(edge.id);
+      order.splice(dir === 1 ? i + 1 : i, 0, layerId);
       dispatch({ type: 'setLayerOrder', ...base, order });
     },
   };
