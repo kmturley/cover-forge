@@ -1,9 +1,8 @@
-import { useRef, useState } from 'react';
+import { useState } from 'react';
 import { duplicateLayer, freshId, newCode, newImage, newShape, newSvg, newText } from '../../../engine/layers/factory';
 import { SVG_PRESETS } from '../../../engine/svgTemplate';
 import { isDefaultId, isEmptyLayer, layerDetail, layerName } from '../../../engine/layers/labels';
 import { defaultLayers } from '../../../engine/layers/defaults';
-import { assetFromFile, assetFromUrl } from '../../../storage/assets';
 import type { Layer, TextLayer } from '../../../types/layers';
 import { LayerInspector } from './LayerInspector';
 import { useLayerEditor, type LayerEditor } from './useLayerEditor';
@@ -83,76 +82,31 @@ function FolderRow({ folder, inside, ed, open, onToggle }: { folder: Layer; insi
   );
 }
 
-/** Adds layers to the current tab: text, a picture, a logo, a shape or a code. */
+/** Adds a layer of a main type to the current tab. What kind of picture, shape or code it is, and where it comes from, is chosen in its settings. */
 function AddMenu({ ed }: { ed: LayerEditor }) {
-  const fileInput = useRef<HTMLInputElement>(null);
-  const [error, setError] = useState<string | null>(null);
   const ids = ed.layers.map((l) => l.id);
   const target = ed.tab;
   const close = (e: React.MouseEvent<HTMLElement>) => e.currentTarget.closest('details')?.removeAttribute('open');
 
-  const fromFiles = async (files: FileList | null) => {
-    setError(null);
-    try {
-      for (const file of Array.from(files ?? [])) {
-        const asset = await assetFromFile(file);
-        ed.add(newImage(freshId('image', ids), target, { kind: 'asset', id: asset.id }, { name: asset.name }), undefined, asset);
-      }
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'Couldn’t add that image');
-    }
-  };
-  const fromUrl = () => {
-    const raw = window.prompt('Address of the image (https://…)');
-    if (!raw) return;
-    setError(null);
-    try {
-      const asset = assetFromUrl(raw);
-      ed.add(newImage(freshId('image', ids), target, { kind: 'asset', id: asset.id }, { name: asset.name }), undefined, asset);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'Couldn’t add that image');
-    }
-  };
-
-  const CHOICES = ['Text', 'Picture from this item', 'Picture from a file…', 'Picture from an address…', 'Logo', 'Rectangle', 'Ellipse', 'QR code or barcode', 'Custom graphic (SVG)'] as const;
-  const choose = (choice: (typeof CHOICES)[number]) => {
-    switch (choice) {
-      case 'Text':
-        return ed.add(newText(freshId('text', ids), target, { name: 'Text' } as Partial<TextLayer>));
-      case 'Picture from this item':
-        return ed.add(newImage(freshId('image', ids), target, { kind: 'role', ref: 'cover' }));
-      case 'Picture from a file…':
-        return fileInput.current?.click();
-      case 'Picture from an address…':
-        return fromUrl();
-      case 'Logo':
-        return ed.add(newImage(freshId('image', ids), target, null, { name: 'Logo', placement: null, fit: 'fit' }));
-      case 'Rectangle':
-        return ed.add(newShape(freshId('shape', ids), target));
-      case 'Ellipse':
-        return ed.add(newShape(freshId('shape', ids), target, { shape: 'ellipse', name: 'Ellipse' }));
-      case 'QR code or barcode':
-        return ed.add(newCode(freshId('code', ids), target));
-      case 'Custom graphic (SVG)':
-        return ed.add(newSvg(freshId('graphic', ids), target, SVG_PRESETS[0].svg));
-    }
-  };
+  const CHOICES: [string, () => Layer][] = [
+    ['Text', () => newText(freshId('text', ids), target, { name: 'Text' } as Partial<TextLayer>)],
+    ['Image', () => newImage(freshId('image', ids), target, { kind: 'role', ref: 'cover' })],
+    ['Shape', () => newShape(freshId('shape', ids), target)],
+    ['QR code or barcode', () => newCode(freshId('code', ids), target)],
+    ['Custom graphic (SVG)', () => newSvg(freshId('graphic', ids), target, SVG_PRESETS[0].svg)],
+  ];
 
   return (
-    <>
-      <details className="menu add-menu">
-        <summary>+ Add layer</summary>
-        <div className="menu-list" onClick={close}>
-          {CHOICES.map((label) => (
-            <button key={label} onClick={() => choose(label)}>
-              {label}
-            </button>
-          ))}
-        </div>
-      </details>
-      {error && <p className="error small">{error}</p>}
-      <input ref={fileInput} type="file" accept="image/*" multiple hidden aria-label="Upload pictures" onChange={(e) => (void fromFiles(e.target.files), (e.target.value = ''))} />
-    </>
+    <details className="menu add-menu">
+      <summary>+ Add layer</summary>
+      <div className="menu-list" onClick={close}>
+        {CHOICES.map(([label, make]) => (
+          <button key={label} onClick={() => ed.add(make())}>
+            {label}
+          </button>
+        ))}
+      </div>
+    </details>
   );
 }
 
