@@ -7,7 +7,9 @@ import { PresetModal } from './PresetModal';
 import type { PanelId } from '../../types/template';
 import { NameModal } from './NameModal';
 
-/** Which design the selected item uses (change it, or fork it), and whether edits go to the design or just this item. */
+const NEW_DESIGN = '__new__';
+
+/** Which design the selected item uses (change it, or start a new one from it), and whether edits go to the design or just this item. */
 export function DesignBar({ panel }: { panel: PanelId | 'canvas' }) {
   const state = useAppState();
   const { items, designs, editMode } = state;
@@ -24,7 +26,7 @@ export function DesignBar({ panel }: { panel: PanelId | 'canvas' }) {
   const isDefault = designId === DEFAULT_DESIGN_ID;
   const users = usersOf(items, designs, designId).length;
   const modes: { id: EditMode; label: string }[] = [
-    { id: 'shared', label: 'Design' },
+    { id: 'shared', label: 'All items' },
     { id: 'override', label: 'This item' },
   ];
   const confirmThen = (message: string, action: () => void) => window.confirm(message) && action();
@@ -33,23 +35,31 @@ export function DesignBar({ panel }: { panel: PanelId | 'canvas' }) {
     <>
       <div className="design-row">
         <label htmlFor="design-select">Design</label>
-        <select id="design-select" value={designId} disabled={!item} onChange={(e) => item && dispatch({ type: 'assignDesign', items: [item.id], design: e.target.value === DEFAULT_DESIGN_ID ? null : e.target.value })}>
+        <select
+          id="design-select"
+          value={designId}
+          disabled={!item}
+          onChange={(e) => {
+            if (!item) return;
+            if (e.target.value === NEW_DESIGN) setNaming('fork');
+            else dispatch({ type: 'assignDesign', items: [item.id], design: e.target.value === DEFAULT_DESIGN_ID ? null : e.target.value });
+          }}
+        >
           <option value={DEFAULT_DESIGN_ID}>{DEFAULT_DESIGN_NAME}</option>
           {designs.map((d) => (
             <option key={d.id} value={d.id}>
               {d.name}
             </option>
           ))}
+          <option value={NEW_DESIGN}>+ New Design</option>
         </select>
-        <button disabled={!item} onClick={() => setNaming('fork')} title={isDefault ? 'New design that starts as Default; only what you change differs' : `New design copied from “${name}”`}>
-          Fork…
-        </button>
       </div>
       <p className="scope-note">
         Used by {users} item{users === 1 ? '' : 's'}.{isDefault ? ' Every design builds on Default.' : ''}
       </p>
       <div className="scope-tools">
-        <div className="seg" role="group" aria-label="Edit scope">
+        <span className="scope-label" id="scope-label">Applies to:</span>
+        <div className="seg" role="group" aria-labelledby="scope-label">
           {modes.map((m) => (
             <button key={m.id} className={m.id === editMode ? 'active' : ''} aria-pressed={m.id === editMode} disabled={m.id === 'override' && !item} onClick={() => dispatch({ type: 'setEditMode', mode: m.id })}>
               {m.label}
@@ -77,9 +87,9 @@ export function DesignBar({ panel }: { panel: PanelId | 'canvas' }) {
       </p>
       {naming === 'fork' && item && (
         <NameModal
-          title="Fork design"
+          title="New design"
           initial={isDefault ? `Design ${designs.length + 2}` : `${name} copy`}
-          confirm="Fork"
+          confirm="Create"
           onClose={() => setNaming(null)}
           onDone={(n) => dispatch({ type: 'forkDesign', id: `design-${Date.now().toString(36)}`, name: n, from: designId, items: [item.id] })}
         />

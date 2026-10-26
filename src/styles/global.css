@@ -176,7 +176,7 @@ button.link.selected { color: var(--accent); text-decoration: none; cursor: defa
 
 .design-row { display: grid; grid-template-columns: auto 1fr auto; gap: 8px; align-items: center; margin: 8px 0 4px; font-size: 12px; color: var(--muted); }
 .design-row select { min-width: 0; }
-.scope-tools { display: flex; gap: 6px; align-items: flex-start; margin: 4px 0 8px; }
+.scope-tools { display: flex; gap: 6px; align-items: center; margin: 4px 0 8px; }
 .scope-tools > button, .menu summary { padding: 4px 10px; font-size: 12px; background: var(--panel-2); border: 1px solid var(--border); border-radius: 6px; cursor: pointer; list-style: none; }
 .menu { position: relative; }
 .menu summary::-webkit-details-marker { display: none; }
@@ -371,3 +371,4 @@ h3 { font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: v
 .preset-name { font-weight: 600; }
 .preset-preview { width: 100%; height: auto; background: var(--bg); border-radius: 4px; }
 .layer-actions .menu-list { left: auto; right: 0; }
+.scope-label { font-size: 12px; color: var(--muted); }
