@@ -1,7 +1,7 @@
 import type { MediaItem } from '../../types/media';
 import type { Design, PanelSettings, SharedSettings } from '../../types/editor';
 import type { Asset, LayerDiff } from '../../types/layers';
-import { newCode, newImage, newShape, newSvg, newText } from '../layers/factory';
+import { newCode, newGroup, newImage, newShape, newSvg, newText } from '../layers/factory';
 import type { PanelId } from '../../types/template';
 import { LOGOS } from '../../brands';
 import { LIBRARY } from '../../templates/library';
@@ -161,6 +161,25 @@ const features: Fixture[] = [
   { name: 'layers/custom-graphic-unsafe-parts-removed', scene: withDiff(BR, { added: [
     { layer: newSvg('g1', 'front', '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><script>alert(1)</script><image href="https://evil.example/x.png" width="100" height="100"/><rect onload="x()" width="100" height="100" fill="#2a9d8f"/><style>@import url(https://evil.example/a.css);</style></svg>', { placement: { x: { anchor: 'center', offset: 50, size: 40 }, y: { anchor: 'center', offset: 50, size: 'auto' } } }) },
   ] }), px: 2 },
+  { name: 'layers/path-and-gradient', scene: withDiff(BR, { added: [
+    { layer: newShape('p1', 'front', { shape: 'path', path: 'M0 0L100 0L100 60Q50 100 0 60Z', fill: { axis: 'x', stops: [[0, '#ff7a00'], [0.5, '#ffd000'], [1, '#00a86b']] }, placement: { x: { anchor: 'stretch', start: 0, end: 0 }, y: { anchor: 'start', offset: 0, size: 25 } } }) },
+    { layer: newShape('p2', 'back', { fill: { axis: 'y', stops: [[0, '#ffffff00'], [1, '#000000cc']] }, placement: { x: { anchor: 'stretch', start: 0, end: 0 }, y: { anchor: 'stretch', start: 40, end: 0 } } }) },
+    { layer: newShape('p3', 'front', { shape: 'path', path: 'M50 0L100 100L0 100Z', fill: null, stroke: { color: '#ffffff', widthMm: 1, insetMm: 0 }, rotationDeg: 20, placement: { x: { anchor: 'center', offset: 50, size: 30 }, y: { anchor: 'center', offset: 70, size: 20 } } }) },
+  ] }), px: 2 },
+  { name: 'layers/gradient-panel-colour', scene: withDiff(BR, { patch: { 'front.fill': { fill: { axis: 'y', stops: [[0, '#1d2671'], [1, '#c33764']] } }, 'front.image': { source: null } } }), px: 2 },
+  { name: 'layers/mark-parts-and-single-line-text', scene: withDiff(BR, { added: [
+    { layer: newImage('m1', 'front', { kind: 'vector', id: 'xbox', crop: [0, 0, 0.339, 1] }, { placement: { x: { anchor: 'start', offset: 6, size: 14 }, y: { anchor: 'start', offset: 6, size: 'auto' } }, tint: '#ffffff' }) },
+    { layer: newImage('m2', 'front', { kind: 'vector', id: 'xbox', crop: [0.339, 0.285, 1, 0.71] }, { placement: { x: { anchor: 'start', offset: 24, size: 40 }, y: { anchor: 'start', offset: 8, size: 'auto' } }, tint: '#ffffff' }) },
+    { layer: newImage('m3', 'front', { kind: 'vector', id: 'wii', mono: true }, { placement: { x: { anchor: 'end', offset: 6, size: 25 }, y: { anchor: 'end', offset: 6, size: 'auto' } }, tint: '#ffdd00' }) },
+    { layer: newText('t1', 'back', { text: 'STEREO · 33 RPM', singleLine: true, textHeightMm: 4, weight: 700, letterSpacing: 150, align: 'left', placement: { x: { anchor: 'start', offset: 5, size: 70 }, y: { anchor: 'start', offset: 10, size: 4 } } }) },
+    { layer: newText('t2', 'back', { text: 'turned', singleLine: true, textHeightMm: 5, rotationDeg: 90, align: 'center', placement: { x: { anchor: 'center', offset: 90, size: 30 }, y: { anchor: 'center', offset: 50, size: 4 } } }) },
+  ] }), px: 2 },
+  { name: 'layers/folder-hides-its-layers', scene: withDiff(BR, { added: [
+    { layer: newGroup('f1', { name: 'Branded', visible: false }) },
+    { layer: newShape('c1', 'front', { fill: '#ff0000', parent: 'f1' }) },
+    { layer: newShape('c2', 'front', { fill: '#00ff00', placement: { x: { anchor: 'start', offset: 10, size: 30 }, y: { anchor: 'start', offset: 10, size: 30 } } }) },
+  ] }), px: 2 },
+  { name: 'layers/spine-title-fitted-round-the-branded-dress', scene: withDiff(BR, { patch: { 'spine.text': { textCase: 'upper', spineFit: { startMm: 30, scale: 1.2, contrast: { on: '#ffffff', color: '#333333' } }, color: '#ffffff' }, 'spine.fill': { fill: '#ffffff' } } }), px: 3 },
   { name: 'layers/per-item-and-design', scene: scene(BR, { designs: [{ ...design, diff: { added: [{ layer: newShape('d-shape', 'front', { fill: '#00ccaa', placement: { x: { anchor: 'start', offset: 0, size: 50 }, y: { anchor: 'start', offset: 0, size: 20 } } }) }] } }], item: { ...ITEM, designId: 'd1', diff: { patch: { 'd-shape': { fill: '#ff3366' } }, added: [{ layer: newShape('i-shape', 'back', { fill: '#3366ff' }) }] } } }), px: 2 },
 
   // Guides and the cut-out view.

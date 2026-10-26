@@ -7,7 +7,7 @@ import type { Layer, TextLayer } from '../../../types/layers';
 import { LayerInspector } from './LayerInspector';
 import { useLayerEditor, type LayerEditor } from './useLayerEditor';
 
-const GLYPH: Record<Layer['type'], string> = { shape: '▭', image: '▨', text: 'T', generated: '▦', official: '★' };
+const GLYPH: Record<Layer['type'], string> = { shape: '▭', image: '▨', text: 'T', generated: '▦', official: '★', group: '▸' };
 const glyphOf = (l: Layer) => (l.type === 'shape' && l.shape === 'ellipse' ? '◯' : l.type === 'image' && l.source?.kind === 'vector' ? '✦' : GLYPH[l.type]);
 
 function Row({ layer, ed, index, count }: { layer: Layer; ed: LayerEditor; index: number; count: number }) {

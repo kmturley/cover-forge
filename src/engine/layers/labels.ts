@@ -5,6 +5,7 @@ import type { PanelId } from '../../types/template';
 import { getMark } from '../../brands';
 import { libraryImages } from '../imageLibrary';
 import { settingsToDiff } from './fromSettings';
+import { fillLabel } from './paint';
 
 export const CODE_LABELS: Record<CodeKind, string> = { none: 'None', qr: 'QR code', ean13: 'Barcode · EAN-13', upca: 'Barcode · UPC-A', code128: 'Barcode · Code 128' };
 
@@ -31,6 +32,8 @@ export function layerName(l: Layer): string {
       return l.generator === 'svg' ? 'Custom graphic' : CODE_LABELS[l.params.kind === 'none' ? 'qr' : l.params.kind];
     case 'official':
       return 'Branded';
+    case 'group':
+      return 'Folder';
   }
 }
 
@@ -39,7 +42,7 @@ export function layerDetail(l: Layer, item: MediaItem | null, assets: Readonly<R
   switch (l.type) {
     case 'shape': {
       const stroke = l.stroke.widthMm > 0 ? `${l.stroke.widthMm} mm line` : '';
-      return [l.fill ?? (stroke ? '' : 'none'), stroke].filter(Boolean).join(' · ');
+      return [fillLabel(l.fill) === 'none' && stroke ? '' : fillLabel(l.fill), stroke].filter(Boolean).join(' · ');
     }
     case 'image': {
       const s = l.source;
@@ -59,6 +62,7 @@ export function layerDetail(l: Layer, item: MediaItem | null, assets: Readonly<R
     case 'generated':
       return l.generator === 'svg' ? 'SVG' : l.params.kind === 'none' ? 'None' : `${CODE_LABELS[l.params.kind]}`;
     case 'official':
+    case 'group':
       return '';
   }
 }

@@ -44,11 +44,26 @@ export interface LegacyMm {
 /** `null` = automatic: whatever suits the layer's type (the whole panel for a fill or image). */
 export type LayerPlacement = Placement | LegacyMm | null;
 
+/** Colour stops: [position 0–1, colour]. */
+export type Stops = [number, string][];
+
+/** A linear gradient across a shape's box, left to right (`x`) or top to bottom (`y`). */
+export interface Gradient {
+  axis: 'x' | 'y';
+  stops: Stops;
+}
+
+/** A solid colour or a gradient. */
+export type Fill = string | Gradient;
+
 export type ImageSource =
   /** An image from the item's library; `auto` is the panel's preferred one (cover on the front, hero on the back). */
   | { kind: 'role'; ref: ImageRef | 'auto' }
-  /** A built-in vector mark from src/brands. */
-  | { kind: 'vector'; id: string }
+  /**
+   * A built-in vector mark from src/brands. `only` keeps some of a logo's layers, `crop` a share of its artwork
+   * ([left, top, right, bottom], as fractions of its bounds) and `mono` paints every layer in the one colour.
+   */
+  | { kind: 'vector'; id: string; only?: number[]; crop?: [number, number, number, number]; mono?: boolean }
   /** An uploaded or linked image kept in the session's asset library, the same on every item. */
   | { kind: 'asset'; id: string };
 
@@ -81,6 +96,8 @@ export interface LayerBase {
   opacity: number;
   /** Mirror another layer's fill (a dust flap takes its spine's colour). Resolved after the diffs are applied. */
   follows?: string;
+  /** The folder (a `group` layer) this layer sits in. Hiding the folder hides it. */
+  parent?: string;
 }
 
 export interface StrokeSettings {
@@ -92,9 +109,12 @@ export interface StrokeSettings {
 
 export interface ShapeLayer extends LayerBase {
   type: 'shape';
-  shape: 'rect' | 'ellipse';
+  /** A `path` is drawn from `path`, stretched to the layer's box. */
+  shape: 'rect' | 'ellipse' | 'path';
+  /** SVG path data in a 100 × 100 space, stretched over the box (a shape with straight or curved edges of its own). */
+  path?: string;
   /** `null` = not filled. */
-  fill: string | null;
+  fill: Fill | null;
   /** No stroke when its width is 0. */
   stroke: StrokeSettings;
 }
@@ -121,6 +141,19 @@ export interface TextLayer extends LayerBase {
   textHeightMm?: number;
   /** Extra rotation on top of the panel's own orientation. */
   textRotationDeg?: number;
+  /** One line of exactly the set height, sitting on the bottom edge of its box, never wrapped or shrunk (a mark's wordmark). */
+  singleLine?: boolean;
+  /** Prints the words in capitals. */
+  textCase?: 'upper';
+  /** How a spine title is fitted round what the Branded dress draws on the spine. */
+  spineFit?: {
+    /** Room to leave at the start of the spine for a cap and marks, in mm. */
+    startMm: number;
+    /** Scales the title's automatic size. */
+    scale: number;
+    /** Use `color` instead of the title's own when that has less contrast than 2 against `on`. */
+    contrast?: { on: string; color: string };
+  };
   /** Used by text placed in a box (a spine's own text is centred along it). */
   align: 'left' | 'center' | 'right';
   weight: number;
@@ -160,7 +193,12 @@ export interface OfficialLayer extends LayerBase {
   type: 'official';
 }
 
-export type Layer = ShapeLayer | ImageLayer | TextLayer | GeneratedLayer | OfficialLayer;
+/** A folder: draws nothing itself; its layers (the ones whose `parent` is its id) are shown or hidden with it. */
+export interface GroupLayer extends LayerBase {
+  type: 'group';
+}
+
+export type Layer = ShapeLayer | ImageLayer | TextLayer | GeneratedLayer | OfficialLayer | GroupLayer;
 
 /** A change to a layer lower down. Fields are merged one by one; `undefined` leaves a field alone, `null` sets it. */
 export type LayerPatch = Record<string, unknown>;

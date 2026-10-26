@@ -1,7 +1,7 @@
 import type { Axis, Layer, LayerDiff, LayerPatch, LayerPlacement, ImageSource, Asset } from '../../types/layers';
 import type { CodeKind } from '../../types/editor';
 import { PANEL_IDS } from '../resolve';
-import { newCode, newImage, newShape, newSvg, newText } from './factory';
+import { newCode, newGroup, newImage, newShape, newSvg, newText } from './factory';
 import { MAX_SVG_CHARS } from '../svgTemplate';
 
 /**
@@ -47,7 +47,11 @@ function placement(v: unknown): LayerPlacement | undefined {
 function source(v: unknown): ImageSource | null | undefined {
   if (v === null) return null;
   if (!isObj(v)) return undefined;
-  if (v.kind === 'vector' && str(v.id, 80)) return { kind: 'vector', id: v.id as string };
+  if (v.kind === 'vector' && str(v.id, 80)) {
+    const only = Array.isArray(v.only) ? v.only.filter((n): n is number => Number.isInteger(n) && n >= 0 && n < 64).slice(0, 64) : undefined;
+    const crop = Array.isArray(v.crop) && v.crop.length === 4 && v.crop.every((n) => typeof n === 'number' && Number.isFinite(n) && n >= 0 && n <= 1) && v.crop[2] > v.crop[0] && v.crop[3] > v.crop[1] ? (v.crop as [number, number, number, number]) : undefined;
+    return { kind: 'vector', id: v.id as string, ...(only && only.length > 0 && { only }), ...(crop && { crop }), ...(v.mono === true && { mono: true }) };
+  }
   if (v.kind === 'asset' && str(v.id, 80)) return { kind: 'asset', id: v.id as string };
   if (v.kind === 'role' && typeof v.ref === 'string' && /^(auto|cover|hero|logo|screenshot:\d{1,3})$/.test(v.ref)) return { kind: 'role', ref: v.ref as never };
   return undefined;
@@ -57,6 +61,26 @@ const focus = (v: unknown) => {
   if (!isObj(v)) return undefined;
   const [x, y] = [num(v.x), num(v.y)];
   return x !== undefined && y !== undefined ? { x: Math.min(100, Math.max(0, x)), y: Math.min(100, Math.max(0, y)) } : undefined;
+};
+
+const fillOf = (v: unknown): string | { axis: 'x' | 'y'; stops: [number, string][] } | null | undefined => {
+  if (v === null) return null;
+  if (typeof v === 'string') return str(v, 40);
+  if (!isObj(v) || !Array.isArray(v.stops)) return undefined;
+  const axis = oneOf(v.axis, ['x', 'y'] as const);
+  const stops = v.stops.slice(0, 16).flatMap((st) => (Array.isArray(st) && num(st[0]) !== undefined && str(st[1], 40) !== undefined ? [[Math.min(1, Math.max(0, st[0] as number)), st[1] as string] as [number, string]] : []));
+  return axis && stops.length >= 2 ? { axis, stops } : undefined;
+};
+
+/** SVG path data: only path commands and numbers, so what is stored is geometry and nothing else. */
+const pathData = (v: unknown): string | undefined => (typeof v === 'string' && v.length > 0 && v.length <= 60_000 && /^[MmLlHhVvCcSsQqTtAaZz0-9eE.,\s+-]+$/.test(v) ? v : undefined);
+
+const spineFit = (v: unknown) => {
+  if (!isObj(v)) return undefined;
+  const [startMm, scale] = [num(v.startMm), num(v.scale)];
+  if (startMm === undefined || scale === undefined) return undefined;
+  const c = isObj(v.contrast) && str(v.contrast.on, 40) !== undefined && str(v.contrast.color, 40) !== undefined ? { on: v.contrast.on as string, color: v.contrast.color as string } : undefined;
+  return { startMm, scale, ...(c && { contrast: c }) };
 };
 
 const stroke = (v: unknown) => {
@@ -92,8 +116,12 @@ export function sanitizePatch(raw: unknown): LayerPatch {
     placement: placement(raw.placement),
     rotationDeg: num(raw.rotationDeg),
     opacity: ((o) => (o === undefined ? undefined : Math.min(1, Math.max(0, o))))(num(raw.opacity)),
-    shape: oneOf(raw.shape, ['rect', 'ellipse'] as const),
-    fill: raw.fill === null ? null : str(raw.fill, 40),
+    shape: oneOf(raw.shape, ['rect', 'ellipse', 'path'] as const),
+    path: pathData(raw.path),
+    fill: fillOf(raw.fill),
+    singleLine: bool(raw.singleLine),
+    textCase: raw.textCase === 'upper' ? 'upper' : undefined,
+    spineFit: spineFit(raw.spineFit),
     stroke: stroke(raw.stroke),
     source: source(raw.source),
     fit: oneOf(raw.fit, ['fill', 'fit'] as const),
@@ -128,14 +156,17 @@ export function sanitizeLayer(raw: unknown): Layer | null {
     shape: () => newShape(raw.id as string, target),
     image: () => newImage(raw.id as string, target, null, { placement: null }),
     text: () => newText(raw.id as string, target),
+    group: () => newGroup(raw.id as string),
     generated: () => (raw.generator === 'svg' ? newSvg(raw.id as string, target, '') : newCode(raw.id as string, target)),
   }[raw.type as string];
   if (!make) return null;
   const layer = make() as Layer & { params?: object; stroke?: object };
   const follows = str(raw.follows, 80);
+  const parent = typeof raw.parent === 'string' && ID.test(raw.parent) ? raw.parent : undefined;
   // Fields that don't belong to the type are ignored by drawing, but dropping them keeps saves tidy.
-  const keep = Object.keys(layer);
-  const merged = { ...layer, ...Object.fromEntries(Object.entries(fields).filter(([k]) => keep.includes(k) || k === 'name')), ...(follows && { follows }) } as Layer;
+  // Fields a type has but a fresh layer doesn't carry until they are set.
+  const keep = [...Object.keys(layer), 'path', 'singleLine', 'textCase', 'spineFit', 'textHeightMm', 'textTemplate', 'textRotationDeg'];
+  const merged = { ...layer, ...Object.fromEntries(Object.entries(fields).filter(([k]) => keep.includes(k) || k === 'name')), ...(follows && { follows }), ...(parent && { parent }) } as Layer;
   const nested = merged as Layer & { params?: object; stroke?: object; textStroke?: object; shadow?: object };
   if (merged.type === 'generated') {
     // A graphic keeps only its SVG and a code only its code settings, whatever else the save carried.

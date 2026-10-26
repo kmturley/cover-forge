@@ -1,6 +1,6 @@
 import type { PanelRect, TemplateConfig } from '../types/template';
 import type { LogoSettings } from '../types/editor';
-import { brandHeight, brandPath2D, brandWidth, logoHeight, logoWidth, type Mark } from '../brands';
+import { brandHeight, brandPath2D, brandWidth, type Mark } from '../brands';
 import { paintLogoLayers } from './logoLayers';
 import { paintRect } from './placement';
 import { boxRect, fitInside, type RectMm } from './box';
@@ -55,11 +55,32 @@ export function computeLogoPlacement(t: TemplateConfig, panel: PanelRect, aspect
   return { widthMm: r.widthMm, heightMm: r.heightMm, xMm: r.xMm - area.xMm, yMm: r.yMm - area.yMm, area, box };
 }
 
+/** Which part of a mark to draw: some of a logo's layers, a share of its artwork, or all in one colour (see ImageSource). */
+export interface MarkOptions {
+  only?: number[];
+  crop?: [number, number, number, number];
+  mono?: boolean;
+}
+
+/** The artwork a mark draws, in its own coordinates: its top-left corner and size, and which of a logo's layers. */
+export function markGeometry(mark: Mark, o: MarkOptions = {}): { x: number; y: number; w: number; h: number; used: number[]; mono: boolean } {
+  if (mark.kind === 'brand') return { x: mark.brand.bbox[0], y: mark.brand.bbox[1], w: brandWidth(mark.brand), h: brandHeight(mark.brand), used: [], mono: true };
+  const l = mark.logo;
+  const used = l.layers.map((_, i) => i).filter((i) => !o.only || o.only.includes(i));
+  // With no choice of layers the logo's own bounds are used, as they always were.
+  const [lx0, ly0, lx1, ly1] = o.only && used.length > 0 ? [Math.min(...used.map((i) => l.layers[i].box[0])), Math.min(...used.map((i) => l.layers[i].box[1])), Math.max(...used.map((i) => l.layers[i].box[2])), Math.max(...used.map((i) => l.layers[i].box[3]))] : l.bbox;
+  const [c0, c1, c2, c3] = o.crop ?? [0, 0, 1, 1];
+  return { x: lx0 + c0 * (lx1 - lx0), y: ly0 + c1 * (ly1 - ly0), w: (c2 - c0) * (lx1 - lx0), h: (c3 - c1) * (ly1 - ly0), used, mono: !!o.mono };
+}
+
+/** Width / height of the artwork a mark draws with these options (the mark's own aspect with none). */
+export const markAspect = (mark: Mark, o?: MarkOptions): number => (o && (o.only || o.crop) ? (() => { const g = markGeometry(mark, o); return g.w / g.h; })() : mark.aspect);
+
 /** Fills the mark (brand icon or supplied logo), clipped to its panel so it never spills onto a neighbour. `px` is pixels per mm. */
-export function drawLogo(ctx: CanvasRenderingContext2D, t: TemplateConfig, panel: PanelRect, mark: Mark, logo: LogoSettings, px: number): void {
-  const pl = computeLogoPlacement(t, panel, mark.aspect, logo);
-  const [bx0, by0, bw, bh] = mark.kind === 'brand' ? [mark.brand.bbox[0], mark.brand.bbox[1], brandWidth(mark.brand), brandHeight(mark.brand)] : [mark.logo.bbox[0], mark.logo.bbox[1], logoWidth(mark.logo), logoHeight(mark.logo)];
-  const k = (pl.widthMm * px) / bw;
+export function drawLogo(ctx: CanvasRenderingContext2D, t: TemplateConfig, panel: PanelRect, mark: Mark, logo: LogoSettings, px: number, o?: MarkOptions): void {
+  const g = markGeometry(mark, o);
+  const pl = computeLogoPlacement(t, panel, markAspect(mark, o), logo);
+  const k = (pl.widthMm * px) / g.w;
   ctx.save();
   ctx.beginPath();
   ctx.rect(pl.area.xMm * px, pl.area.yMm * px, pl.area.widthMm * px, pl.area.heightMm * px);
@@ -69,9 +90,14 @@ export function drawLogo(ctx: CanvasRenderingContext2D, t: TemplateConfig, panel
   ctx.translate((pl.area.xMm + pl.xMm + pl.widthMm / 2) * px, (pl.area.yMm + pl.yMm + pl.heightMm / 2) * px);
   ctx.rotate((logo.rotationDeg * Math.PI) / 180);
   ctx.scale(k, k);
-  // Centre the path's tight bounds on the origin so position, size and rotation act on the visible mark.
-  ctx.translate(-(bx0 + bw / 2), -(by0 + bh / 2));
+  // Centre the artwork's tight bounds on the origin so position, size and rotation act on the visible mark.
+  ctx.translate(-(g.x + g.w / 2), -(g.y + g.h / 2));
+  if (o?.crop) {
+    ctx.beginPath();
+    ctx.rect(g.x, g.y, g.w, g.h);
+    ctx.clip();
+  }
   if (mark.kind === 'brand') ctx.fill(brandPath2D(mark.brand));
-  else paintLogoLayers(ctx, mark.logo, mark.logo.layers.map((_, i) => i), 0, 0, logo.color, false);
+  else paintLogoLayers(ctx, mark.logo, g.used, 0, 0, logo.color, g.mono);
   ctx.restore();
 }

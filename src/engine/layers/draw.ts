@@ -2,18 +2,19 @@ import type { MediaItem } from '../../types/media';
 import type { PanelId, PanelRect, TemplateConfig } from '../../types/template';
 import type { CodeSettings, LogoSettings, PanelTransform } from '../../types/editor';
 import { DEFAULT_CODE, DEFAULT_LOGO, DEFAULT_TRANSFORM } from '../../types/editor';
-import type { CodeLayer, ImageLayer, Layer, LayerPlacement, LegacyMm, Placement, ShapeLayer, SvgLayer, TextLayer } from '../../types/layers';
+import type { CodeLayer, Fill, ImageLayer, Layer, LayerPlacement, LegacyMm, Placement, ShapeLayer, SvgLayer, TextLayer } from '../../types/layers';
 import { getMark, type Mark } from '../../brands';
+import { canvasPaint } from './paint';
 import { layerImageUrl, type Assets } from './images';
 import { computePlacement, paintRect } from '../placement';
-import { boxRect, fitInside } from '../box';
+import { boxRect, fitInside, type RectMm } from '../box';
 import { fillSvg, sanitizeSvg, svgAspect, svgImageUrl } from '../svgTemplate';
 import { drawBorder } from '../border';
-import { drawLogo } from '../logo';
+import { drawLogo, markAspect, type MarkOptions } from '../logo';
 import { codeAspect, drawCode } from '../code';
 import { drawSpineText, spineText } from '../SpineTypography';
 import type { PanelBox } from '../../types/editor';
-import { drawOfficial, spineTitleCase, spineTitleColor, spineTitleScale, spineTitleStartMm } from '../official';
+import { contrast, drawOfficial, spineTitleCase, spineTitleColor, spineTitleScale, spineTitleStartMm } from '../official';
 import { placementToBox } from './placement';
 
 export type ImageLookup = (url: string | null | undefined) => HTMLImageElement | null;
@@ -54,10 +55,20 @@ function legacyOf(p: LayerPlacement): Omit<LegacyMm, 'kind'> {
 }
 
 /** Fills a rectangle, snapped outwards to whole pixels so neighbouring panels leave no hairline between them. */
-function fillSnapped(ctx: CanvasRenderingContext2D, color: string, area: { xMm: number; yMm: number; widthMm: number; heightMm: number }, px: number) {
-  ctx.fillStyle = color;
+function fillSnapped(ctx: CanvasRenderingContext2D, fill: Fill, area: { xMm: number; yMm: number; widthMm: number; heightMm: number }, px: number) {
   const [x0, y0] = [Math.floor(area.xMm * px), Math.floor(area.yMm * px)];
-  ctx.fillRect(x0, y0, Math.ceil((area.xMm + area.widthMm) * px) - x0, Math.ceil((area.yMm + area.heightMm) * px) - y0);
+  const [w, h] = [Math.ceil((area.xMm + area.widthMm) * px) - x0, Math.ceil((area.yMm + area.heightMm) * px) - y0];
+  ctx.fillStyle = canvasPaint(ctx, fill, x0, y0, w, h);
+  ctx.fillRect(x0, y0, w, h);
+}
+
+/** A shape's SVG path stretched over a box (canvas mm), as a path in canvas px, about the origin if `centred`. */
+function boxPath(d: string, box: { xMm: number; yMm: number; widthMm: number; heightMm: number }, px: number, centred: boolean): Path2D {
+  const path = new Path2D();
+  const [sx, sy] = [(box.widthMm * px) / 100, (box.heightMm * px) / 100];
+  const [ex, ey] = centred ? [(-box.widthMm / 2) * px, (-box.heightMm / 2) * px] : [box.xMm * px, box.yMm * px];
+  path.addPath(new Path2D(d), { a: sx, b: 0, c: 0, d: sy, e: ex, f: ey } as unknown as DOMMatrix);
+  return path;
 }
 
 function drawShape(env: DrawEnv, l: ShapeLayer, panel: PanelRect) {
@@ -78,25 +89,30 @@ function drawShape(env: DrawEnv, l: ShapeLayer, panel: PanelRect) {
   ctx.translate((box.xMm + box.widthMm / 2) * px, (box.yMm + box.heightMm / 2) * px);
   ctx.rotate((l.rotationDeg * Math.PI) / 180);
   const [hw, hh] = [(box.widthMm / 2) * px, (box.heightMm / 2) * px];
+  const outline = l.shape === 'path' && l.path ? boxPath(l.path, box, px, true) : null;
   if (l.fill) {
-    ctx.fillStyle = l.fill;
-    if (l.shape === 'ellipse') {
+    ctx.fillStyle = canvasPaint(ctx, l.fill, -hw, -hh, hw * 2, hh * 2);
+    if (outline) ctx.fill(outline);
+    else if (l.shape === 'ellipse') {
       ctx.beginPath();
       ctx.ellipse(0, 0, hw, hh, 0, 0, Math.PI * 2);
       ctx.fill();
     } else ctx.fillRect(-hw, -hh, hw * 2, hh * 2);
   }
   if (l.stroke.widthMm > 0) {
-    const inset = l.stroke.insetMm + l.stroke.widthMm / 2;
-    const [w, h] = [box.widthMm - inset * 2, box.heightMm - inset * 2];
-    if (w > 0 && h > 0) {
-      ctx.strokeStyle = l.stroke.color;
-      ctx.lineWidth = l.stroke.widthMm * px;
-      if (l.shape === 'ellipse') {
-        ctx.beginPath();
-        ctx.ellipse(0, 0, (w / 2) * px, (h / 2) * px, 0, 0, Math.PI * 2);
-        ctx.stroke();
-      } else ctx.strokeRect((-w / 2) * px, (-h / 2) * px, w * px, h * px);
+    ctx.strokeStyle = l.stroke.color;
+    ctx.lineWidth = l.stroke.widthMm * px;
+    if (outline) ctx.stroke(outline);
+    else {
+      const inset = l.stroke.insetMm + l.stroke.widthMm / 2;
+      const [w, h] = [box.widthMm - inset * 2, box.heightMm - inset * 2];
+      if (w > 0 && h > 0) {
+        if (l.shape === 'ellipse') {
+          ctx.beginPath();
+          ctx.ellipse(0, 0, (w / 2) * px, (h / 2) * px, 0, 0, Math.PI * 2);
+          ctx.stroke();
+        } else ctx.strokeRect((-w / 2) * px, (-h / 2) * px, w * px, h * px);
+      }
     }
   }
   ctx.restore();
@@ -107,9 +123,15 @@ export function transformOf(l: ImageLayer, panel: PanelRect, aspect: number): Pa
   return { ...DEFAULT_TRANSFORM, ...legacyOf(l.placement), box: boxOf(panel, l.placement, aspect) as PanelTransform['box'], fit: l.fit, focus: l.focus, rotationDeg: l.rotationDeg, opacity: l.opacity };
 }
 
+/** The part of a built-in mark an image layer draws (all of it unless the layer says otherwise). */
+export function markOptions(l: ImageLayer): MarkOptions | undefined {
+  const s = l.source;
+  return s?.kind === 'vector' && (s.only || s.crop || s.mono) ? { only: s.only, crop: s.crop, mono: s.mono } : undefined;
+}
+
 /** A mark layer's placement and look in the shape the logo helpers take. */
 export function logoSettingsOf(l: ImageLayer, panel: PanelRect, mark: Mark): LogoSettings {
-  return { ...DEFAULT_LOGO, ...legacyOf(l.placement), color: l.tint, box: boxOf(panel, l.placement, mark.aspect) as LogoSettings['box'], rotationDeg: l.rotationDeg, opacity: l.opacity };
+  return { ...DEFAULT_LOGO, ...legacyOf(l.placement), color: l.tint, box: boxOf(panel, l.placement, markAspect(mark, markOptions(l))) as LogoSettings['box'], rotationDeg: l.rotationDeg, opacity: l.opacity };
 }
 
 /** A code layer's placement and look in the shape the code helpers take. */
@@ -123,7 +145,7 @@ function drawImage(env: DrawEnv, l: ImageLayer, panel: PanelRect) {
   if (l.source?.kind === 'vector') {
     const mark = getMark(l.source.id);
     if (!mark || !item) return;
-    drawLogo(ctx, t, panel, mark, logoSettingsOf(l, panel, mark), px);
+    drawLogo(ctx, t, panel, mark, logoSettingsOf(l, panel, mark), px, markOptions(l));
     return;
   }
   const img = env.getImage(layerImageUrl(l, item, env.assets));
@@ -208,14 +230,38 @@ function wrap(ctx: CanvasRenderingContext2D, text: string, maxPx: number): strin
   return lines;
 }
 
+/** One line of exactly the set cap height, its baseline on the bottom of the box and its start (or middle, or end) on the box's left (middle, right). */
+function drawSingleLine(env: DrawEnv, l: TextLayer, text: string, box: RectMm, panel: PanelRect) {
+  const { ctx, px } = env;
+  const mm = (l.textHeightMm ?? box.heightMm) / CAP_EM;
+  const area = paintRect(env.template, panel);
+  ctx.save();
+  ctx.beginPath();
+  ctx.rect(area.xMm * px, area.yMm * px, area.widthMm * px, area.heightMm * px);
+  ctx.clip();
+  ctx.globalAlpha = l.opacity;
+  ctx.translate((box.xMm + box.widthMm / 2) * px, (box.yMm + box.heightMm / 2) * px);
+  ctx.rotate(((l.rotationDeg + (l.textRotationDeg ?? 0)) * Math.PI) / 180);
+  ctx.font = `${l.italic ? 'italic ' : ''}${l.weight} ${mm * px}px ${l.fontFamily}`;
+  setSpacing(ctx, `${l.letterSpacing / 1000}em`);
+  ctx.fillStyle = l.color;
+  ctx.textBaseline = 'alphabetic';
+  ctx.textAlign = l.align;
+  const x = l.align === 'left' ? (-box.widthMm / 2) * px : l.align === 'right' ? (box.widthMm / 2) * px : 0;
+  ctx.fillText(text, x, (box.heightMm / 2) * px);
+  ctx.restore();
+}
+
 /** Text in a box: wrapped to its width, as large as fits it unless a height is set, aligned, rotated about the box's centre. */
 function drawTextBox(env: DrawEnv, l: TextLayer, panel: PanelRect) {
   const { ctx, item, px } = env;
   if (!item) return;
-  const text = spineText(item, { text: l.text, textTemplate: l.textTemplate });
+  const words = spineText(item, { text: l.text, textTemplate: l.textTemplate });
+  const text = l.textCase === 'upper' ? words.toUpperCase() : words;
   if (!text) return;
   const box = boxRect(panel, isAnchored(l.placement) ? placementToBox(panel, l.placement) : DEFAULT_TEXT_BOX);
   if (box.widthMm <= 0 || box.heightMm <= 0) return;
+  if (l.singleLine) return drawSingleLine(env, l, text, box, panel);
   const font = (mm: number) => `${l.italic ? 'italic ' : ''}${l.weight} ${mm * px}px ${l.fontFamily}`;
   const spacing = `${l.letterSpacing / 1000}em`;
   const layout = (mm: number) => {
@@ -279,9 +325,15 @@ function drawSpineLayer(env: DrawEnv, l: TextLayer, panel: PanelRect) {
   const { item, template: t, banner } = env;
   if (!item || !panel.text) return;
   const chosen = { fontFamily: l.fontFamily, color: l.color, textHeightMm: l.textHeightMm, rotationDeg: l.textRotationDeg, text: l.text, textTemplate: l.textTemplate };
-  const settings = { ...chosen, color: spineTitleColor(t.kind, t.variantId, banner, chosen.color) };
+  const words = spineText(item, chosen);
   const length = panel.text === 'vertical' ? panel.heightMm : panel.widthMm;
-  drawSpineText(env.ctx, panel, spineTitleCase(t.kind, t.variantId, banner, spineText(item, settings)), settings, env.px, panel.text, { start: spineTitleStartMm(t.kind, t.variantId, banner, length), end: 0 }, spineTitleScale(t.kind, t.variantId, banner));
+  const fit = l.spineFit;
+  // A layer that says how the Branded dress changes the title uses that; otherwise the dress is looked up by case.
+  const color = fit ? (fit.contrast && contrast(l.color, fit.contrast.on) < 2 ? fit.contrast.color : l.color) : spineTitleColor(t.kind, t.variantId, banner, chosen.color);
+  const shown = fit ? (l.textCase === 'upper' ? words.toUpperCase() : words) : spineTitleCase(t.kind, t.variantId, banner, words);
+  const start = fit ? fit.startMm : spineTitleStartMm(t.kind, t.variantId, banner, length);
+  const scale = fit ? fit.scale : spineTitleScale(t.kind, t.variantId, banner);
+  drawSpineText(env.ctx, panel, shown, { ...chosen, color }, env.px, panel.text, { start, end: 0 }, scale);
 }
 
 /** Text on a spine with no placement of its own is the spine title; any other text is set in its box. */
@@ -317,8 +369,14 @@ function clipToArt(ctx: CanvasRenderingContext2D, t: TemplateConfig, px: number)
 export function drawLayers(env: DrawEnv, layers: readonly Layer[]): void {
   const panels = new Map(env.template.panels.map((p) => [p.id, p]));
   const canvas = layers.some((l) => l.target === 'canvas') ? canvasPanel(env.template) : null;
+  const folders = new Map(layers.filter((l) => l.type === 'group').map((l) => [l.id, l]));
+  /** A layer is hidden if it, or a folder it sits in, is (folders nest at most a few deep, and a loop in a bad save ends the walk). */
+  const hidden = (l: Layer): boolean => {
+    for (let at: Layer | undefined = l, depth = 0; at && depth < 8; at = at.parent ? folders.get(at.parent) : undefined, depth++) if (!at.visible) return true;
+    return false;
+  };
   for (const l of layers) {
-    if (!l.visible) continue;
+    if (l.type === 'group' || hidden(l)) continue;
     if (l.type === 'official') {
       if (env.banner) drawOfficial(env.ctx, env.template, env.px);
       continue;

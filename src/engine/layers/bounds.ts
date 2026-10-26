@@ -4,9 +4,9 @@ import type { Layer } from '../../types/layers';
 import { getMark } from '../../brands';
 import { boxRect, type RectMm } from '../box';
 import { computeCodePlacement, codeAspect } from '../code';
-import { computeLogoPlacement } from '../logo';
+import { computeLogoPlacement, markAspect } from '../logo';
 import { computePlacement, paintRect } from '../placement';
-import { canvasPanel, codeSettingsOf, logoSettingsOf, svgLayerAspect, transformOf, type ImageLookup } from './draw';
+import { canvasPanel, codeSettingsOf, logoSettingsOf, markOptions, svgLayerAspect, transformOf, type ImageLookup } from './draw';
 import { layerImageUrl, type Assets } from './images';
 import { placementToBox } from './placement';
 
@@ -40,7 +40,7 @@ const isAnchored = (l: Layer) => !!l.placement && 'x' in l.placement;
 /** The box of one layer, or null when it isn't drawn or can't be picked (hidden, on a flap, nothing to show yet). */
 export function layerBounds(layer: Layer, env: BoundsEnv): Bounds | null {
   const { template: t, item } = env;
-  if (!layer.visible || layer.type === 'official') return null;
+  if (!layer.visible || layer.type === 'official' || layer.type === 'group') return null;
   const panel = layer.target === 'canvas' ? canvasPanel(t) : t.panels.find((p) => p.id === layer.target);
   if (!panel || (layer.target !== 'canvas' && panel.follows)) return null;
   const area = paintRect(t, panel);
@@ -57,7 +57,8 @@ export function layerBounds(layer: Layer, env: BoundsEnv): Bounds | null {
       if (layer.source?.kind === 'vector') {
         const mark = getMark(layer.source.id);
         if (!mark || !item) return null;
-        return { ...base, rect: computeLogoPlacement(t, panel, mark.aspect, logoSettingsOf(layer, panel, mark)).box, aspect: mark.aspect };
+        const aspect = markAspect(mark, markOptions(layer));
+        return { ...base, rect: computeLogoPlacement(t, panel, aspect, logoSettingsOf(layer, panel, mark)).box, aspect };
       }
       const img = env.getImage(layerImageUrl(layer, item, env.assets));
       if (!img) return null;

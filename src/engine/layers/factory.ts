@@ -1,5 +1,5 @@
 import type { PanelId } from '../../types/template';
-import type { Axis, CodeLayer, CodeParams, ImageLayer, ImageSource, Layer, LayerBase, Placement, ShapeLayer, SvgLayer, TextLayer } from '../../types/layers';
+import type { Axis, CodeLayer, CodeParams, GroupLayer, ImageLayer, ImageSource, Layer, LayerBase, Placement, ShapeLayer, SvgLayer, TextLayer } from '../../types/layers';
 import { DEFAULT_BORDER, DEFAULT_CODE, DEFAULT_LOGO } from '../../types/editor';
 import { DEFAULT_SPINE_COLOR, DEFAULT_SPINE_FONT, TEXT_EFFECTS } from './defaults';
 
@@ -31,6 +31,9 @@ export const newCode = (id: string, target: PanelId | 'canvas', params: Partial<
   ...base(id, target, null), type: 'generated', generator: 'code',
   params: { kind: 'qr', pattern: DEFAULT_CODE.pattern, color: DEFAULT_CODE.color, background: DEFAULT_CODE.background, ...params }, ...o,
 });
+
+/** A folder. It has no placement or look of its own (its target is only a place to file it). */
+export const newGroup = (id: string, o: Partial<GroupLayer> = {}): GroupLayer => ({ ...base(id, 'front', null), type: 'group', ...o });
 
 export const newSvg = (id: string, target: PanelId | 'canvas', svg: string, o: Partial<SvgLayer> = {}): SvgLayer => ({
   ...base(id, target, centred(50)), type: 'generated', generator: 'svg', params: { svg }, ...o,
