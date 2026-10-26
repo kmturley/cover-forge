@@ -6,6 +6,8 @@ import { serializeSession } from './session';
 import { defaultVariantId, isTemplateKind } from '../templates';
 import { entryFor, upgradeTemplateId } from '../templates/library';
 import { syncTemplate, templateIdOf } from './templateOf';
+import { mergeDiffs } from '../engine/layers/diffEdit';
+import { bannerOffDiff } from '../engine/layers/branded';
 
 /** Beyond this a link may be refused by servers, chat apps or older browsers; the UI suggests saving a file instead. */
 export const MAX_SHARE_URL = 6000;
@@ -91,7 +93,7 @@ export function plainShareUrl(state: AppState, base: string): string | null {
   if (state.designs.length > 0 || state.shared.diff || Object.keys(state.assets).length > 0 || !oneTemplate || !state.items.every(untouched) || Object.keys(state.shared.panels).length > 0 || Object.keys(state.shared.spine).some((k) => k !== 'fontFamily' && k !== 'color')) return null;
   // The last app id is the one selected when the link opens.
   const ids = [...state.items].sort((a, b) => Number(a.id === state.selectedItemId) - Number(b.id === state.selectedItemId)).map((i) => i.sourceId);
-  const q = new URLSearchParams({ template: state.templateId, banner: state.banner ? '1' : '0', view: state.view });
+  const q = new URLSearchParams({ template: state.templateId, view: state.view });
   if (ids.length) q.set('app', ids.join(','));
   return `${base.split(/[?#]/)[0]}?${q.toString().replace(/%2C/g, ',')}`;
 }
@@ -154,10 +156,11 @@ export async function readStartup(search: string): Promise<Startup> {
  * added with it too (see App), whatever cases the user normally prints for.
  */
 export function applyParams(state: AppState, p: UrlParams): AppState {
-  return syncTemplate({
+  const next = syncTemplate({
     ...state,
     templateId: p.template ?? state.templateId,
-    banner: p.banner ?? state.banner,
     view: p.view ?? state.view,
   });
+  // An older link with Branded off hides each side's Branded folder, as the one switch did.
+  return p.banner === false ? { ...next, shared: { ...next.shared, diff: mergeDiffs(next.shared.diff, bannerOffDiff()) } } : next;
 }

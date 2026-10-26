@@ -32,7 +32,7 @@ export function LayerOverlay({ selected, guides, readout, left, top, width, heig
           className={`layer-outline ${selected.movable ? '' : 'fixed'} ${selected.whole ? 'whole' : ''}`}
           style={{ left: left + r.xMm * mm, top: top + r.yMm * mm, width: r.widthMm * mm, height: r.heightMm * mm, transform: `rotate(${selected.rotationDeg}deg)` }}
         >
-          {selected.movable && !selected.whole && canResize(selected.layer) && HANDLES.map((h) => {
+          {selected.movable && (!selected.whole || selected.layer.type === 'image') && canResize(selected.layer) && HANDLES.map((h) => {
             const p = handlePoint({ xMm: 0, yMm: 0, widthMm: r.widthMm, heightMm: r.heightMm }, h);
             return <span key={h} className="layer-handle" style={{ left: p.x * mm, top: p.y * mm }} />;
           })}

@@ -9,7 +9,7 @@ import type { MediaItem } from '../../types/media';
 
 export function ExportModal({ onClose }: { onClose: () => void }) {
   const state = useAppState();
-  const { items, template, shared, designs, assets, banner } = state;
+  const { items, template, shared, designs, assets } = state;
   const selected = useSelectedItem();
   const [paper, setPaper] = useState<PaperSize>('A4');
   const [chosenSheet, setChosenSheet] = useState<string>('');
@@ -18,7 +18,7 @@ export function ExportModal({ onClose }: { onClose: () => void }) {
   const [progress, setProgress] = useState<{ done: number; total: number; label: string } | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  const base = { shared, designs, assets, banner, templateOf: (item: MediaItem) => templateOf(state, item) };
+  const base = { shared, designs, assets, templateOf: (item: MediaItem) => templateOf(state, item) };
   // Sheets are laid out per template; the preview shows the selected item's.
   const { templateId } = state;
   const used = useMemo(() => [...new Map(items.map((i) => templateOf({ templateId }, i)).map((t) => [t.id, t])).values()], [items, templateId]);

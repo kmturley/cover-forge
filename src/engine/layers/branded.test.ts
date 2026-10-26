@@ -6,7 +6,7 @@ import { diff } from '../regression/render';
 import '../regression/render'; // installs Path2D for Node
 import { drawOfficial } from '../branding';
 import { BASE_BACKGROUND } from '../resolve';
-import { BRANDED_FOLDER, brandedLayers, setTextMeasurer } from './branded';
+import { brandedFolderId, brandedLayers, setTextMeasurer } from './branded';
 import { drawLayers } from './draw';
 
 const PX = 2;
@@ -37,10 +37,12 @@ describe('the dress as layers', () => {
     for (const e of LIBRARY) {
       const t = buildTemplateById(e.id);
       const { layers } = brandedLayers(t);
-      expect(layers[0], e.id).toMatchObject({ id: BRANDED_FOLDER, type: 'group' });
+      const folders = layers.filter((l) => l.type === 'group');
+      expect(folders.length, e.id).toBeGreaterThan(0);
+      expect(layers.slice(0, folders.length), e.id).toEqual(folders);
       expect(new Set(layers.map((l) => l.id)).size, e.id).toBe(layers.length);
-      for (const l of layers.slice(1)) {
-        expect(l.parent, `${e.id} ${l.id}`).toBe(BRANDED_FOLDER);
+      for (const l of layers.slice(folders.length)) {
+        expect(l.parent, `${e.id} ${l.id}`).toBe(brandedFolderId(l.target));
         expect(t.panels.some((p) => p.id === l.target), `${e.id} ${l.id}`).toBe(true);
       }
     }

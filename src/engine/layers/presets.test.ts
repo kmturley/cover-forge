@@ -38,7 +38,7 @@ describe('presets', () => {
     for (const e of LIBRARY) {
       for (const p of PRESETS) {
         const design = designFromPreset(p, 'd1');
-        const layers = resolveLayers({ template: buildTemplateById(e.id), item: { ...item, designId: 'd1' }, shared: { panels: {}, spine: { fontFamily: 'Arial', color: '#fff' } }, designs: [design], banner: true });
+        const layers = resolveLayers({ template: buildTemplateById(e.id), item: { ...item, designId: 'd1' }, shared: { panels: {}, spine: { fontFamily: 'Arial', color: '#fff' } }, designs: [design] });
         expect(layers.length, `${e.id} ${p.id}`).toBeGreaterThan(5);
       }
     }

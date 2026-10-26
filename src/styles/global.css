@@ -373,3 +373,4 @@ h3 { font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: v
 .preset-card small { color: var(--muted); font-size: 11px; line-height: 1.35; }
 .preset-name { font-weight: 600; }
 .preset-preview { width: 100%; height: auto; background: var(--bg); border-radius: 4px; }
+.layer-actions .menu-list { left: auto; right: 0; }

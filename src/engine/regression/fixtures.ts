@@ -8,6 +8,8 @@ import { PRESETS, designFromPreset } from '../layers/presets';
 import { LIBRARY } from '../../templates/library';
 import { buildTemplateById } from '../../templates';
 import type { Scene } from '../CanvasRenderer';
+import { mergeDiffs } from '../layers/diffEdit';
+import { bannerOffDiff } from '../layers/branded';
 
 /**
  * The scenes whose rendering is frozen as golden images (see regression.test.ts). They exist to prove that the layer
@@ -44,14 +46,11 @@ const shared = (panels: SharedSettings['panels'] = {}, spine: Partial<SharedSett
   spine: { fontFamily: SPINE_FONT, color: '#ffffff', ...spine },
 });
 
-const scene = (templateId: string, o: Partial<Scene> = {}): Scene => ({
-  template: buildTemplateById(templateId),
-  item: ITEM,
-  shared: shared(),
-  banner: false,
-  showGuides: false,
-  ...o,
-});
+/** `banner` is whether the Branded folders are shown; the cases are drawn plain unless it is on. */
+const scene = (templateId: string, { banner = false, ...o }: Partial<Scene> & { banner?: boolean } = {}): Scene => {
+  const s: Scene = { template: buildTemplateById(templateId), item: ITEM, shared: shared(), showGuides: false, ...o };
+  return banner ? s : { ...s, shared: { ...s.shared, diff: mergeDiffs(s.shared.diff, bannerOffDiff()) } };
+};
 
 /** Every case in the library, with its Branded trade dress, the default stack and no customisation. */
 const everyCase: Fixture[] = LIBRARY.flatMap((e) => [
@@ -60,11 +59,11 @@ const everyCase: Fixture[] = LIBRARY.flatMap((e) => [
 ]);
 
 const item = (panels: Partial<Record<PanelId, PanelSettings>>, rest: Partial<MediaItem> = {}): MediaItem => ({ ...ITEM, panels, ...rest });
-const withShared = (templateId: string, panels: SharedSettings['panels'], o: Partial<Scene> = {}, spine?: Partial<SharedSettings['spine']>): Scene =>
+const withShared = (templateId: string, panels: SharedSettings['panels'], o: Parameters<typeof scene>[1] = {}, spine?: Partial<SharedSettings['spine']>): Scene =>
   scene(templateId, { shared: shared(panels, spine), ...o });
 
 const BR = 'bluray-us-11';
-const withDiff = (templateId: string, diff: LayerDiff, o: Partial<Scene> = {}): Scene => scene(templateId, { shared: { ...shared(), diff }, ...o });
+const withDiff = (templateId: string, diff: LayerDiff, o: Parameters<typeof scene>[1] = {}): Scene => scene(templateId, { shared: { ...shared(), diff }, ...o });
 const ASSETS: Record<string, Asset> = { screen: { id: 'screen', name: 'screen.png', source: { kind: 'url', url: 'test://s0' } }, tall: { id: 'tall', name: 'tall.png', source: { kind: 'url', url: 'test://s1' } } };
 const PS4 = 'game-case-ps4';
 const CD = 'cd-jewel';

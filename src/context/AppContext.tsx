@@ -38,8 +38,6 @@ export interface AppState {
   template: TemplateConfig;
   /** The case last picked per media type, which new items of that type start with. */
   lastTemplates: LastTemplates;
-  /** Draw each template's official banner (platform or format header). */
-  banner: boolean;
   /** UI-only (not persisted): guides are a preview aid, so they start off on every visit. */
   showGuides: boolean;
   /** UI-only (not persisted): dimension lines in mm on the 2D and 3D views. */
@@ -87,7 +85,6 @@ export type Action =
   | { type: 'setEditMode'; mode: EditMode }
   /** Gives the items a template (none = just the empty-queue one); new items of their types then start with it too. */
   | { type: 'setItemTemplate'; items: string[]; template: string }
-  | { type: 'setBanner'; banner: boolean }
   | { type: 'setShowGuides'; show: boolean }
   | { type: 'setShowMeasurements'; show: boolean }
   | { type: 'setView'; view: ViewMode }
@@ -139,7 +136,6 @@ export const initialState: AppState = {
   templateId: DEFAULT_TEMPLATE_ID,
   template: buildTemplateById(DEFAULT_TEMPLATE_ID),
   lastTemplates: {},
-  banner: true,
   showGuides: false,
   showMeasurements: false,
   view: '3d',
@@ -295,8 +291,6 @@ function apply(state: AppState, action: Action): AppState {
       for (const i of state.items) if (ids.has(i.id)) lastTemplates[i.type] = action.template;
       return { ...state, templateId: action.template, lastTemplates, items: state.items.map((i) => (ids.has(i.id) ? { ...i, templateId: action.template } : i)) };
     }
-    case 'setBanner':
-      return { ...state, banner: action.banner };
     case 'setShowGuides':
       return { ...state, showGuides: action.show };
     case 'setShowMeasurements':

@@ -20,8 +20,6 @@ export interface Scene {
   designs?: Design[];
   /** The session's asset library (images that layers can use on every item). */
   assets?: Record<string, Asset>;
-  /** Draw the template's official banner (platform or format header) and spine cap. */
-  banner: boolean;
   showGuides: boolean;
   /** Clear everything outside the cut lines (bleed, and any gaps between panels), so the canvas looks like the cut-out piece (the 2D view). */
   hideOutsideCut?: boolean;
@@ -47,7 +45,7 @@ export function renderCover(
   ctx.fillStyle = BASE_BACKGROUND;
   ctx.fillRect(0, 0, t.totalWidthMm * px, t.totalHeightMm * px);
 
-  const layers = resolveLayers({ template: t, item, shared: scene.shared, designs: scene.designs, banner: scene.banner });
+  const layers = resolveLayers({ template: t, item, shared: scene.shared, designs: scene.designs });
   drawLayers({ ctx, template: t, item, px, getImage, assets: scene.assets }, layers);
 
   if (scene.markAssembly) drawAssemblyHatch(ctx, t, px);
@@ -68,9 +66,9 @@ export function renderCover(
 }
 
 /** Preloads every image the item uses so a subsequent synchronous render is complete. */
-export function preloadItem({ template, item, shared, designs, assets, banner }: Pick<Scene, 'template' | 'item' | 'shared' | 'designs' | 'assets' | 'banner'>): Promise<unknown> {
+export function preloadItem({ template, item, shared, designs, assets }: Pick<Scene, 'template' | 'item' | 'shared' | 'designs' | 'assets'>): Promise<unknown> {
   if (!item) return Promise.resolve();
-  const layers = resolveLayers({ template, item, shared, designs, banner });
+  const layers = resolveLayers({ template, item, shared, designs });
   return Promise.all([loadImages(layerImageUrls(layers, item, assets)), ...layerFonts(layers, item).map(ensureFont)]);
 }
 

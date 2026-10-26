@@ -3,7 +3,6 @@ import { duplicateLayer, freshId, newCode, newImage, newShape, newSvg, newText }
 import { SVG_PRESETS } from '../../../engine/svgTemplate';
 import { isDefaultId, isEmptyLayer, layerDetail, layerName } from '../../../engine/layers/labels';
 import { defaultLayers } from '../../../engine/layers/defaults';
-import { useAppDispatch } from '../../../context/AppContext';
 import { assetFromFile, assetFromUrl } from '../../../storage/assets';
 import type { Layer, TextLayer } from '../../../types/layers';
 import { LayerInspector } from './LayerInspector';
@@ -52,16 +51,15 @@ function Row({ layer, ed, index, count, indent }: { layer: Layer; ed: LayerEdito
 }
 
 /**
- * The folder a group of layers sits in (the Branded dress). Its eye is the Branded switch; the layers inside are
- * ordinary and are changed like any others, and "Put back" forgets every change made to them.
+ * The folder a group of layers sits in (a side's Branded dress). Its eye shows or hides that side's layers only; the
+ * layers inside are ordinary and are changed like any others, and "Put back" forgets every change made to them.
  */
 function FolderRow({ folder, inside, ed, open, onToggle }: { folder: Layer; inside: Layer[]; ed: LayerEditor; open: boolean; onToggle: () => void }) {
-  const dispatch = useAppDispatch();
-  const on = ed.state.banner;
-  const edited = inside.filter((c) => ed.touched.has(c.id));
+  const on = folder.visible;
+  const edited = [...inside, folder].filter((c) => ed.touched.has(c.id));
   return (
     <li className={`layer-row folder ${on ? '' : 'off'}`}>
-      <button className="layer-eye" aria-label={on ? 'Turn Branded off' : 'Turn Branded on'} aria-pressed={on} title="Show the platform or format's trade dress on every cover" onClick={() => dispatch({ type: 'setBanner', banner: !on })}>
+      <button className="layer-eye" aria-label={on ? 'Hide Branded on this side' : 'Show Branded on this side'} aria-pressed={on} title="Show the platform or format's trade dress on this side" onClick={() => ed.update(folder.id, { visible: !on })}>
         {on ? '●' : '○'}
       </button>
       <button className="layer-main" aria-expanded={open} onClick={onToggle}>

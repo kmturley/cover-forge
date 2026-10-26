@@ -8,7 +8,7 @@ const PREVIEW_PX = 220;
 
 /** What a preset would make of the selected item on its case, drawn small. */
 function Preview({ preset }: { preset: Preset }) {
-  const { template, shared, assets, banner } = useAppState();
+  const { template, shared, assets } = useAppState();
   const item = useSelectedItem();
   const ref = useRef<HTMLCanvasElement>(null);
   useEffect(() => {
@@ -16,7 +16,7 @@ function Preview({ preset }: { preset: Preset }) {
     if (!canvas || !item) return;
     let live = true;
     const design = designFromPreset(preset, 'preview');
-    const scene = { template, item: { ...item, designId: 'preview', panels: undefined, spineOverride: undefined, diff: undefined }, shared, designs: [design], assets, banner, showGuides: false, hideOutsideCut: true };
+    const scene = { template, item: { ...item, designId: 'preview', panels: undefined, spineOverride: undefined, diff: undefined }, shared, designs: [design], assets, showGuides: false, hideOutsideCut: true };
     const px = PREVIEW_PX / template.totalWidthMm;
     canvas.width = Math.round(template.totalWidthMm * px);
     canvas.height = Math.round(template.totalHeightMm * px);
@@ -26,7 +26,7 @@ function Preview({ preset }: { preset: Preset }) {
     return () => {
       live = false;
     };
-  }, [preset, template, item, shared, assets, banner]);
+  }, [preset, template, item, shared, assets]);
   return <canvas ref={ref} className="preset-preview" aria-hidden="true" />;
 }
 

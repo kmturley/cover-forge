@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type RefObject } from 'react';
 import { useAppDispatch } from '../../context/AppContext';
 import { getCachedImage } from '../../engine/imageCache';
-import { layerAt, layerBounds, type Bounds, type BoundsEnv } from '../../engine/layers/bounds';
+import { containsPoint, layerAt, layerBounds, type Bounds, type BoundsEnv } from '../../engine/layers/bounds';
 import { duplicateLayer } from '../../engine/layers/factory';
 import { HANDLES, MOVING, canResize, moveRect, placementFromRect, resizeRect, sidesOf, snapRect, snapTargets, type Guide, type Handle, type SnapTargets } from '../../engine/layers/manipulate';
 import type { RectMm } from '../../engine/box';
@@ -65,9 +65,12 @@ export function useLayerDrag(ed: LayerEditor, canvasRef: RefObject<HTMLCanvasEle
   };
 
   const handleAt = (b: Bounds | null, x: number, y: number, s: number): Handle | null => {
-    if (!b || !b.movable || b.whole || !canResize(b.layer)) return null;
+    if (!b || !b.movable || (b.whole && b.layer.type !== 'image') || !canResize(b.layer)) return null;
     return HANDLES.find((h) => Math.hypot(x - handlePoint(b.rect, h).x, y - handlePoint(b.rect, h).y) <= HANDLE_PX / s) ?? null;
   };
+
+  /** A picture covering its whole panel isn't picked by clicking the panel, but once chosen from the list it can be moved by dragging it. */
+  const pickedWhole = (x: number, y: number): Bounds | null => (selected?.whole && selected.movable && selected.layer.type === 'image' && containsPoint(selected, x, y) ? selected : null);
 
   const flush = () => {
     frame.current = 0;
@@ -80,7 +83,7 @@ export function useLayerDrag(ed: LayerEditor, canvasRef: RefObject<HTMLCanvasEle
     if (e.button !== 0 || !item) return false;
     const { x, y, s } = where(e);
     const handle = handleAt(selected, x, y, s);
-    const hit = handle ? selected : layerAt(layers, env, x, y);
+    const hit = handle ? selected : (layerAt(layers, env, x, y) ?? pickedWhole(x, y));
     if (!hit) return false;
     if (hit.layer.id !== ed.state.selectedLayerId || hit.layer.target !== ed.state.selectedPanel) {
       if (hit.layer.target !== ed.state.selectedPanel) dispatch({ type: 'selectPanel', panel: hit.layer.target });
@@ -98,7 +101,7 @@ export function useLayerDrag(ed: LayerEditor, canvasRef: RefObject<HTMLCanvasEle
       if (!item) return false;
       const { x, y, s } = where(e);
       const h = handleAt(selected, x, y, s);
-      const next = h ? CURSOR[h] : layerAt(layers, env, x, y)?.movable ? 'move' : '';
+      const next = h ? CURSOR[h] : (layerAt(layers, env, x, y) ?? pickedWhole(x, y))?.movable ? 'move' : '';
       if (next !== cursor) setCursor(next);
       return false;
     }

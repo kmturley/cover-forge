@@ -3,7 +3,6 @@ import { panelHasOverride } from '../../engine/resolve';
 import { designHasPanel } from '../../engine/designs';
 import { DesignBar } from './DesignBar';
 import { CaseBar } from '../templates/CaseBar';
-import { BrandedToggle } from './BrandedToggle';
 import { LayerPanel } from './layers/LayerPanel';
 import { useEditScope } from './useEditScope';
 
@@ -23,7 +22,6 @@ export function PanelControls() {
     <section className="controls">
       <div className="controls-head">
         <CaseBar />
-        <BrandedToggle />
         <DesignBar panel={tab} />
         <div className="seg wide" role="tablist" aria-label="Panel to edit">
           {tabs.map((t) => {

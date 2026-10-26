@@ -3,6 +3,7 @@ import type { Fill, GroupLayer, ImageLayer, Layer, LayerPatch, ShapeLayer, TextL
 import { brandWidth, type Brand, type Logo } from '../../brands';
 import { drawBranding, logoPartGeometry, type Font, type Ink, type LogoPart, type PathOp, type Sink } from '../branding';
 import { brandingFor } from '../official';
+import { PANEL_IDS } from '../resolve';
 import { rectToBox, type RectMm } from '../box';
 import { boundsOf, circlePoints, clipPolygon, isRect, quadPoints, remapStops, simplify, type Pt } from './geometry';
 import { placementOfBox } from './placement';
@@ -14,8 +15,11 @@ import { placementOfBox } from './placement';
  * hand, so the layers draw what the dress always drew; a user then edits them like any others.
  */
 
-/** The folder every branded layer sits in. Its eye is the Branded switch. */
+/** The prefix of the folders the branded layers sit in: one per panel (`branded.front`), so each side switches on its own. */
 export const BRANDED_FOLDER = 'branded';
+
+/** The folder holding a panel's branded layers. Its eye is that side's Branded switch. */
+export const brandedFolderId = (panel: string): string => `${BRANDED_FOLDER}.${panel}`;
 
 /** Pixels per mm the dress is described at (300 dpi), so its pixel minimums (hairlines) come out as they do in print. */
 const GEN_PX = 300 / 25.4;
@@ -44,6 +48,11 @@ function measureWith(text: string, font: string, spacing: string): number {
   }
   // With no canvas to measure on (a test, or rendering on a server), a typical average width stands in.
   return measureText ? measureText(text, font, spacing) : text.length * (parseFloat(font.match(/([\d.]+)px/)?.[1] ?? '10') * 0.6);
+}
+
+/** What turning Branded off meant before each side had its own switch: every side's folder hidden. Older saves and links are read through it. */
+export function bannerOffDiff(): { patch: Record<string, LayerPatch> } {
+  return { patch: Object.fromEntries(PANEL_IDS.map((id) => [brandedFolderId(id), { visible: false }])) };
 }
 
 const FONT = 'Helvetica, Arial, sans-serif';
@@ -131,7 +140,7 @@ class LayerSink implements Sink {
 
   private base(rect: RectMm, rotationDeg = 0) {
     const { id, name } = this.nextId();
-    return { id, name, visible: true, target: this.panel.id, parent: BRANDED_FOLDER, placement: this.placement(rect), rotationDeg, opacity: round(this.st.alpha) };
+    return { id, name, visible: true, target: this.panel.id, parent: brandedFolderId(this.panel.id), placement: this.placement(rect), rotationDeg, opacity: round(this.st.alpha) };
   }
 
   /** An ink over a box (px, canvas coordinates), as a fill that works on a layer's box. */
@@ -296,9 +305,9 @@ function flatten(ops: PathOp[]): Pt[][] {
 }
 
 export interface Branded {
-  /** The folder, then its layers in drawing order. */
+  /** The panels' folders, then the layers in drawing order. */
   layers: Layer[];
-  /** Changes the dress makes to layers that are not its own (a spine title is fitted round it), applied while it is on. */
+  /** Changes the dress makes to layers that are not its own (a spine title is fitted round it), applied while the folder of the panel they are on is shown. */
   patches: Record<string, LayerPatch>;
 }
 
@@ -311,7 +320,7 @@ export function brandedLayers(t: TemplateConfig): Branded {
   const sink = new LayerSink(GEN_PX);
   drawBranding(sink, t, GEN_PX);
 
-  const folder: GroupLayer = { id: BRANDED_FOLDER, type: 'group', name: 'Branded', visible: true, target: t.panels[0]?.id ?? 'front', placement: null, rotationDeg: 0, opacity: 1 };
+  const folders: GroupLayer[] = [...new Set(sink.layers.map((l) => l.target))].map((panel) => ({ id: brandedFolderId(panel), type: 'group', name: 'Branded', visible: true, target: panel, placement: null, rotationDeg: 0, opacity: 1 }));
   const patches: Record<string, LayerPatch> = {};
   const spine = brandingFor(t.kind, t.variantId).spine;
   if (spine) {
@@ -325,7 +334,7 @@ export function brandedLayers(t: TemplateConfig): Branded {
       };
     }
   }
-  const out: Branded = { layers: [folder, ...sink.layers], patches };
+  const out: Branded = { layers: [...folders, ...sink.layers], patches };
   cache.set(t.id, out);
   return out;
 }

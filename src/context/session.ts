@@ -11,6 +11,8 @@ import { PANEL_IDS, defaultCodeKind } from '../engine/resolve';
 import type { MediaType } from '../types/media';
 import type { AppState, ViewMode } from './AppContext';
 import { sanitizeAssets, sanitizeDiff } from '../engine/layers/sanitize';
+import { mergeDiffs } from '../engine/layers/diffEdit';
+import { bannerOffDiff } from '../engine/layers/branded';
 import { DEFAULT_SPINE_COLOR, DEFAULT_SPINE_FONT } from '../engine/layers/defaults';
 
 /**
@@ -60,7 +62,6 @@ export function serializeSession(s: AppState): SessionV2 {
     options: {
       templateId: s.templateId,
       lastTemplates: s.lastTemplates,
-      banner: s.banner,
       view: s.view,
     },
     shared: s.shared,
@@ -204,6 +205,8 @@ export function restoreSession(raw: unknown, defaults: AppState): AppState {
   }
 
   if (legacy) shared = pinLegacyDefaults(shared, finalItems);
+  // Branded was one switch for every side; a save that had it off keeps those folders hidden.
+  if (o.banner === false || (o.banner === undefined && o.styleOverlay !== undefined && o.styleOverlay !== 'digital')) shared = { ...shared, diff: mergeDiffs(shared.diff, bannerOffDiff()) };
 
   return syncTemplate({
     ...defaults,
@@ -214,7 +217,6 @@ export function restoreSession(raw: unknown, defaults: AppState): AppState {
     lastTemplates: legacy ? Object.fromEntries([...new Set(finalItems.map((i) => i.type))].map((t) => [t, templateId])) : restoreLastTemplates(o.lastTemplates),
     template: defaults.template,
     selectedPanel: defaults.selectedPanel,
-    banner: typeof o.banner === 'boolean' ? o.banner : o.styleOverlay === undefined ? defaults.banner : o.styleOverlay === 'digital',
     view: o.view === '2d' || o.view === '3d' ? o.view : defaults.view,
     shared,
     designs,

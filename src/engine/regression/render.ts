@@ -46,8 +46,8 @@ export async function renderFixture(f: Fixture): Promise<{ width: number; height
   const base = await loadImages();
   const lookup = new Map(base);
   // Pictures a scene makes for itself (a custom graphic's SVG) are loaded here, as the app does before it draws.
-  const { template: tpl, item, shared, designs, assets, banner } = f.scene;
-  for (const url of layerImageUrls(resolveLayers({ template: tpl, item, shared, designs, banner }), item, assets)) {
+  const { template: tpl, item, shared, designs, assets } = f.scene;
+  for (const url of layerImageUrls(resolveLayers({ template: tpl, item, shared, designs }), item, assets)) {
     if (!lookup.has(url) && url.startsWith('data:image/svg+xml')) lookup.set(url, await loadImage(Buffer.from(decodeURIComponent(url.slice(url.indexOf(',') + 1)))));
   }
   const getImage: ImageLookup = (url) => (url ? ((lookup.get(url) as unknown as HTMLImageElement | undefined) ?? null) : null);

@@ -15,7 +15,6 @@ describe('session', () => {
   it('round-trips through JSON', () => {
     let s = reducer(initialState, { type: 'addItem', item });
     s = reducer(s, { type: 'setItemTemplate', items: ['steam-1'], template: 'bluray-us-11' });
-    s = reducer(s, { type: 'setBanner', banner: false });
     s = reducer(s, { type: 'updatePanel', id: null, panel: 'front', patch: { backgroundColor: '#123456', transform: { scale: 1.2 } } });
     s = reducer(s, { type: 'updateSpine', id: null, patch: { textHeightMm: 5, textTemplate: '{title} ({year})' } });
     s = reducer(s, { type: 'updatePanel', id: 'steam-1', panel: 'spine', patch: { backgroundColor: '#ff0000', image: 'logo', transform: { xMm: 1, opacity: 0.5 } } });
@@ -73,9 +72,12 @@ describe('session', () => {
     expect(s.items[0].templateId).toBe('game-case-ps4');
     expect(s.template.id).toBe('game-case-ps4');
     expect(s.lastTemplates).toEqual({ game: 'game-case-ps4' });
-    expect(s.banner).toBe(true);
+    expect(s.shared.diff).toBeUndefined();
     const retro = restoreSession({ ...old, items: [], options: { ...old.options, styleOverlay: 'retro' } }, initialState);
-    expect([retro.banner, retro.lastTemplates]).toEqual([false, {}]);
+    expect(retro.lastTemplates).toEqual({});
+    // Branded used to be one switch: a save with it off keeps each side's folder hidden.
+    expect(retro.shared.diff?.patch?.['branded.front']).toEqual({ visible: false });
+    expect(restoreSession({ ...old, options: { ...old.options, styleOverlay: undefined, banner: false } }, initialState).shared.diff?.patch?.['branded.spine']).toEqual({ visible: false });
   });
 
   it('does not persist guides: they start off every visit', () => {
