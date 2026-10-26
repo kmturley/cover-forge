@@ -170,7 +170,7 @@ export function sanitizeLayer(raw: unknown): Layer | null {
   const parent = typeof raw.parent === 'string' && ID.test(raw.parent) ? raw.parent : undefined;
   // Fields that don't belong to the type are ignored by drawing, but dropping them keeps saves tidy.
   // Fields a type has but a fresh layer doesn't carry until they are set.
-  const keep = [...Object.keys(layer), 'path', 'singleLine', 'textCase', 'spineFit', 'textHeightMm', 'textTemplate', 'textRotationDeg'];
+  const keep = [...Object.keys(layer), 'path', 'singleLine', 'textCase', 'spineFit', 'textHeightMm', 'textTemplate', 'textRotationDeg', 'lineHeight'];
   const merged = { ...layer, ...Object.fromEntries(Object.entries(fields).filter(([k]) => keep.includes(k) || k === 'name')), ...(follows && { follows }), ...(parent && { parent }) } as Layer;
   const nested = merged as Layer & { params?: object; stroke?: object; textStroke?: object; shadow?: object };
   if (merged.type === 'generated') {
