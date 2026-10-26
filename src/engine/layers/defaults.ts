@@ -2,6 +2,7 @@ import type { TemplateConfig } from '../../types/template';
 import type { Layer } from '../../types/layers';
 import { DEFAULT_BORDER, DEFAULT_CODE, DEFAULT_LOGO } from '../../types/editor';
 import { defaultCodeKind } from '../resolve';
+import { defaultImageRef } from '../imageLibrary';
 import { brandedLayers } from './branded';
 
 const NO_STROKE = { color: DEFAULT_BORDER.color, widthMm: DEFAULT_BORDER.widthMm, insetMm: DEFAULT_BORDER.insetMm };
@@ -33,7 +34,7 @@ export function defaultLayers(t: TemplateConfig): Layer[] {
     // A dust flap is plain: it only mirrors its panel's colour.
     out.push({ ...base, id: `${p.id}.fill`, type: 'shape', shape: 'rect', target: p.id, fill: null, stroke: NO_STROKE, ...(p.follows && { follows: `${p.follows}.fill` }) });
     if (p.follows) continue;
-    out.push({ ...base, id: `${p.id}.image`, type: 'image', target: p.id, source: { kind: 'role', ref: 'auto' }, fit: 'fill', focus: CENTRE, tint: DEFAULT_LOGO.color });
+    out.push({ ...base, id: `${p.id}.image`, type: 'image', target: p.id, source: defaultImageRef(p.id) ? { kind: 'role', ref: 'auto' } : null, fit: 'fill', focus: CENTRE, tint: DEFAULT_LOGO.color });
     out.push({ ...base, id: `${p.id}.border`, type: 'shape', shape: 'rect', target: p.id, fill: null, stroke: NO_STROKE });
   }
   // The Branded dress: a folder of ordinary layers, between the panels' pictures and the text, logos and codes.
