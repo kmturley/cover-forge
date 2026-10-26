@@ -529,6 +529,15 @@ Each phase leaves the app shippable. Phases 0–1 have no visible change.
 - The existing sidebar writes through a thin adapter to the layer ids.
 - Exit criteria: the harness shows identical renders, and existing unit tests pass.
 
+**Phase 1 as built (done).** The renderer now draws layers and all 104 goldens match, strictly on the capturing machine. Changes from the plan above, made on purpose:
+
+- **State stays in the slot shapes for now.** `resolveLayers` reads the Default design, the item's design and the item's overrides through `settingsToDiff`, which maps each slot field onto a patch on the matching layer id (`front.image`, `spine.text`, …). That mapping is the migration, so no separate v3 session was needed yet. Switching saved state and the reducer to diffs is part of phase 2, because it can't be separated from the layer-panel UI that writes them.
+- **Only panel targets.** The `canvas` target (§2.11) is deferred to phase 2 with its UI; the types and renderer don't yet have it.
+- **Glue, tuck and dust panels behave as before** (glue and tuck still designable). Making them assembly panels (§2.10) changes the output of a golden by design, so it lands in phase 2 with the editor change and a deliberate golden update.
+- **Defaults are concrete per case.** The default list is generated for the case, so the barcode layer's kind is set directly (EAN-13 on the back of most cases, none on a cassette) instead of an `auto` kind.
+- **Empty layers exist.** `front.logo`, `front.border` and the other slots are in the default list, drawing nothing until set. The layer panel in phase 2 should show them as "add" placeholders rather than empty rows.
+- **Branded is still `drawOfficial`**, wrapped as the single `official` layer, shown while Branded is on. Phase 5 replaces it.
+
 **Phase 2: Layer panel.**
 - Layer list and inspector; add, remove, reorder, show or hide, rename for all types.
 - Multiple images, shape blocks, basic text layers.
