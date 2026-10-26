@@ -23,14 +23,14 @@ describe('defaultLayers', () => {
     expect(ls.map((l) => l.id)).toEqual(expect.arrayContaining(['front.fill', 'front.image', 'back.image', 'spine.text', 'front.logo', 'back.code', 'branded.front']));
   });
 
-  it('draws panel by panel (fill, image, border), then the Branded dress, spine text, logos and codes', () => {
+  it('draws panel by panel (fill, image, border), then logos and codes, the Branded dress, and the spine title on top', () => {
     const order = ls.map((l) => l.id);
     expect(order.indexOf('front.fill')).toBeLessThan(order.indexOf('front.image'));
     expect(order.indexOf('front.image')).toBeLessThan(order.indexOf('front.border'));
-    expect(order.indexOf('front.border')).toBeLessThan(order.indexOf('branded.front'));
-    expect(order.indexOf('branded.front')).toBeLessThan(order.indexOf('spine.text'));
-    expect(order.indexOf('spine.text')).toBeLessThan(order.indexOf('front.logo'));
+    expect(order.indexOf('front.border')).toBeLessThan(order.indexOf('front.logo'));
     expect(order.indexOf('front.logo')).toBeLessThan(order.indexOf('front.code'));
+    expect(order.indexOf('front.code')).toBeLessThan(order.indexOf('branded.front'));
+    expect(order.indexOf('branded.front')).toBeLessThan(order.indexOf('spine.text'));
   });
 
   it('puts a barcode on the back of most cases and none on a cassette', () => {

@@ -24,7 +24,7 @@ const cache = new WeakMap<TemplateConfig, Layer[]>();
  * The layers a case starts with, bottom to top, before any design or item changes them. Ids are named by target
  * (`front.image`, `spine.text`) and are a public format: every saved diff refers to them, so they never change once
  * released (layer-system-plan.md §2.6). The order reproduces the slot renderer's passes, panel by panel (fill, image,
- * border), then the Branded dress, spine text, logos, and codes on top.
+ * border), then logos and codes, the Branded dress, and the spine title on top.
  */
 export function defaultLayers(t: TemplateConfig): Layer[] {
   const hit = cache.get(t);
@@ -37,11 +37,6 @@ export function defaultLayers(t: TemplateConfig): Layer[] {
     out.push({ ...base, id: `${p.id}.image`, type: 'image', target: p.id, source: defaultImageRef(p.id) ? { kind: 'role', ref: 'auto' } : null, fit: 'fill', focus: CENTRE, tint: DEFAULT_LOGO.color });
     out.push({ ...base, id: `${p.id}.border`, type: 'shape', shape: 'rect', target: p.id, fill: null, stroke: NO_STROKE });
   }
-  // The Branded dress: a folder of ordinary layers, between the panels' pictures and the text, logos and codes.
-  out.push(...brandedLayers(t).layers);
-  for (const p of t.panels) {
-    if (p.text) out.push({ ...base, id: `${p.id}.text`, type: 'text', target: p.id, fontFamily: DEFAULT_SPINE_FONT, color: DEFAULT_SPINE_COLOR, align: 'center', weight: 700, italic: false, ...TEXT_EFFECTS });
-  }
   for (const p of t.panels) {
     if (!p.follows) out.push({ ...base, id: `${p.id}.logo`, type: 'image', target: p.id, source: null, fit: 'fit', focus: CENTRE, tint: DEFAULT_LOGO.color });
   }
@@ -50,6 +45,11 @@ export function defaultLayers(t: TemplateConfig): Layer[] {
       const kind = defaultCodeKind(t.kind, p.id);
       out.push({ ...base, id: `${p.id}.code`, type: 'generated', generator: 'code', target: p.id, params: { kind, pattern: DEFAULT_CODE.pattern, color: DEFAULT_CODE.color, background: DEFAULT_CODE.background } });
     }
+  }
+  // The Branded dress sits above every picture, logo and code a case starts with. Only the spine title goes over it: it has to stay readable, and is fitted to the room the dress leaves.
+  out.push(...brandedLayers(t).layers);
+  for (const p of t.panels) {
+    if (p.text) out.push({ ...base, id: `${p.id}.text`, type: 'text', target: p.id, fontFamily: DEFAULT_SPINE_FONT, color: DEFAULT_SPINE_COLOR, align: 'center', weight: 700, italic: false, ...TEXT_EFFECTS });
   }
   cache.set(t, out);
   return out;
