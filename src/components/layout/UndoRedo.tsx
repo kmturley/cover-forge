@@ -1,8 +1,6 @@
 import { useEffect } from 'react';
 import { useAppDispatch, useAppState } from '../../context/AppContext';
-
-/** True when a key press belongs to a text box, which has an undo of its own for what is typed in it. */
-const inTextBox = (t: EventTarget | null) => t instanceof HTMLElement && (t.isContentEditable || t.tagName === 'TEXTAREA' || (t.tagName === 'INPUT' && /^(text|search|number|url|email|tel|password)$/.test((t as HTMLInputElement).type)));
+import { inTextBox } from '../editor/inTextBox';
 
 /** Undo and redo for everything made in the design: the buttons, and Ctrl/⌘+Z and Ctrl/⌘+Shift+Z (or Ctrl+Y). */
 export function UndoRedo() {

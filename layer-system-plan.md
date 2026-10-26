@@ -560,6 +560,8 @@ Left for phase 3 and later: dragging on the canvas, the Google Fonts picker (the
 
 **Phase 3: Canvas direct manipulation.** Select, drag, resize, snap, nudge and fill-box pan on the 2D canvas.
 
+**Phase 3 as built.** Clicking a layer on the 2D canvas picks it (and its tab); dragging moves it; the eight handles of the selected layer resize it (a corner keeps a picture's shape, Shift frees it); edges snap to the panel's edges, middle and safe margin and to other layers, with guide lines and a size readout (Alt switches snapping off); arrow keys nudge (Shift ×10), Delete removes, Ctrl/⌘+D duplicates, Escape lets go. Moves write the same anchored placement as the inspector, keeping how each axis is anchored (a centred layer stays centre-anchored, an auto length stays auto) and turning an automatic placement into one stretched between edges; a drag is one undo step. Rotated layers can be moved but resized only from the inspector. Not done: panning the focus point by dragging inside a cropped picture (the focus pad does it), and highlighting the selected layer in 3D.
+
 **Phase 4: Text depth, generators and fonts.**
 - Google Fonts picker and on-demand loading via Fontsource (§2.12).
 - Stroke, shadow, letter-spacing, "apply font to all panels", spine orientation.

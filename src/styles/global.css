@@ -329,3 +329,14 @@ h3 { font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: v
 .focus-fields { display: flex; flex-direction: column; gap: 6px; flex: 1; min-width: 0; }
 .undo-redo { display: inline-flex; gap: 4px; }
 .undo-redo button { padding: 4px 8px; font-size: 12px; }
+
+/* Direct manipulation on the 2D canvas. */
+.layer-overlay { position: absolute; inset: 0; pointer-events: none; overflow: hidden; }
+.layer-outline { position: absolute; outline: 1.5px solid #38bdf8; box-shadow: 0 0 0 1px rgba(0,0,0,.45); }
+.layer-outline.whole { outline-style: dashed; }
+.layer-outline.fixed { outline-color: #a3a3a3; }
+.layer-handle { position: absolute; width: 9px; height: 9px; margin: -4.5px 0 0 -4.5px; background: #fff; border: 1.5px solid #0284c7; border-radius: 2px; }
+.snap-guide { position: absolute; background: #f43f5e; }
+.snap-guide.vertical { width: 1px; }
+.snap-guide.horizontal { height: 1px; }
+.drag-readout { position: absolute; transform: translateX(-50%); padding: 1px 6px; font-size: 11px; background: rgba(15,23,42,.9); color: #e2e8f0; border-radius: 4px; white-space: nowrap; }

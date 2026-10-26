@@ -1,5 +1,5 @@
 import type { PanelId } from '../../types/template';
-import type { CodeParams, GeneratedLayer, ImageLayer, ImageSource, LayerBase, Placement, ShapeLayer, TextLayer } from '../../types/layers';
+import type { Axis, CodeParams, GeneratedLayer, ImageLayer, ImageSource, Layer, LayerBase, Placement, ShapeLayer, TextLayer } from '../../types/layers';
 import { DEFAULT_BORDER, DEFAULT_CODE, DEFAULT_LOGO } from '../../types/editor';
 import { DEFAULT_SPINE_COLOR, DEFAULT_SPINE_FONT } from './defaults';
 
@@ -42,4 +42,21 @@ export function freshId(type: string, taken: Iterable<string> = []): string {
     const id = `${type}-${Math.random().toString(36).slice(2, 8)}`;
     if (!used.has(id)) return id;
   }
+}
+
+/**
+ * A copy of a layer to put next to it: a new id, a name that says so, and moved a little so it can be told from the
+ * original. A layer that mirrors another (a flap's colour) is copied as a plain one.
+ */
+export function duplicateLayer(layer: Layer, taken: Iterable<string> = []): Layer {
+  const copy = structuredClone(layer) as Layer;
+  copy.id = freshId(layer.type === 'generated' ? 'code' : layer.type, taken);
+  copy.name = `${layer.name ?? ''}`.trim() ? `${layer.name} copy` : undefined;
+  delete copy.follows;
+  const p = copy.placement;
+  if (p && 'x' in p) {
+    const shift = (a: Axis): Axis => (a.anchor === 'stretch' ? { ...a, start: a.start + 2, end: a.end - 2 } : { ...a, offset: a.offset + 2 });
+    copy.placement = { x: shift(p.x), y: shift(p.y) };
+  }
+  return copy;
 }

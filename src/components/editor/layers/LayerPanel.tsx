@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react';
-import { freshId, newCode, newImage, newShape, newText } from '../../../engine/layers/factory';
+import { duplicateLayer, freshId, newCode, newImage, newShape, newText } from '../../../engine/layers/factory';
 import { isDefaultId, isEmptyLayer, layerDetail, layerName, slotName } from '../../../engine/layers/labels';
 import { assetFromFile, assetFromUrl } from '../../../storage/assets';
 import type { Layer, TextLayer } from '../../../types/layers';
@@ -15,10 +15,7 @@ function Row({ layer, ed, index, count }: { layer: Layer; ed: LayerEditor; index
   const selected = ed.selected?.id === layer.id;
   const close = (e: React.MouseEvent<HTMLElement>) => e.currentTarget.closest('details')?.removeAttribute('open');
 
-  const duplicate = () => {
-    const copy = { ...structuredClone(layer), id: freshId(layer.type === 'generated' ? 'code' : layer.type), name: `${layerName(layer)} copy`, follows: undefined } as Layer;
-    ed.add(copy, layer.id);
-  };
+  const duplicate = () => ed.add(duplicateLayer(layer, ed.layers.map((l) => l.id)), layer.id);
 
   return (
     <li className={`layer-row ${selected ? 'selected' : ''} ${empty ? 'empty' : ''} ${layer.visible ? '' : 'off'}`}>
