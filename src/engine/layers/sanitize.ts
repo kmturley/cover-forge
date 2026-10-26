@@ -52,6 +52,12 @@ function source(v: unknown): ImageSource | null | undefined {
   return undefined;
 }
 
+const focus = (v: unknown) => {
+  if (!isObj(v)) return undefined;
+  const [x, y] = [num(v.x), num(v.y)];
+  return x !== undefined && y !== undefined ? { x: Math.min(100, Math.max(0, x)), y: Math.min(100, Math.max(0, y)) } : undefined;
+};
+
 const stroke = (v: unknown) => {
   if (!isObj(v)) return undefined;
   const out = Object.fromEntries(Object.entries({ color: str(v.color, 40), widthMm: num(v.widthMm), insetMm: num(v.insetMm) }).filter(([, f]) => f !== undefined));
@@ -85,6 +91,10 @@ export function sanitizePatch(raw: unknown): LayerPatch {
     color: str(raw.color, 40),
     textHeightMm: num(raw.textHeightMm),
     textRotationDeg: num(raw.textRotationDeg),
+    focus: focus(raw.focus),
+    align: oneOf(raw.align, ['left', 'center', 'right'] as const),
+    weight: ((w) => (w === undefined ? undefined : Math.min(900, Math.max(100, Math.round(w / 100) * 100))))(num(raw.weight)),
+    italic: bool(raw.italic),
     params: params(raw.params),
   };
   return Object.fromEntries(Object.entries(fields).filter(([, v]) => v !== undefined));
@@ -95,7 +105,7 @@ const ID = /^[\w.:-]{1,80}$/;
 /** A layer from a saved document, or null when it can't be one. */
 export function sanitizeLayer(raw: unknown): Layer | null {
   if (!isObj(raw) || typeof raw.id !== 'string' || !ID.test(raw.id)) return null;
-  const target = oneOf(raw.target, TARGETS);
+  const target = oneOf(raw.target, [...TARGETS, 'canvas'] as const);
   if (!target) return null;
   const fields = sanitizePatch(raw);
   const make = {

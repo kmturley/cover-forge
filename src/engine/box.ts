@@ -56,11 +56,12 @@ export function fitInside(r: RectMm, aspect: number): RectMm {
   return { xMm: r.xMm + (r.widthMm - widthMm) / 2, yMm: r.yMm + (r.heightMm - heightMm) / 2, widthMm, heightMm };
 }
 
-/** The smallest rectangle of `aspect` covering `r`, centred: fills it, overflowing on one axis, never distorted. */
-export function fillOver(r: RectMm, aspect: number): RectMm {
+/** The smallest rectangle of `aspect` covering `r`: fills it, overflowing on one axis, never distorted. Centred unless `focus` says otherwise. */
+export function fillOver(r: RectMm, aspect: number, focus: { x: number; y: number } = { x: 50, y: 50 }): RectMm {
   const widthMm = Math.max(r.widthMm, r.heightMm * aspect);
   const heightMm = widthMm / aspect;
-  return { xMm: r.xMm + (r.widthMm - widthMm) / 2, yMm: r.yMm + (r.heightMm - heightMm) / 2, widthMm, heightMm };
+  // The focus is the part of the image kept in view when it overflows: 50 is the middle, 0 the start edge, 100 the end.
+  return { xMm: r.xMm - (widthMm - r.widthMm) * (focus.x / 100), yMm: r.yMm - (heightMm - r.heightMm) * (focus.y / 100), widthMm, heightMm };
 }
 
 /** Where two rectangles overlap (zero-sized if they don't). */

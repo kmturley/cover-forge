@@ -36,6 +36,8 @@ export interface PanelTransform extends LegacyPlacement {
   /** `null` = the whole panel, bleed included. */
   box: PanelBox | null;
   fit: ImageFit;
+  /** Which part stays in view when a fill crops the image, in percent of the image; unset = the middle. */
+  focus?: { x: number; y: number };
   /** About the box's centre. */
   rotationDeg: number;
   /** 0 (transparent) to 1 (opaque). */

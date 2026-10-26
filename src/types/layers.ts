@@ -74,8 +74,8 @@ export interface LayerBase {
   id: string;
   name?: string;
   visible: boolean;
-  /** The panel the placement is measured against and the layer is clipped to. */
-  target: PanelId;
+  /** The panel the placement is measured against and the layer is clipped to, or `canvas`: the printed panels together. */
+  target: PanelId | 'canvas';
   placement: LayerPlacement;
   rotationDeg: number;
   opacity: number;
@@ -104,6 +104,8 @@ export interface ImageLayer extends LayerBase {
   /** `null` = no image. */
   source: ImageSource | null;
   fit: 'fill' | 'fit';
+  /** Which part of the image stays in view when a fill crops it, in percent of the image (50, 50 = the middle). */
+  focus: { x: number; y: number };
   /** Recolours the image (a vector mark's fill). */
   tint: string;
 }
@@ -119,6 +121,10 @@ export interface TextLayer extends LayerBase {
   textHeightMm?: number;
   /** Extra rotation on top of the panel's own orientation. */
   textRotationDeg?: number;
+  /** Used by text placed in a box (a spine's own text is centred along it). */
+  align: 'left' | 'center' | 'right';
+  weight: number;
+  italic: boolean;
 }
 
 export interface CodeParams {

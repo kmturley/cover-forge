@@ -109,6 +109,23 @@ function expectPlacement(l: Layer, r: { box?: { xStart: number; xEnd: number; yS
   }
 }
 
+describe('assembly panels', () => {
+  const t = buildTemplateById('nfc-box-card');
+
+  it('are the flaps and tabs that fold away: they follow a panel and cannot be designed', () => {
+    const own = (id: string) => t.panels.find((p) => p.id === id)!;
+    for (const id of ['glue', 'tuck', 'bottomTuck', 'dustTopLeft', 'dustTopRight', 'dustBottomLeft', 'dustBottomRight']) expect(own(id).follows, id).toBeDefined();
+    for (const id of ['front', 'back', 'spine', 'spineRight', 'top', 'bottom']) expect(own(id).follows, id).toBeUndefined();
+    expect([own('glue').follows, own('tuck').follows, own('bottomTuck').follows]).toEqual(['spineRight', 'top', 'bottom']);
+  });
+
+  it('take their panel colour, and have no image, border, logo or code layer', () => {
+    const layers = resolveLayers({ template: t, item, shared: shared({ top: { backgroundColor: '#123456' }, tuck: { backgroundColor: '#ff0000' } }) });
+    expect(find<ShapeLayer>(layers, 'tuck.fill').fill).toBe('#123456');
+    expect(layers.filter((l) => l.target === 'tuck').map((l) => l.id)).toEqual(['tuck.fill']);
+  });
+});
+
 describe('followers', () => {
   it('takes the colour of the panel it follows, as the slot renderer did', () => {
     const t = buildTemplateById('nfc-box-card');

@@ -32,7 +32,7 @@ export function computePlacement(t: TemplateConfig, panel: PanelRect, naturalWid
   if (tr.box === undefined) return legacyPlacement(area, naturalWidth, naturalHeight, tr);
   const box = tr.box ? boxRect(panel, tr.box) : area;
   const fitted = tr.fit === 'fit';
-  const img = (fitted ? fitInside : fillOver)(box, naturalWidth / naturalHeight);
+  const img = fitted ? fitInside(box, naturalWidth / naturalHeight) : fillOver(box, naturalWidth / naturalHeight, tr.focus);
   return {
     fit: img.widthMm / naturalWidth,
     widthMm: img.widthMm,

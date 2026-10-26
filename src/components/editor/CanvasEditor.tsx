@@ -63,7 +63,7 @@ export function CanvasEditor() {
   }, []);
 
   useEffect(() => {
-    rendererRef.current?.setScene({ template, item, shared, designs, assets, banner, showGuides, hideOutsideCut: true });
+    rendererRef.current?.setScene({ template, item, shared, designs, assets, banner, showGuides, hideOutsideCut: true, markAssembly: true });
   }, [template, item, shared, designs, assets, banner, showGuides]);
 
   // Track the viewport size so the canvas can be fitted to it.

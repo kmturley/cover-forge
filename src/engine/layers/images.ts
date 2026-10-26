@@ -15,7 +15,7 @@ export function layerImageUrl(l: ImageLayer, item: MediaItem | null, assets: Ass
   const s = l.source;
   if (!s || s.kind === 'vector') return null;
   if (s.kind === 'asset') return assetUrl(assets?.[s.id]);
-  const auto = () => (item ? resolveImageRef(item, defaultImageRef(l.target, item)) : null);
+  const auto = () => (item ? resolveImageRef(item, defaultImageRef(l.target === 'canvas' ? 'front' : l.target, item)) : null);
   if (s.ref === 'auto') return auto();
   return (item && resolveImageRef(item, s.ref)) || auto();
 }

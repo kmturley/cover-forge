@@ -1,5 +1,5 @@
 import type { MediaItem } from '../../types/media';
-import type { PanelRect, TemplateConfig } from '../../types/template';
+import type { PanelId, PanelRect, TemplateConfig } from '../../types/template';
 import type { CodeSettings, LogoSettings, PanelTransform } from '../../types/editor';
 import { DEFAULT_CODE, DEFAULT_LOGO, DEFAULT_TRANSFORM } from '../../types/editor';
 import type { GeneratedLayer, ImageLayer, Layer, LayerPlacement, LegacyMm, Placement, ShapeLayer, TextLayer } from '../../types/layers';
@@ -11,6 +11,7 @@ import { drawBorder } from '../border';
 import { drawLogo } from '../logo';
 import { codeAspect, drawCode } from '../code';
 import { drawSpineText, spineText } from '../SpineTypography';
+import type { PanelBox } from '../../types/editor';
 import { drawOfficial, spineTitleCase, spineTitleColor, spineTitleScale, spineTitleStartMm } from '../official';
 import { placementToBox } from './placement';
 
@@ -61,7 +62,7 @@ function fillSnapped(ctx: CanvasRenderingContext2D, color: string, area: { xMm: 
 function drawShape(env: DrawEnv, l: ShapeLayer, panel: PanelRect) {
   const { ctx, template: t, px } = env;
   const area = paintRect(t, panel);
-  if (l.placement === null) {
+  if (l.placement === null && l.shape === 'rect') {
     if (l.fill) fillSnapped(ctx, l.fill, area, px);
     drawBorder(ctx, panel, l.stroke, px);
     return;
@@ -75,9 +76,14 @@ function drawShape(env: DrawEnv, l: ShapeLayer, panel: PanelRect) {
   ctx.globalAlpha = l.opacity;
   ctx.translate((box.xMm + box.widthMm / 2) * px, (box.yMm + box.heightMm / 2) * px);
   ctx.rotate((l.rotationDeg * Math.PI) / 180);
+  const [hw, hh] = [(box.widthMm / 2) * px, (box.heightMm / 2) * px];
   if (l.fill) {
     ctx.fillStyle = l.fill;
-    ctx.fillRect((-box.widthMm / 2) * px, (-box.heightMm / 2) * px, box.widthMm * px, box.heightMm * px);
+    if (l.shape === 'ellipse') {
+      ctx.beginPath();
+      ctx.ellipse(0, 0, hw, hh, 0, 0, Math.PI * 2);
+      ctx.fill();
+    } else ctx.fillRect(-hw, -hh, hw * 2, hh * 2);
   }
   if (l.stroke.widthMm > 0) {
     const inset = l.stroke.insetMm + l.stroke.widthMm / 2;
@@ -85,7 +91,11 @@ function drawShape(env: DrawEnv, l: ShapeLayer, panel: PanelRect) {
     if (w > 0 && h > 0) {
       ctx.strokeStyle = l.stroke.color;
       ctx.lineWidth = l.stroke.widthMm * px;
-      ctx.strokeRect((-w / 2) * px, (-h / 2) * px, w * px, h * px);
+      if (l.shape === 'ellipse') {
+        ctx.beginPath();
+        ctx.ellipse(0, 0, (w / 2) * px, (h / 2) * px, 0, 0, Math.PI * 2);
+        ctx.stroke();
+      } else ctx.strokeRect((-w / 2) * px, (-h / 2) * px, w * px, h * px);
     }
   }
   ctx.restore();
@@ -102,7 +112,7 @@ function drawImage(env: DrawEnv, l: ImageLayer, panel: PanelRect) {
   }
   const img = env.getImage(layerImageUrl(l, item, env.assets));
   if (!img) return;
-  const tr: PanelTransform = { ...DEFAULT_TRANSFORM, ...legacyOf(l.placement), box: boxOf(panel, l.placement, img.naturalWidth / img.naturalHeight) as PanelTransform['box'], fit: l.fit, rotationDeg: l.rotationDeg, opacity: l.opacity };
+  const tr: PanelTransform = { ...DEFAULT_TRANSFORM, ...legacyOf(l.placement), box: boxOf(panel, l.placement, img.naturalWidth / img.naturalHeight) as PanelTransform['box'], fit: l.fit, focus: l.focus, rotationDeg: l.rotationDeg, opacity: l.opacity };
   // Sized to its box (filling or fitting it) and clipped to it when filling; rotation is about the image centre.
   const pl = computePlacement(t, panel, img.naturalWidth, img.naturalHeight, tr);
   ctx.save();
@@ -125,8 +135,77 @@ function drawGenerated(env: DrawEnv, l: GeneratedLayer, panel: PanelRect) {
   drawCode(env.ctx, env.template, panel, code, item, env.px);
 }
 
-/** The spine's own settings, as the text helpers take them, with the Branded dress's say over colour, case and clearance. */
-function drawText(env: DrawEnv, l: TextLayer, panel: PanelRect) {
+/** Cap height as a share of the font size, for sizing text by its cap height as spine text is. */
+const CAP_EM = 0.72;
+const LINE_HEIGHT = 1.2;
+const MIN_TEXT_MM = 1.2;
+/** Where text goes on a panel that has no spine orientation when it has no placement of its own. */
+const DEFAULT_TEXT_BOX: PanelBox = { xStart: 8, xEnd: 92, yStart: 8, yEnd: 22 };
+
+/** The text split into lines no wider than `maxPx` (a word longer than a line is kept whole). */
+function wrap(ctx: CanvasRenderingContext2D, text: string, maxPx: number): string[] {
+  const lines: string[] = [];
+  for (const paragraph of text.split('\n')) {
+    let line = '';
+    for (const word of paragraph.split(/\s+/).filter(Boolean)) {
+      const next = line ? `${line} ${word}` : word;
+      if (line && ctx.measureText(next).width > maxPx) {
+        lines.push(line);
+        line = word;
+      } else line = next;
+    }
+    lines.push(line);
+  }
+  return lines;
+}
+
+/** Text in a box: wrapped to its width, as large as fits it unless a height is set, aligned, rotated about the box's centre. */
+function drawTextBox(env: DrawEnv, l: TextLayer, panel: PanelRect) {
+  const { ctx, item, px } = env;
+  if (!item) return;
+  const text = spineText(item, { text: l.text, textTemplate: l.textTemplate });
+  if (!text) return;
+  const box = boxRect(panel, isAnchored(l.placement) ? placementToBox(panel, l.placement) : DEFAULT_TEXT_BOX);
+  if (box.widthMm <= 0 || box.heightMm <= 0) return;
+  const font = (mm: number) => `${l.italic ? 'italic ' : ''}${l.weight} ${mm * px}px ${l.fontFamily}`;
+  const layout = (mm: number) => {
+    ctx.font = font(mm);
+    const lines = wrap(ctx, text, box.widthMm * px);
+    const widest = Math.max(...lines.map((s) => ctx.measureText(s).width));
+    return { lines, fits: widest <= box.widthMm * px + 0.5 && lines.length * mm * LINE_HEIGHT <= box.heightMm };
+  };
+  let mm = l.textHeightMm !== undefined ? l.textHeightMm / CAP_EM : box.heightMm;
+  if (l.textHeightMm === undefined) {
+    // The largest size at which the wrapped text still fits the box.
+    let [lo, hi] = [MIN_TEXT_MM, box.heightMm];
+    for (let i = 0; i < 18; i++) {
+      const mid = (lo + hi) / 2;
+      if (layout(mid).fits) lo = mid;
+      else hi = mid;
+    }
+    mm = lo;
+  }
+  const { lines } = layout(mm);
+  const area = paintRect(env.template, panel);
+  ctx.save();
+  ctx.beginPath();
+  ctx.rect(area.xMm * px, area.yMm * px, area.widthMm * px, area.heightMm * px);
+  ctx.clip();
+  ctx.globalAlpha = l.opacity;
+  ctx.translate((box.xMm + box.widthMm / 2) * px, (box.yMm + box.heightMm / 2) * px);
+  ctx.rotate(((l.rotationDeg + (l.textRotationDeg ?? 0)) * Math.PI) / 180);
+  ctx.font = font(mm);
+  ctx.fillStyle = l.color;
+  ctx.textBaseline = 'middle';
+  ctx.textAlign = l.align;
+  const x = l.align === 'left' ? (-box.widthMm / 2) * px : l.align === 'right' ? (box.widthMm / 2) * px : 0;
+  const lineMm = mm * LINE_HEIGHT;
+  lines.forEach((line, i) => ctx.fillText(line, x, ((i - (lines.length - 1) / 2) * lineMm) * px));
+  ctx.restore();
+}
+
+/** A spine's own text, as the text helpers take it, with the Branded dress's say over colour, case and clearance. */
+function drawSpineLayer(env: DrawEnv, l: TextLayer, panel: PanelRect) {
   const { item, template: t, banner } = env;
   if (!item || !panel.text) return;
   const chosen = { fontFamily: l.fontFamily, color: l.color, textHeightMm: l.textHeightMm, rotationDeg: l.textRotationDeg, text: l.text, textTemplate: l.textTemplate };
@@ -135,17 +214,54 @@ function drawText(env: DrawEnv, l: TextLayer, panel: PanelRect) {
   drawSpineText(env.ctx, panel, spineTitleCase(t.kind, t.variantId, banner, spineText(item, settings)), settings, env.px, panel.text, { start: spineTitleStartMm(t.kind, t.variantId, banner, length), end: 0 }, spineTitleScale(t.kind, t.variantId, banner));
 }
 
+/** Text on a spine with no placement of its own is the spine title; any other text is set in its box. */
+function drawText(env: DrawEnv, l: TextLayer, panel: PanelRect) {
+  if (panel.text && l.placement === null) drawSpineLayer(env, l, panel);
+  else drawTextBox(env, l, panel);
+}
+
+/**
+ * The part of the canvas that carries art: the bounding rectangle of the panels that can be designed, which is what a
+ * layer on the `canvas` target is placed against (assembly flaps are left out; see layer-system-plan.md §2.10).
+ */
+export function canvasPanel(t: TemplateConfig): PanelRect {
+  const own = t.panels.filter((p) => !p.follows);
+  const list = own.length > 0 ? own : t.panels;
+  const [x0, y0] = [Math.min(...list.map((p) => p.xMm)), Math.min(...list.map((p) => p.yMm))];
+  const [x1, y1] = [Math.max(...list.map((p) => p.xMm + p.widthMm)), Math.max(...list.map((p) => p.yMm + p.heightMm))];
+  return { id: 'front', label: 'Canvas', xMm: x0, yMm: y0, widthMm: x1 - x0, heightMm: y1 - y0 };
+}
+
+/** Clips to the panels that carry art, with their bleed, so a layer across the canvas never paints on a flap or in a gap. */
+function clipToArt(ctx: CanvasRenderingContext2D, t: TemplateConfig, px: number) {
+  ctx.beginPath();
+  for (const p of t.panels) {
+    if (p.follows) continue;
+    const a = paintRect(t, p);
+    ctx.rect(a.xMm * px, a.yMm * px, a.widthMm * px, a.heightMm * px);
+  }
+  ctx.clip();
+}
+
 /** Draws the layers bottom to top. Each is placed against its panel and, but for the Branded dress, clipped to it. */
 export function drawLayers(env: DrawEnv, layers: readonly Layer[]): void {
   const panels = new Map(env.template.panels.map((p) => [p.id, p]));
+  const canvas = layers.some((l) => l.target === 'canvas') ? canvasPanel(env.template) : null;
   for (const l of layers) {
     if (!l.visible) continue;
     if (l.type === 'official') {
       if (env.banner) drawOfficial(env.ctx, env.template, env.px);
       continue;
     }
-    const panel = panels.get(l.target);
+    const onCanvas = l.target === 'canvas';
+    const panel = onCanvas ? canvas : panels.get(l.target as PanelId);
     if (!panel) continue;
+    // Flaps and tabs that fold away only carry their panel's colour; nothing else is drawn on them.
+    if (!onCanvas && panel.follows && !l.follows) continue;
+    if (onCanvas) {
+      env.ctx.save();
+      clipToArt(env.ctx, env.template, env.px);
+    }
     switch (l.type) {
       case 'shape':
         drawShape(env, l, panel);
@@ -160,5 +276,6 @@ export function drawLayers(env: DrawEnv, layers: readonly Layer[]): void {
         drawText(env, l, panel);
         break;
     }
+    if (onCanvas) env.ctx.restore();
   }
 }

@@ -1,5 +1,5 @@
 import type { TemplateConfig } from '../types/template';
-import { edgeSegments } from '../templates/geometry';
+import { edgeSegments, paintRect } from '../templates/geometry';
 
 const SAFETY_MM = 3;
 
@@ -51,4 +51,39 @@ export function drawGuides(ctx: CanvasRenderingContext2D, t: TemplateConfig, px:
     );
   }
   ctx.restore();
+}
+
+/**
+ * Shades the parts that fold away or are glued shut (dust flaps, glue and tuck tabs), which can't be designed because
+ * they aren't seen on the finished piece. A preview aid for the 2D editor only; it is never part of an export.
+ */
+export function drawAssemblyHatch(ctx: CanvasRenderingContext2D, t: TemplateConfig, px: number): void {
+  for (const p of t.panels) {
+    if (!p.follows) continue;
+    const a = paintRect(t, p);
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(a.xMm * px, a.yMm * px, a.widthMm * px, a.heightMm * px);
+    ctx.clip();
+    ctx.fillStyle = 'rgba(0,0,0,0.45)';
+    ctx.fillRect(a.xMm * px, a.yMm * px, a.widthMm * px, a.heightMm * px);
+    ctx.strokeStyle = 'rgba(255,255,255,0.35)';
+    ctx.lineWidth = Math.max(1, 0.3 * px);
+    const step = 2.5 * px;
+    const [x0, y0, w, h] = [a.xMm * px, a.yMm * px, a.widthMm * px, a.heightMm * px];
+    ctx.beginPath();
+    for (let d = -h; d < w; d += step) {
+      ctx.moveTo(x0 + d, y0 + h);
+      ctx.lineTo(x0 + d + h, y0);
+    }
+    ctx.stroke();
+    if (p.widthMm >= 18 && p.heightMm >= 6) {
+      ctx.fillStyle = 'rgba(255,255,255,0.85)';
+      ctx.font = `600 ${Math.min(2.6, p.widthMm / 9) * px}px Helvetica, Arial, sans-serif`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText('Folds away', (p.xMm + p.widthMm / 2) * px, (p.yMm + p.heightMm / 2) * px);
+    }
+    ctx.restore();
+  }
 }

@@ -16,7 +16,10 @@ export interface PanelRect {
   heightMm: number;
   /** Set on spine-like panels: the panel also carries the item's title, running this way. */
   text?: SpineOrientation;
-  /** A plain panel with no controls of its own (a dust flap): it takes its colour from this panel. */
+  /**
+   * A part that folds away or is glued shut (a dust flap, glue tab or tuck flap): it isn't seen on the finished piece, so
+   * it can't be designed. It is printed in this panel's colour so the paper edge looks continuous.
+   */
   follows?: PanelId;
 }
 

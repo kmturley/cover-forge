@@ -3,7 +3,7 @@ import type { TemplateConfig } from '../types/template';
 import type { Design, SharedSettings } from '../types/editor';
 import type { Asset } from '../types/layers';
 import { canvasSizePx } from '../templates';
-import { drawGuides } from './GuideOverlays';
+import { drawAssemblyHatch, drawGuides } from './GuideOverlays';
 import { getCachedImage, loadImages } from './imageCache';
 import { BASE_BACKGROUND } from './resolve';
 import { drawLayers, type ImageLookup } from './layers/draw';
@@ -23,6 +23,8 @@ export interface Scene {
   showGuides: boolean;
   /** Clear everything outside the cut lines (bleed, and any gaps between panels), so the canvas looks like the cut-out piece (the 2D view). */
   hideOutsideCut?: boolean;
+  /** Shade the flaps and tabs that fold away (the 2D editor's preview aid; never in the 3D texture or an export). */
+  markAssembly?: boolean;
 }
 
 export type { ImageLookup };
@@ -46,6 +48,7 @@ export function renderCover(
   const layers = resolveLayers({ template: t, item, shared: scene.shared, designs: scene.designs });
   drawLayers({ ctx, template: t, item, px, getImage, banner: scene.banner, assets: scene.assets }, layers);
 
+  if (scene.markAssembly) drawAssemblyHatch(ctx, t, px);
   if (scene.hideOutsideCut) {
     // Keep only what's inside the panels' trim rects. Snapped outwards to whole pixels, so touching panels leave no seam.
     ctx.globalCompositeOperation = 'destination-in';
