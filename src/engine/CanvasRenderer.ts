@@ -1,13 +1,14 @@
 import type { MediaItem } from '../types/media';
 import type { TemplateConfig } from '../types/template';
 import type { Design, SharedSettings } from '../types/editor';
+import type { Asset } from '../types/layers';
 import { canvasSizePx } from '../templates';
 import { drawGuides } from './GuideOverlays';
 import { getCachedImage, loadImages } from './imageCache';
-import { BASE_BACKGROUND, PANEL_IDS, resolvePanel } from './resolve';
-import { designOf, layeredShared } from './designs';
+import { BASE_BACKGROUND } from './resolve';
 import { drawLayers, type ImageLookup } from './layers/draw';
 import { resolveLayers } from './layers/resolve';
+import { layerImageUrls } from './layers/images';
 
 export interface Scene {
   template: TemplateConfig;
@@ -15,6 +16,8 @@ export interface Scene {
   shared: SharedSettings;
   /** The designs items can use; an item's design sits between `shared` (Default) and its own overrides. */
   designs?: Design[];
+  /** The session's asset library (images that layers can use on every item). */
+  assets?: Record<string, Asset>;
   /** Draw the template's official banner (platform or format header) and spine cap. */
   banner: boolean;
   showGuides: boolean;
@@ -41,7 +44,7 @@ export function renderCover(
   ctx.fillRect(0, 0, t.totalWidthMm * px, t.totalHeightMm * px);
 
   const layers = resolveLayers({ template: t, item, shared: scene.shared, designs: scene.designs });
-  drawLayers({ ctx, template: t, item, px, getImage, banner: scene.banner }, layers);
+  drawLayers({ ctx, template: t, item, px, getImage, banner: scene.banner, assets: scene.assets }, layers);
 
   if (scene.hideOutsideCut) {
     // Keep only what's inside the panels' trim rects. Snapped outwards to whole pixels, so touching panels leave no seam.
@@ -60,10 +63,9 @@ export function renderCover(
 }
 
 /** Preloads every image the item uses so a subsequent synchronous render is complete. */
-export function preloadItem({ item, shared, designs }: Pick<Scene, 'item' | 'shared' | 'designs'>): Promise<unknown> {
+export function preloadItem({ template, item, shared, designs, assets }: Pick<Scene, 'template' | 'item' | 'shared' | 'designs' | 'assets'>): Promise<unknown> {
   if (!item) return Promise.resolve();
-  const layered = layeredShared(shared, designOf(designs, item));
-  return loadImages(PANEL_IDS.map((id) => resolvePanel(layered, item, id, null).imageUrl));
+  return loadImages(layerImageUrls(resolveLayers({ template, item, shared, designs }), item, assets));
 }
 
 /**

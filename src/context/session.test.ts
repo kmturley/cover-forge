@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { initialState, reducer } from './AppContext';
 import { backupBeforeLink, clearBackup, loadBackup, restoreSession, saveSession, serializeSession } from './session';
 import type { MediaItem } from '../types/media';
+import { newShape } from '../engine/layers/factory';
 
 const item: MediaItem = {
   id: 'steam-1',
@@ -19,7 +20,33 @@ describe('session', () => {
     s = reducer(s, { type: 'updateSpine', id: null, patch: { textHeightMm: 5, textTemplate: '{title} ({year})' } });
     s = reducer(s, { type: 'updatePanel', id: 'steam-1', panel: 'spine', patch: { backgroundColor: '#ff0000', image: 'logo', transform: { xMm: 1, opacity: 0.5 } } });
     const back = restoreSession(JSON.parse(JSON.stringify(serializeSession(s))), initialState);
-    expect(back).toEqual(s);
+    // Undo history is not saved.
+    expect(back).toEqual({ ...s, history: back.history });
+  });
+
+  it('round-trips layer changes, assets and the version', () => {
+    let s = reducer(initialState, { type: 'addItem', item });
+    s = reducer(s, { type: 'setAsset', asset: { id: 'esrb', name: 'esrb.png', source: { kind: 'url', url: 'https://example.com/esrb.png' }, size: 10, width: 4, height: 5, hash: 'ab' } });
+    s = reducer(s, { type: 'addLayer', id: null, layer: newShape('shape-1', 'front', { fill: '#112233' }) });
+    s = reducer(s, { type: 'updateLayer', id: 'steam-1', layerId: 'front.fill', patch: { fill: '#ff0000' } });
+    const json = JSON.parse(JSON.stringify(serializeSession(s)));
+    expect(json.version).toBe(3);
+    const back = restoreSession(json, initialState);
+    expect(back).toEqual({ ...s, history: back.history });
+  });
+
+  it('drops layer changes and assets that cannot be drawn instead of failing', () => {
+    const raw = {
+      app: 'coverforge', version: 3, items: [{ ...item, diff: { patch: { 'front.fill': { fill: 5, opacity: 'x', evil: 1 } }, added: [{ layer: { id: 'a b', type: 'shape', target: 'front' } }, { layer: { id: 'ok', type: 'shape', target: 'nowhere' } }, { layer: { id: 'fine', type: 'image', target: 'back', placement: { x: { anchor: 'nope' } }, source: { kind: 'role', ref: '../x' } } }] } }],
+      shared: { panels: {}, spine: {}, diff: 'nonsense' }, assets: { good: { id: 'good', name: 'g', source: { kind: 'url', url: 'https://a/b.png' } }, bad: { source: 1 } },
+    };
+    const s = restoreSession(raw, initialState);
+    const diff = s.items[0].diff!;
+    expect(diff.patch).toBeUndefined();
+    expect(diff.added?.map((a) => a.layer.id)).toEqual(['fine']);
+    expect(diff.added![0].layer).toMatchObject({ type: 'image', source: null, placement: null });
+    expect(s.shared.diff).toBeUndefined();
+    expect(Object.keys(s.assets)).toEqual(['good']);
   });
 
   it('round-trips the empty-queue template', () => {

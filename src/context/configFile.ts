@@ -2,6 +2,7 @@ import { saveAs } from 'file-saver';
 import type { MediaItem } from '../types/media';
 import { isLocalRef, saveLocalImage, srcOf } from '../storage/localImages';
 import { serializeSession, type SessionV2 } from './session';
+import type { Asset } from '../types/layers';
 import type { AppState } from './AppContext';
 
 const readAsDataUrl = (blob: Blob): Promise<string> =>
@@ -42,12 +43,24 @@ export async function portableSession(state: AppState): Promise<SessionV2> {
       return url;
     }
   });
+  // Uploaded assets travel in the file too: the bytes ride along as a data URL and are put back into browser storage on load.
+  const assets = { ...session.assets } as Record<string, Asset>;
+  for (const [id, a] of Object.entries(assets)) {
+    const src = a.source.kind === 'local' ? srcOf(a.source.ref) : undefined;
+    if (a.source.kind !== 'local' || !src) continue;
+    try {
+      assets[id] = { ...a, source: { kind: 'url', url: await readAsDataUrl(await (await fetch(src)).blob()) } };
+    } catch {
+      // The bytes aren't available: the asset stays a reference that can be matched to a file later.
+    }
+  }
+  if (Object.keys(assets).length > 0) session.assets = assets;
   return session;
 }
 
 /** Moves embedded images back into browser storage (no scaling), so a loaded config doesn't bloat localStorage. */
 export async function adoptImages(raw: unknown): Promise<unknown> {
-  const s = raw as { items?: MediaItem[] };
+  const s = raw as { items?: MediaItem[]; assets?: Record<string, Asset> | Asset[] };
   if (!s || !Array.isArray(s.items)) return raw;
   const items = await mapAssets(s.items.filter((i) => i && i.assets && Array.isArray(i.assets.screenshots)), async (url) => {
     if (!url.startsWith('data:image/')) return url;
@@ -57,7 +70,21 @@ export async function adoptImages(raw: unknown): Promise<unknown> {
       return url;
     }
   });
-  return { ...s, items };
+  // Assets embedded as data URLs go back into browser storage, so a loaded config doesn't bloat localStorage either.
+  const assets: Record<string, Asset> = {};
+  for (const [id, a] of Object.entries(Array.isArray(s.assets) ? Object.fromEntries(s.assets.map((x) => [x.id, x])) : (s.assets ?? {}))) {
+    if (a?.source?.kind === 'url' && a.source.url.startsWith('data:image/')) {
+      try {
+        const ref = await saveLocalImage(await (await fetch(a.source.url)).blob());
+        assets[id] = ref ? { ...a, source: { kind: 'local', ref } } : a;
+        continue;
+      } catch {
+        // Keep the data URL: it still renders.
+      }
+    }
+    assets[id] = a;
+  }
+  return { ...s, items, ...(Object.keys(assets).length > 0 && { assets }) };
 }
 
 export const CONFIG_EXTENSION = '.coverforge.json';

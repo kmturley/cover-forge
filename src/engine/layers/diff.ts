@@ -23,17 +23,19 @@ export function applyPatch<L extends Layer>(layer: L, patch: LayerPatch): L {
 }
 
 /**
- * The layers after a design's or an item's changes: patched fields, removed layers, added ones, then the order. A
+ * The layers after a design's or an item's changes: patched fields, added layers, removed ones, then the order. A
  * change to a layer that isn't there (a diff made on another case) is ignored, so a design works on any case.
  */
 export function applyDiff(layers: readonly Layer[], diff: LayerDiff | undefined): Layer[] {
   if (!diff) return layers as Layer[];
-  const hidden = new Set(diff.hidden);
-  let out = layers.filter((l) => !hidden.has(l.id)).map((l) => (diff.patch?.[l.id] ? applyPatch(l, diff.patch[l.id]) : l));
+  let out = layers.map((l) => (diff.patch?.[l.id] ? applyPatch(l, diff.patch[l.id]) : l));
+  // Added layers go in before layers are taken away, so one placed above a layer that is now hidden stays where it was put.
   for (const { layer, after } of diff.added ?? []) {
     const at = after === undefined ? -1 : out.findIndex((l) => l.id === after);
     out = at === -1 ? [...out, layer] : [...out.slice(0, at + 1), layer, ...out.slice(at + 1)];
   }
+  const hidden = new Set(diff.hidden);
+  out = out.filter((l) => !hidden.has(l.id));
   if (diff.order) {
     const rank = new Map(diff.order.map((id, i) => [id, i]));
     const named = out.filter((l) => rank.has(l.id)).sort((a, b) => rank.get(a.id)! - rank.get(b.id)!);

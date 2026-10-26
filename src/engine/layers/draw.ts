@@ -4,7 +4,7 @@ import type { CodeSettings, LogoSettings, PanelTransform } from '../../types/edi
 import { DEFAULT_CODE, DEFAULT_LOGO, DEFAULT_TRANSFORM } from '../../types/editor';
 import type { GeneratedLayer, ImageLayer, Layer, LayerPlacement, LegacyMm, Placement, ShapeLayer, TextLayer } from '../../types/layers';
 import { getMark } from '../../brands';
-import { defaultImageRef, resolveImageRef } from '../imageLibrary';
+import { layerImageUrl, type Assets } from './images';
 import { computePlacement, paintRect } from '../placement';
 import { boxRect } from '../box';
 import { drawBorder } from '../border';
@@ -24,6 +24,8 @@ export interface DrawEnv {
   /** Pixels per mm. */
   px: number;
   getImage: ImageLookup;
+  /** The session's asset library, for image layers that use one. */
+  assets?: Assets;
   /** The Branded toggle: the `official` layer is drawn only while it is on. */
   banner: boolean;
 }
@@ -89,14 +91,6 @@ function drawShape(env: DrawEnv, l: ShapeLayer, panel: PanelRect) {
   ctx.restore();
 }
 
-/** The library image an image layer shows: its own choice, or the panel's preferred one when that isn't on the item. */
-function imageUrlOf(l: ImageLayer, item: MediaItem | null): string | null {
-  if (!l.source || l.source.kind !== 'role') return null;
-  const auto = () => (item ? resolveImageRef(item, defaultImageRef(l.target, item)) : null);
-  if (l.source.ref === 'auto') return auto();
-  return (item && resolveImageRef(item, l.source.ref)) || auto();
-}
-
 function drawImage(env: DrawEnv, l: ImageLayer, panel: PanelRect) {
   const { ctx, template: t, px, item } = env;
   if (l.source?.kind === 'vector') {
@@ -106,7 +100,7 @@ function drawImage(env: DrawEnv, l: ImageLayer, panel: PanelRect) {
     drawLogo(ctx, t, panel, mark, logo, px);
     return;
   }
-  const img = env.getImage(imageUrlOf(l, item));
+  const img = env.getImage(layerImageUrl(l, item, env.assets));
   if (!img) return;
   const tr: PanelTransform = { ...DEFAULT_TRANSFORM, ...legacyOf(l.placement), box: boxOf(panel, l.placement, img.naturalWidth / img.naturalHeight) as PanelTransform['box'], fit: l.fit, rotationDeg: l.rotationDeg, opacity: l.opacity };
   // Sized to its box (filling or fitting it) and clipped to it when filling; rotation is about the image centre.

@@ -48,7 +48,26 @@ export type ImageSource =
   /** An image from the item's library; `auto` is the panel's preferred one (cover on the front, hero on the back). */
   | { kind: 'role'; ref: ImageRef | 'auto' }
   /** A built-in vector mark from src/brands. */
-  | { kind: 'vector'; id: string };
+  | { kind: 'vector'; id: string }
+  /** An uploaded or linked image kept in the session's asset library, the same on every item. */
+  | { kind: 'asset'; id: string };
+
+/**
+ * An image kept for reuse across items and designs (a publisher logo, a rating icon). It is a reference, not the
+ * bytes: a remote image stays at its URL; an uploaded file lives in the browser (IndexedDB) and, with its name, size
+ * and hash, can be found again when the design is opened elsewhere (layer-system-plan.md §2.4).
+ */
+export interface Asset {
+  id: string;
+  name: string;
+  source: { kind: 'url'; url: string } | { kind: 'local'; ref: string };
+  /** What the file was, so a missing one can be matched to a file the user picks. */
+  size?: number;
+  width?: number;
+  height?: number;
+  /** SHA-256 of the bytes, hex. */
+  hash?: string;
+}
 
 export interface LayerBase {
   /** Stable and unique in the list; diffs refer to layers by it. Default layers are named by target, such as `front.image`. */
@@ -73,7 +92,7 @@ export interface StrokeSettings {
 
 export interface ShapeLayer extends LayerBase {
   type: 'shape';
-  shape: 'rect';
+  shape: 'rect' | 'ellipse';
   /** `null` = not filled. */
   fill: string | null;
   /** No stroke when its width is 0. */

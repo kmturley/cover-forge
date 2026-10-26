@@ -19,7 +19,7 @@ function markStale(t: Texture): void {
 }
 
 export function ThreeDPreview() {
-  const { template, shared, designs, showGuides, showMeasurements, banner, autoRotate } = useAppState();
+  const { template, shared, designs, assets, showGuides, showMeasurements, banner, autoRotate } = useAppState();
   const item = useSelectedItem();
   const baseRef = useRef<HTMLCanvasElement | null>(null);
   const pulse = useSelectionPulse();
@@ -50,7 +50,7 @@ export function ThreeDPreview() {
     const paint = () => {
       const ctx = canvas.getContext('2d');
       if (!ctx || cancelled) return;
-      renderCover(ctx, { template, item, shared, designs, banner, showGuides }, canvas.width / template.totalWidthMm);
+      renderCover(ctx, { template, item, shared, designs, assets, banner, showGuides }, canvas.width / template.totalWidthMm);
       // Keep a clean copy so the selection flash can be drawn over it and removed again.
       const base = (baseRef.current ??= document.createElement('canvas'));
       base.width = canvas.width;
@@ -59,11 +59,11 @@ export function ThreeDPreview() {
       markStale(texture);
     };
     paint();
-    void preloadItem({ item, shared, designs }).then(paint);
+    void preloadItem({ template, item, shared, designs, assets }).then(paint);
     return () => {
       cancelled = true;
     };
-  }, [canvas, texture, template, item, shared, designs, banner, showGuides]);
+  }, [canvas, texture, template, item, shared, designs, assets, banner, showGuides]);
 
   // Flash the selected panel on the artwork, fading out over about a second.
   useEffect(() => {

@@ -24,9 +24,9 @@ export interface LayerSources {
  */
 export function resolveLayers({ template, item, shared, designs }: LayerSources): Layer[] {
   const design = designOf(designs, item);
-  let layers = applyDiff(defaultLayers(template), settingsToDiff(shared.panels, shared.spine));
-  if (design) layers = applyDiff(layers, settingsToDiff(design.panels, design.spine));
-  if (item) layers = applyDiff(layers, settingsToDiff(item.panels, item.spineOverride));
+  let layers = applyDiff(applyDiff(defaultLayers(template), settingsToDiff(shared.panels, shared.spine)), shared.diff);
+  if (design) layers = applyDiff(applyDiff(layers, settingsToDiff(design.panels, design.spine)), design.diff);
+  if (item) layers = applyDiff(applyDiff(layers, settingsToDiff(item.panels, item.spineOverride)), item.diff);
   return mirrored(layers);
 }
 

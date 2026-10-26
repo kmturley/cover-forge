@@ -3,6 +3,7 @@ import type { PanelId, TemplateKind } from '../types/template';
 import { DEFAULT_BORDER, DEFAULT_CODE, DEFAULT_LOGO, DEFAULT_TRANSFORM, type BorderSettings, type CodeSettings, type ImageRef, type LogoSettings, type PanelBox, type PanelTransform, type SharedSettings, type SpineSettings } from '../types/editor';
 import { defaultImageRef, resolveImageRef } from './imageLibrary';
 import { LEGACY_FIELDS, isBox, overlayPlacement } from './box';
+import { diffTouchesPanel } from './layers/diffEdit';
 
 /** Fills the whole canvas before any panel is painted. */
 export const BASE_BACKGROUND = '#111111';
@@ -79,7 +80,7 @@ export function panelHasOverride(item: MediaItem | null, id: PanelId): boolean {
   const p = item?.panels?.[id];
   const hasPanel = !!p && Object.values(p).some((v) => v !== undefined);
   const hasSpine = (id === 'spine' || id === 'spineRight') && !!item?.spineOverride && Object.keys(item.spineOverride).length > 0;
-  return hasPanel || hasSpine;
+  return hasPanel || hasSpine || diffTouchesPanel(item?.diff, id);
 }
 
 export function itemHasOverrides(item: MediaItem | null): boolean {

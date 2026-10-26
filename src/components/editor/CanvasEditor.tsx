@@ -39,7 +39,7 @@ function useDevicePixelRatio(): number {
  * (about the cursor); images are positioned from the sidebar. A click selects the panel under the cursor.
  */
 export function CanvasEditor() {
-  const { template, shared, designs, showGuides, showMeasurements, banner } = useAppState();
+  const { template, shared, designs, assets, showGuides, showMeasurements, banner } = useAppState();
   const item = useSelectedItem();
   const dispatch = useAppDispatch();
   const wrapRef = useRef<HTMLDivElement>(null);
@@ -63,8 +63,8 @@ export function CanvasEditor() {
   }, []);
 
   useEffect(() => {
-    rendererRef.current?.setScene({ template, item, shared, designs, banner, showGuides, hideOutsideCut: true });
-  }, [template, item, shared, designs, banner, showGuides]);
+    rendererRef.current?.setScene({ template, item, shared, designs, assets, banner, showGuides, hideOutsideCut: true });
+  }, [template, item, shared, designs, assets, banner, showGuides]);
 
   // Track the viewport size so the canvas can be fitted to it.
   useEffect(() => {

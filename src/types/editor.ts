@@ -1,4 +1,5 @@
 import type { PanelId } from './template';
+import type { LayerDiff } from './layers';
 
 /** The single style setting older saves and links used; 'digital' meant the official banner. */
 export type StyleOverlay = 'clean' | 'digital' | 'retro';
@@ -148,6 +149,8 @@ export type SharedSpine = Omit<SpineSettings, 'text'>;
 export interface SharedSettings {
   panels: Partial<Record<PanelId, PanelSettings>>;
   spine: SharedSpine;
+  /** Layer changes beyond the slot settings above: added, removed, reordered or further patched layers. Applied after them. */
+  diff?: LayerDiff;
 }
 
 /**
@@ -159,4 +162,6 @@ export interface Design {
   name: string;
   panels: Partial<Record<PanelId, PanelSettings>>;
   spine: Partial<SharedSpine>;
+  /** See SharedSettings.diff. */
+  diff?: LayerDiff;
 }

@@ -55,7 +55,7 @@ describe('applyDiff', () => {
     expect(ids(applyDiff(base, { order: ['c', 'b', 'a'] }))).toEqual(['c', 'b', 'a']);
   });
 
-  it('applies the steps in order: patch, hide, add, then order', () => {
+  it('applies the steps in order: patch, add, hide, then order', () => {
     const out = applyDiff(base, { hidden: ['a'], added: [{ layer: rect('n'), after: 'b' }], order: ['n', 'c'] });
     expect(ids(out)).toEqual(['b', 'n', 'c']);
   });

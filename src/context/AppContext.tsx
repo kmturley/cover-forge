@@ -2,6 +2,8 @@ import { createContext, useContext, useEffect, useMemo, useReducer, useState, ty
 import type { MediaItem } from '../types/media';
 import type { PanelId, TemplateConfig } from '../types/template';
 import type { Design, PanelSettings, SharedSettings, SpineSettings } from '../types/editor';
+import type { Asset, Layer, LayerDiff, LayerPatch } from '../types/layers';
+import { diffAdd, diffOrder, diffRemove, diffReset, diffUpdate, diffWithoutPanel } from '../engine/layers/diffEdit';
 import { DEFAULT_DESIGN_ID } from '../engine/designs';
 import { DEFAULT_TEMPLATE_ID, buildTemplateById } from '../templates';
 import { syncTemplate } from './templateOf';
@@ -44,7 +46,28 @@ export interface AppState {
   shared: SharedSettings;
   /** Named designs on top of the Default one (`shared`); an item picks one with `designId`. See engine/designs.ts. */
   designs: Design[];
+  /** Images kept for reuse by layers on every item (a publisher logo, a rating icon); see types/layers.ts. */
+  assets: Record<string, Asset>;
+  /** UI-only (not persisted): what undo and redo go back to. */
+  history: History;
 }
+
+/** The parts of the state that undo and redo restore: everything the user has made. */
+export interface Doc {
+  items: MediaItem[];
+  shared: SharedSettings;
+  designs: Design[];
+  assets: Record<string, Asset>;
+}
+
+export interface History {
+  past: Doc[];
+  future: Doc[];
+  /** The `coalesce` key of the last edit, so a drag or typing run that repeats it counts as one undo step. */
+  key: string | null;
+}
+
+const HISTORY_LIMIT = 100;
 
 /** `id: null` targets a design (`design` in the action, else the selected item's); a string targets that item's overrides. */
 export type Action =
@@ -64,8 +87,22 @@ export type Action =
   | { type: 'setShowMeasurements'; show: boolean }
   | { type: 'setView'; view: ViewMode }
   | { type: 'setAutoRotate'; autoRotate: boolean }
-  | { type: 'updatePanel'; id: string | null; panel: PanelId; patch: Partial<PanelSettings>; design?: string }
+  | { type: 'updatePanel'; id: string | null; panel: PanelId; patch: Partial<PanelSettings>; design?: string; coalesce?: string }
   | { type: 'updateSpine'; id: string | null; patch: Partial<SpineSettings>; design?: string }
+  /** Layer edits. `id` as for updatePanel: null edits a design (`design`, else the selected item's), a string edits that item's changes. */
+  | { type: 'addLayer'; id: string | null; design?: string; layer: Layer; after?: string }
+  /** Changes a layer's fields; a field set to undefined goes back to what the layer below has. Repeats with the same `coalesce` are one undo step. */
+  | { type: 'updateLayer'; id: string | null; design?: string; layerId: string; patch: LayerPatch; coalesce?: string }
+  /** Takes a layer away (one from the case or a lower level is hidden, and can be brought back with resetLayer). */
+  | { type: 'removeLayer'; id: string | null; design?: string; layerId: string }
+  /** Drops every change at this level to a layer, slot settings included, so it looks as it does below. */
+  | { type: 'resetLayer'; id: string | null; design?: string; layerId: string }
+  | { type: 'setLayerOrder'; id: string | null; design?: string; order: string[] }
+  /** Adds an image to the asset library (or replaces the one with that id). */
+  | { type: 'setAsset'; asset: Asset }
+  | { type: 'removeAsset'; id: string }
+  | { type: 'undo' }
+  | { type: 'redo' }
   /** Gives the items a design (null = Default). */
   | { type: 'assignDesign'; items: string[]; design: string | null }
   /** Adds a design (a copy of `from`'s own settings; nothing for Default) and gives it to the items. */
@@ -97,6 +134,8 @@ export const initialState: AppState = {
     spine: { fontFamily: 'Helvetica, Arial, sans-serif', color: '#ffffff' },
   },
   designs: [],
+  assets: {},
+  history: { past: [], future: [], key: null },
 };
 
 /** Drops undefined values so "cleared" fields disappear from state and from saved JSON. */
@@ -110,15 +149,46 @@ export function targetDesignId(state: Pick<AppState, 'items' | 'selectedItemId' 
   return item?.designId && state.designs.some((d) => d.id === item.designId) ? item.designId : DEFAULT_DESIGN_ID;
 }
 
-type Layer = { panels: SharedSettings['panels']; spine: Partial<SharedSettings['spine']> };
+type Level = { panels: SharedSettings['panels']; spine: Partial<SharedSettings['spine']>; diff?: LayerDiff };
 
 /** Applies `f` to a design's own settings: `shared` for Default, otherwise the design with that id. */
-function editDesign(state: AppState, id: string, f: (layer: Layer) => Layer): AppState {
+function editDesign(state: AppState, id: string, f: (level: Level) => Level): AppState {
   if (id === DEFAULT_DESIGN_ID) {
     const next = f(state.shared);
-    return { ...state, shared: { panels: next.panels, spine: next.spine as SharedSettings['spine'] } };
+    return { ...state, shared: compact({ panels: next.panels, spine: next.spine as SharedSettings['spine'], diff: next.diff }) };
   }
-  return { ...state, designs: state.designs.map((d) => (d.id === id ? { ...d, ...f(d) } : d)) };
+  return { ...state, designs: state.designs.map((d) => (d.id === id ? compact({ ...d, ...f(d) }) : d)) };
+}
+
+/** Applies `f` to the layer diff at a level: a design's (`id` null) or the item's. An emptied diff is removed. */
+function editDiff(state: AppState, id: string | null, design: string | undefined, f: (d: LayerDiff) => LayerDiff): AppState {
+  if (id === null) return editDesign(state, design ?? targetDesignId(state), (level) => ({ ...level, diff: nonEmpty(f(level.diff ?? {})) }));
+  return updateItem(state, id, (i) => {
+    const next = { ...i };
+    const d = nonEmpty(f(i.diff ?? {}));
+    if (d) next.diff = d;
+    else delete next.diff;
+    return next;
+  });
+}
+
+const nonEmpty = (d: LayerDiff): LayerDiff | undefined => (Object.keys(d).length > 0 ? d : undefined);
+
+/** The slot settings behind a default layer (`front.image`, `spine.text`…), cleared so only a reset layer's own diff is left to remove. */
+function clearSlot(level: Level, layerId: string, isDefault: boolean): Level {
+  const dot = layerId.lastIndexOf('.');
+  if (dot < 0) return level;
+  const [panel, slot] = [layerId.slice(0, dot) as PanelId, layerId.slice(dot + 1)];
+  const own = level.panels[panel];
+  if (slot === 'text') return { ...level, spine: isDefault ? initialState.shared.spine : {} };
+  if (!own) return level;
+  const keys: Record<string, (keyof PanelSettings)[]> = { fill: ['backgroundColor'], image: ['image', 'transform'], border: ['border'], logo: ['logo'], code: ['code'] };
+  const next = { ...own };
+  for (const k of keys[slot] ?? []) delete next[k];
+  const panels = { ...level.panels };
+  if (Object.keys(next).length > 0) panels[panel] = next;
+  else delete panels[panel];
+  return { ...level, panels };
 }
 
 /** A layer with a patch on top; a patch that sets `box` also unsets the layer's older mm fields. */
@@ -144,8 +214,37 @@ function updateItem(state: AppState, id: string, f: (i: MediaItem) => MediaItem)
   return { ...state, items: state.items.map((i) => (i.id === id ? f(i) : i)) };
 }
 
+const docOf = (s: AppState): Doc => ({ items: s.items, shared: s.shared, designs: s.designs, assets: s.assets });
+
+/** The state with a document put back: the selection stays on an item that still exists. */
+function withDoc(state: AppState, doc: Doc, history: History): AppState {
+  const selectedItemId = doc.items.some((i) => i.id === state.selectedItemId) ? state.selectedItemId : (doc.items[0]?.id ?? null);
+  return { ...state, ...doc, selectedItemId, history };
+}
+
+/** Records the document as it was before `action` so undo can return to it. Repeated edits with one `coalesce` key are a single step. */
+function recordHistory(before: AppState, after: AppState, action: Action): AppState {
+  const changed = before.items !== after.items || before.shared !== after.shared || before.designs !== after.designs || before.assets !== after.assets;
+  if (!changed) return after.history.key === null ? after : { ...after, history: { ...after.history, key: null } };
+  if (action.type === 'loadState') return after;
+  const key = 'coalesce' in action && action.coalesce ? action.coalesce : null;
+  if (key !== null && before.history.key === key) return { ...after, history: { ...before.history, future: [], key } };
+  const past = [...before.history.past, docOf(before)].slice(-HISTORY_LIMIT);
+  return { ...after, history: { past, future: [], key } };
+}
+
 export function reducer(state: AppState, action: Action): AppState {
-  return syncTemplate(apply(state, action));
+  if (action.type === 'undo') {
+    const past = state.history.past;
+    if (past.length === 0) return state;
+    return syncTemplate(withDoc(state, past[past.length - 1], { past: past.slice(0, -1), future: [docOf(state), ...state.history.future], key: null }));
+  }
+  if (action.type === 'redo') {
+    const [next, ...future] = state.history.future;
+    if (!next) return state;
+    return syncTemplate(withDoc(state, next, { past: [...state.history.past, docOf(state)], future, key: null }));
+  }
+  return recordHistory(state, syncTemplate(apply(state, action)), action);
 }
 
 function apply(state: AppState, action: Action): AppState {
@@ -191,9 +290,9 @@ function apply(state: AppState, action: Action): AppState {
       return { ...state, autoRotate: action.autoRotate };
     case 'updatePanel': {
       if (action.id === null) {
-        return editDesign(state, action.design ?? targetDesignId(state), (layer) => ({
-          ...layer,
-          panels: { ...layer.panels, [action.panel]: mergePanel(layer.panels[action.panel], action.patch) },
+        return editDesign(state, action.design ?? targetDesignId(state), (level) => ({
+          ...level,
+          panels: { ...level.panels, [action.panel]: mergePanel(level.panels[action.panel], action.patch) },
         }));
       }
       return updateItem(state, action.id, (i) => ({
@@ -206,10 +305,46 @@ function apply(state: AppState, action: Action): AppState {
         const { text: _ignored, ...style } = action.patch; // the text is always per item
         void _ignored;
         // A field set to undefined is cleared (e.g. text height back to automatic).
-        return editDesign(state, action.design ?? targetDesignId(state), (layer) => ({ ...layer, spine: compact({ ...layer.spine, ...style }) }));
+        return editDesign(state, action.design ?? targetDesignId(state), (level) => ({ ...level, spine: compact({ ...level.spine, ...style }) }));
       }
       return updateItem(state, action.id, (i) => ({ ...i, spineOverride: compact({ ...i.spineOverride, ...action.patch }) }));
     }
+    case 'addLayer':
+      return editDiff(state, action.id, action.design, (d) => diffAdd(d, action.layer, action.after));
+    case 'updateLayer':
+      return editDiff(state, action.id, action.design, (d) => diffUpdate(d, action.layerId, action.patch));
+    case 'removeLayer':
+      return editDiff(state, action.id, action.design, (d) => diffRemove(d, action.layerId));
+    case 'setLayerOrder':
+      return editDiff(state, action.id, action.design, (d) => diffOrder(d, action.order));
+    case 'resetLayer': {
+      const cleared = action.id === null
+        ? (() => {
+            const design = action.design ?? targetDesignId(state);
+            return editDesign(state, design, (level) => clearSlot(level, action.layerId, design === DEFAULT_DESIGN_ID));
+          })()
+        : updateItem(state, action.id, (i) => {
+            const own = { panels: i.panels ?? {}, spine: i.spineOverride ?? {} };
+            const next = clearSlot(own, action.layerId, false);
+            const out = { ...i };
+            if (Object.keys(next.panels).length > 0) out.panels = next.panels;
+            else delete out.panels;
+            if (Object.keys(next.spine).length > 0) out.spineOverride = next.spine;
+            else delete out.spineOverride;
+            return out;
+          });
+      return editDiff(cleared, action.id, action.design, (d) => diffReset(d, action.layerId));
+    }
+    case 'setAsset':
+      return { ...state, assets: { ...state.assets, [action.asset.id]: action.asset } };
+    case 'removeAsset': {
+      const assets = { ...state.assets };
+      delete assets[action.id];
+      return { ...state, assets };
+    }
+    case 'undo':
+    case 'redo':
+      return state; // handled in reducer()
     case 'assignDesign': {
       const ids = new Set(action.items);
       const exists = action.design !== null && state.designs.some((d) => d.id === action.design);
@@ -223,7 +358,7 @@ function apply(state: AppState, action: Action): AppState {
     }
     case 'forkDesign': {
       const source = action.from === DEFAULT_DESIGN_ID ? undefined : state.designs.find((d) => d.id === action.from);
-      const design: Design = { id: action.id, name: action.name, panels: structuredClone(source?.panels ?? {}), spine: { ...source?.spine } };
+      const design: Design = { id: action.id, name: action.name, panels: structuredClone(source?.panels ?? {}), spine: { ...source?.spine }, ...(source?.diff && { diff: structuredClone(source.diff) }) };
       return reducer({ ...state, designs: [...state.designs, design] }, { type: 'assignDesign', items: action.items, design: action.id });
     }
     case 'renameDesign':
@@ -237,11 +372,11 @@ function apply(state: AppState, action: Action): AppState {
       }) };
     case 'clearDesign': {
       const spineToo = !action.panel || action.panel === 'spine' || action.panel === 'spineRight';
-      return editDesign(state, action.design, (layer) => {
-        const panels = { ...layer.panels };
+      return editDesign(state, action.design, (level) => {
+        const panels = { ...level.panels };
         if (action.panel) delete panels[action.panel];
-        const spine = spineToo ? (action.design === DEFAULT_DESIGN_ID ? initialState.shared.spine : {}) : layer.spine;
-        return { panels: action.panel ? panels : {}, spine };
+        const spine = spineToo ? (action.design === DEFAULT_DESIGN_ID ? initialState.shared.spine : {}) : level.spine;
+        return { panels: action.panel ? panels : {}, spine, diff: action.panel ? nonEmpty(diffWithoutPanel(level.diff, action.panel)) : undefined };
       });
     }
     case 'clearOverrides':
@@ -250,12 +385,16 @@ function apply(state: AppState, action: Action): AppState {
         if (!action.panel) {
           delete next.panels;
           delete next.spineOverride;
+          delete next.diff;
           return next;
         }
         const panels = { ...i.panels };
         delete panels[action.panel];
         next.panels = panels;
         if (action.panel === 'spine') delete next.spineOverride;
+        const diff = nonEmpty(diffWithoutPanel(i.diff, action.panel));
+        if (diff) next.diff = diff;
+        else delete next.diff;
         return next;
       });
   }
