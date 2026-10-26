@@ -140,7 +140,7 @@ export const initialState: AppState = {
   showGuides: false,
   showMeasurements: false,
   view: '3d',
-  autoRotate: true,
+  autoRotate: false,
   shared: {
     panels: {},
     spine: { fontFamily: 'Helvetica, Arial, sans-serif', color: '#ffffff' },
