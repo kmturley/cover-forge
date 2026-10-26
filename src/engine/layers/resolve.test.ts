@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { MediaItem } from '../../types/media';
 import type { Design, PanelSettings, SharedSettings } from '../../types/editor';
-import type { GeneratedLayer, ImageLayer, Layer, ShapeLayer } from '../../types/layers';
+import type { CodeLayer, ImageLayer, Layer, ShapeLayer } from '../../types/layers';
 import { buildTemplateById } from '../../templates';
 import { designOf, layeredShared } from '../designs';
 import { PANEL_IDS, resolvePanel } from '../resolve';
@@ -34,9 +34,9 @@ describe('defaultLayers', () => {
   });
 
   it('puts a barcode on the back of most cases and none on a cassette', () => {
-    expect(find<GeneratedLayer>(ls, 'back.code').params.kind).toBe('ean13');
-    expect(find<GeneratedLayer>(ls, 'front.code').params.kind).toBe('none');
-    expect(find<GeneratedLayer>(defaultLayers(buildTemplateById('cassette-std')), 'back.code').params.kind).toBe('none');
+    expect(find<CodeLayer>(ls, 'back.code').params.kind).toBe('ean13');
+    expect(find<CodeLayer>(ls, 'front.code').params.kind).toBe('none');
+    expect(find<CodeLayer>(defaultLayers(buildTemplateById('cassette-std')), 'back.code').params.kind).toBe('none');
   });
 
   it('gives a plain dust flap only a fill that mirrors its panel', () => {
@@ -87,7 +87,7 @@ describe('resolveLayers matches the slot resolver', () => {
         expect(logo.tint).toBe(r.logo.color);
         expectPlacement(logo, r.logo, rect);
 
-        const code = find<GeneratedLayer>(layers, `${id}.code`);
+        const code = find<CodeLayer>(layers, `${id}.code`);
         expect(code.params).toEqual({ kind: r.code.kind, pattern: r.code.pattern, color: r.code.color, background: r.code.background });
         expectPlacement(code, r.code, rect);
       }

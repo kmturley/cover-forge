@@ -5,7 +5,7 @@ import { rectToBox } from '../../../engine/box';
 import { canvasPanel, codeSettingsOf } from '../../../engine/layers/draw';
 import { CODE_LABELS } from '../../../engine/layers/labels';
 import type { CodeKind } from '../../../types/editor';
-import type { GeneratedLayer } from '../../../types/layers';
+import type { CodeLayer } from '../../../types/layers';
 import { PlacementControls } from './PlacementControls';
 import { RotationOpacity } from './CommonFields';
 import type { LayerEditor } from './useLayerEditor';
@@ -34,7 +34,7 @@ function typedCheckDigitWrong(text: string, encoded: string): boolean {
 }
 
 /** QR code and barcode: what they say, how they look, and where they go. */
-export function CodeInspector({ layer, ed }: { layer: GeneratedLayer; ed: LayerEditor }) {
+export function CodeInspector({ layer, ed }: { layer: CodeLayer; ed: LayerEditor }) {
   const { item, template } = ed;
   const panel = ed.panelRect ?? canvasPanel(template);
   const p = layer.params;

@@ -355,3 +355,5 @@ h3 { font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: v
 .font-row:hover { background: var(--panel-2); }
 .font-sample { font-size: 16px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .font-row small { color: var(--muted); font-size: 10px; flex: none; }
+.code-area { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 11px; line-height: 1.35; }
+.svg-preview { display: block; max-width: 100%; max-height: 120px; margin: 6px 0; background: repeating-conic-gradient(#2a2d34 0 25%, #20232a 0 50%) 0 0 / 14px 14px; border-radius: 4px; }

@@ -1,7 +1,8 @@
 import type { Axis, Layer, LayerDiff, LayerPatch, LayerPlacement, ImageSource, Asset } from '../../types/layers';
 import type { CodeKind } from '../../types/editor';
 import { PANEL_IDS } from '../resolve';
-import { newCode, newImage, newShape, newText } from './factory';
+import { newCode, newImage, newShape, newSvg, newText } from './factory';
+import { MAX_SVG_CHARS } from '../svgTemplate';
 
 /**
  * Layers come from saves and share links, so nothing in them is trusted. Every field is checked against what drawing
@@ -78,7 +79,7 @@ const shadow = (v: unknown) => {
 
 const params = (v: unknown) => {
   if (!isObj(v)) return undefined;
-  const out = Object.fromEntries(Object.entries({ kind: oneOf(v.kind, CODE_KINDS), pattern: str(v.pattern, 500), color: str(v.color, 40), background: str(v.background, 40) }).filter(([, f]) => f !== undefined));
+  const out = Object.fromEntries(Object.entries({ kind: oneOf(v.kind, CODE_KINDS), pattern: str(v.pattern, 500), color: str(v.color, 40), background: str(v.background, 40), svg: str(v.svg, MAX_SVG_CHARS) }).filter(([, f]) => f !== undefined));
   return Object.keys(out).length > 0 ? out : undefined;
 };
 
@@ -127,7 +128,7 @@ export function sanitizeLayer(raw: unknown): Layer | null {
     shape: () => newShape(raw.id as string, target),
     image: () => newImage(raw.id as string, target, null, { placement: null }),
     text: () => newText(raw.id as string, target),
-    generated: () => newCode(raw.id as string, target),
+    generated: () => (raw.generator === 'svg' ? newSvg(raw.id as string, target, '') : newCode(raw.id as string, target)),
   }[raw.type as string];
   if (!make) return null;
   const layer = make() as Layer & { params?: object; stroke?: object };
@@ -136,7 +137,11 @@ export function sanitizeLayer(raw: unknown): Layer | null {
   const keep = Object.keys(layer);
   const merged = { ...layer, ...Object.fromEntries(Object.entries(fields).filter(([k]) => keep.includes(k) || k === 'name')), ...(follows && { follows }) } as Layer;
   const nested = merged as Layer & { params?: object; stroke?: object; textStroke?: object; shadow?: object };
-  if (merged.type === 'generated') nested.params = { ...layer.params, ...(fields.params as object) };
+  if (merged.type === 'generated') {
+    // A graphic keeps only its SVG and a code only its code settings, whatever else the save carried.
+    const { svg, ...code } = (fields.params ?? {}) as Record<string, unknown>;
+    nested.params = merged.generator === 'svg' ? { svg: typeof svg === 'string' ? svg : '' } : { ...layer.params, ...code };
+  }
   if (merged.type === 'shape') nested.stroke = { ...layer.stroke, ...(fields.stroke as object) };
   if (merged.type === 'text') {
     nested.textStroke = { ...(layer as typeof merged).textStroke, ...(fields.textStroke as object) };

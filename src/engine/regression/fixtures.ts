@@ -1,7 +1,7 @@
 import type { MediaItem } from '../../types/media';
 import type { Design, PanelSettings, SharedSettings } from '../../types/editor';
 import type { Asset, LayerDiff } from '../../types/layers';
-import { newCode, newImage, newShape, newText } from '../layers/factory';
+import { newCode, newImage, newShape, newSvg, newText } from '../layers/factory';
 import type { PanelId } from '../../types/template';
 import { LOGOS } from '../../brands';
 import { LIBRARY } from '../../templates/library';
@@ -154,6 +154,13 @@ const features: Fixture[] = [
   { name: 'layers/hidden-and-reordered', scene: withDiff(BR, { hidden: ['front.image'], added: [{ layer: newShape('s1', 'front', { fill: '#2244aa' }), after: 'front.fill' }, { layer: newShape('s2', 'front', { fill: '#aa2244', placement: { x: { anchor: 'start', offset: 40, size: 40 }, y: { anchor: 'start', offset: 40, size: 40 } } }) }, { layer: newShape('s3', 'front', { fill: '#44aa22', placement: { x: { anchor: 'start', offset: 20, size: 40 }, y: { anchor: 'start', offset: 20, size: 40 } } }) }], order: ['s3', 's2'] }), px: 2 },
   { name: 'layers/anchored-logo', scene: withDiff(BR, { patch: { 'front.logo': { source: { kind: 'vector', id: 'steam' }, placement: { x: { anchor: 'center', offset: 50, size: 12 }, y: { anchor: 'start', offset: 6, size: 'auto' } } } } }), px: 2 },
   { name: 'layers/extra-code', scene: withDiff(BR, { added: [{ layer: newCode('q1', 'front', { kind: 'qr' }, { placement: { x: { anchor: 'end', offset: 5, size: 25 }, y: { anchor: 'end', offset: 5, size: 'auto' } } }) }] }), px: 3 },
+  { name: 'layers/custom-graphic', scene: withDiff(BR, { added: [
+    { layer: newSvg('g1', 'front', '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 60"><path d="M0 8h300l-14 22 14 22H0l14-22z" fill="#c8102e"/><circle cx="40" cy="30" r="12" fill="#ffffff"/><rect x="70" y="24" width="190" height="12" rx="6" fill="#ffffff" opacity=".8"/></svg>', { placement: { x: { anchor: 'stretch', start: 5, end: 5 }, y: { anchor: 'start', offset: 60, size: 'auto' } } }) },
+    { layer: newSvg('g2', 'back', '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 80 100"><rect width="80" height="100" rx="6" fill="#111"/><rect x="4" y="4" width="72" height="92" rx="4" fill="none" stroke="#fff" stroke-width="2"/><circle cx="40" cy="50" r="20" fill="#f5b301"/></svg>', { placement: { x: { anchor: 'end', offset: 6, size: 14 }, y: { anchor: 'start', offset: 8, size: 'auto' } }, rotationDeg: 8 }) },
+  ] }), px: 2 },
+  { name: 'layers/custom-graphic-unsafe-parts-removed', scene: withDiff(BR, { added: [
+    { layer: newSvg('g1', 'front', '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><script>alert(1)</script><image href="https://evil.example/x.png" width="100" height="100"/><rect onload="x()" width="100" height="100" fill="#2a9d8f"/><style>@import url(https://evil.example/a.css);</style></svg>', { placement: { x: { anchor: 'center', offset: 50, size: 40 }, y: { anchor: 'center', offset: 50, size: 'auto' } } }) },
+  ] }), px: 2 },
   { name: 'layers/per-item-and-design', scene: scene(BR, { designs: [{ ...design, diff: { added: [{ layer: newShape('d-shape', 'front', { fill: '#00ccaa', placement: { x: { anchor: 'start', offset: 0, size: 50 }, y: { anchor: 'start', offset: 0, size: 20 } } }) }] } }], item: { ...ITEM, designId: 'd1', diff: { patch: { 'd-shape': { fill: '#ff3366' } }, added: [{ layer: newShape('i-shape', 'back', { fill: '#3366ff' }) }] } } }), px: 2 },
 
   // Guides and the cut-out view.

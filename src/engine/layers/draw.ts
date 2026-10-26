@@ -2,11 +2,12 @@ import type { MediaItem } from '../../types/media';
 import type { PanelId, PanelRect, TemplateConfig } from '../../types/template';
 import type { CodeSettings, LogoSettings, PanelTransform } from '../../types/editor';
 import { DEFAULT_CODE, DEFAULT_LOGO, DEFAULT_TRANSFORM } from '../../types/editor';
-import type { GeneratedLayer, ImageLayer, Layer, LayerPlacement, LegacyMm, Placement, ShapeLayer, TextLayer } from '../../types/layers';
+import type { CodeLayer, ImageLayer, Layer, LayerPlacement, LegacyMm, Placement, ShapeLayer, SvgLayer, TextLayer } from '../../types/layers';
 import { getMark, type Mark } from '../../brands';
 import { layerImageUrl, type Assets } from './images';
 import { computePlacement, paintRect } from '../placement';
-import { boxRect } from '../box';
+import { boxRect, fitInside } from '../box';
+import { fillSvg, sanitizeSvg, svgAspect, svgImageUrl } from '../svgTemplate';
 import { drawBorder } from '../border';
 import { drawLogo } from '../logo';
 import { codeAspect, drawCode } from '../code';
@@ -112,7 +113,7 @@ export function logoSettingsOf(l: ImageLayer, panel: PanelRect, mark: Mark): Log
 }
 
 /** A code layer's placement and look in the shape the code helpers take. */
-export function codeSettingsOf(l: GeneratedLayer, panel: PanelRect): CodeSettings {
+export function codeSettingsOf(l: CodeLayer, panel: PanelRect): CodeSettings {
   const kind = l.params.kind;
   return { ...DEFAULT_CODE, ...l.params, ...legacyOf(l.placement), box: boxOf(panel, l.placement, kind === 'none' ? undefined : codeAspect(kind)) as CodeSettings['box'], rotationDeg: l.rotationDeg, opacity: l.opacity };
 }
@@ -142,10 +143,40 @@ function drawImage(env: DrawEnv, l: ImageLayer, panel: PanelRect) {
   ctx.restore();
 }
 
-function drawGenerated(env: DrawEnv, l: GeneratedLayer, panel: PanelRect) {
+function drawGenerated(env: DrawEnv, l: Extract<Layer, { type: 'generated' }>, panel: PanelRect) {
   const { item } = env;
+  if (l.generator === 'svg') return drawSvg(env, l, panel);
   if (!item || l.params.kind === 'none') return;
   drawCode(env.ctx, env.template, panel, codeSettingsOf(l, panel), item, env.px);
+}
+
+/** The aspect of a custom graphic once its variables are filled and it is cleaned; null when it can't be drawn. */
+export function svgLayerAspect(l: SvgLayer, item: MediaItem): number | null {
+  const svg = sanitizeSvg(fillSvg(l.params.svg, item));
+  return svg ? svgAspect(svg) : null;
+}
+
+/** A custom graphic: its SVG, filled in for the item, drawn as large as fits its box and centred in it. */
+function drawSvg(env: DrawEnv, l: SvgLayer, panel: PanelRect) {
+  const { ctx, item, px, template: t } = env;
+  if (!item) return;
+  const aspect = svgLayerAspect(l, item);
+  const url = svgImageUrl(l.params.svg, item);
+  const img = aspect !== null && url ? env.getImage(url) : null;
+  if (!img || aspect === null) return;
+  const area = paintRect(t, panel);
+  const box = isAnchored(l.placement) ? boxRect(panel, placementToBox(panel, l.placement, aspect)) : area;
+  const r = fitInside(box, aspect);
+  ctx.save();
+  ctx.beginPath();
+  ctx.rect(area.xMm * px, area.yMm * px, area.widthMm * px, area.heightMm * px);
+  ctx.clip();
+  ctx.globalAlpha = l.opacity;
+  ctx.translate((r.xMm + r.widthMm / 2) * px, (r.yMm + r.heightMm / 2) * px);
+  ctx.rotate((l.rotationDeg * Math.PI) / 180);
+  // Drawn to the size it is shown at, so a vector graphic stays sharp at any resolution.
+  ctx.drawImage(img, (-r.widthMm / 2) * px, (-r.heightMm / 2) * px, r.widthMm * px, r.heightMm * px);
+  ctx.restore();
 }
 
 /** Cap height as a share of the font size, for sizing text by its cap height as spine text is. */

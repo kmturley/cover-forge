@@ -1,5 +1,6 @@
 import { useRef, useState } from 'react';
-import { duplicateLayer, freshId, newCode, newImage, newShape, newText } from '../../../engine/layers/factory';
+import { duplicateLayer, freshId, newCode, newImage, newShape, newSvg, newText } from '../../../engine/layers/factory';
+import { SVG_PRESETS } from '../../../engine/svgTemplate';
 import { isDefaultId, isEmptyLayer, layerDetail, layerName, slotName } from '../../../engine/layers/labels';
 import { assetFromFile, assetFromUrl } from '../../../storage/assets';
 import type { Layer, TextLayer } from '../../../types/layers';
@@ -79,7 +80,7 @@ function AddMenu({ ed }: { ed: LayerEditor }) {
     }
   };
 
-  const CHOICES = ['Text', 'Picture from this item', 'Picture from a file…', 'Picture from an address…', 'Logo', 'Rectangle', 'Ellipse', 'QR code or barcode'] as const;
+  const CHOICES = ['Text', 'Picture from this item', 'Picture from a file…', 'Picture from an address…', 'Logo', 'Rectangle', 'Ellipse', 'QR code or barcode', 'Custom graphic (SVG)'] as const;
   const choose = (choice: (typeof CHOICES)[number]) => {
     switch (choice) {
       case 'Text':
@@ -98,6 +99,8 @@ function AddMenu({ ed }: { ed: LayerEditor }) {
         return ed.add(newShape(freshId('shape', ids), target, { shape: 'ellipse', name: 'Ellipse' }));
       case 'QR code or barcode':
         return ed.add(newCode(freshId('code', ids), target));
+      case 'Custom graphic (SVG)':
+        return ed.add(newSvg(freshId('graphic', ids), target, SVG_PRESETS[0].svg));
     }
   };
 

@@ -1,6 +1,7 @@
 import type { MediaItem } from '../../types/media';
 import type { Asset, ImageLayer, Layer } from '../../types/layers';
 import { defaultImageRef, resolveImageRef } from '../imageLibrary';
+import { svgImageUrl } from '../svgTemplate';
 
 export type Assets = Readonly<Record<string, Asset>>;
 
@@ -24,8 +25,8 @@ export function layerImageUrl(l: ImageLayer, item: MediaItem | null, assets: Ass
 export function layerImageUrls(layers: readonly Layer[], item: MediaItem | null, assets: Assets | undefined): string[] {
   const urls = new Set<string>();
   for (const l of layers) {
-    if (l.type !== 'image' || !l.visible) continue;
-    const u = layerImageUrl(l, item, assets);
+    if (!l.visible) continue;
+    const u = l.type === 'image' ? layerImageUrl(l, item, assets) : l.type === 'generated' && l.generator === 'svg' && item ? svgImageUrl(l.params.svg, item) : null;
     if (u) urls.add(u);
   }
   return [...urls];

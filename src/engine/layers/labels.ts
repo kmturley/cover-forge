@@ -28,7 +28,7 @@ export function layerName(l: Layer): string {
     case 'text':
       return 'Text';
     case 'generated':
-      return CODE_LABELS[l.params.kind === 'none' ? 'qr' : l.params.kind];
+      return l.generator === 'svg' ? 'Custom graphic' : CODE_LABELS[l.params.kind === 'none' ? 'qr' : l.params.kind];
     case 'official':
       return 'Branded';
   }
@@ -57,7 +57,7 @@ export function layerDetail(l: Layer, item: MediaItem | null, assets: Readonly<R
       return t || 'Title';
     }
     case 'generated':
-      return l.params.kind === 'none' ? 'None' : `${CODE_LABELS[l.params.kind]}`;
+      return l.generator === 'svg' ? 'SVG' : l.params.kind === 'none' ? 'None' : `${CODE_LABELS[l.params.kind]}`;
     case 'official':
       return '';
   }
@@ -71,7 +71,7 @@ export function isEmptyLayer(l: Layer): boolean {
     case 'image':
       return !l.source;
     case 'generated':
-      return l.params.kind === 'none';
+      return l.generator === 'code' && l.params.kind === 'none';
     default:
       return false;
   }

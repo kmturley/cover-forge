@@ -6,7 +6,7 @@ import { boxRect, type RectMm } from '../box';
 import { computeCodePlacement, codeAspect } from '../code';
 import { computeLogoPlacement } from '../logo';
 import { computePlacement, paintRect } from '../placement';
-import { canvasPanel, codeSettingsOf, logoSettingsOf, transformOf, type ImageLookup } from './draw';
+import { canvasPanel, codeSettingsOf, logoSettingsOf, svgLayerAspect, transformOf, type ImageLookup } from './draw';
 import { layerImageUrl, type Assets } from './images';
 import { placementToBox } from './placement';
 
@@ -66,6 +66,11 @@ export function layerBounds(layer: Layer, env: BoundsEnv): Bounds | null {
       return { ...base, rect: pl.box, aspect, whole: layer.placement === null };
     }
     case 'generated': {
+      if (layer.generator === 'svg') {
+        const aspect = item ? svgLayerAspect(layer, item) : null;
+        if (!item || aspect === null) return null;
+        return isAnchored(layer) ? { ...base, rect: boxRect(panel, placementToBox(panel, layer.placement as never, aspect)), aspect } : { ...base, rect: area, whole: true, aspect };
+      }
       if (!item || layer.params.kind === 'none') return null;
       const pl = computeCodePlacement(t, panel, codeSettingsOf(layer, panel));
       return pl?.fits ? { ...base, rect: pl.box, aspect: codeAspect(layer.params.kind) } : null;

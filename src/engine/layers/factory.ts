@@ -1,5 +1,5 @@
 import type { PanelId } from '../../types/template';
-import type { Axis, CodeParams, GeneratedLayer, ImageLayer, ImageSource, Layer, LayerBase, Placement, ShapeLayer, TextLayer } from '../../types/layers';
+import type { Axis, CodeLayer, CodeParams, ImageLayer, ImageSource, Layer, LayerBase, Placement, ShapeLayer, SvgLayer, TextLayer } from '../../types/layers';
 import { DEFAULT_BORDER, DEFAULT_CODE, DEFAULT_LOGO } from '../../types/editor';
 import { DEFAULT_SPINE_COLOR, DEFAULT_SPINE_FONT, TEXT_EFFECTS } from './defaults';
 
@@ -27,9 +27,13 @@ export const newText = (id: string, target: PanelId | 'canvas', o: Partial<TextL
   type: 'text', text: '{title}', fontFamily: DEFAULT_SPINE_FONT, color: DEFAULT_SPINE_COLOR, align: 'center', weight: 700, italic: false, ...structuredClone(TEXT_EFFECTS), ...o,
 });
 
-export const newCode = (id: string, target: PanelId | 'canvas', params: Partial<CodeParams> = {}, o: Partial<GeneratedLayer> = {}): GeneratedLayer => ({
+export const newCode = (id: string, target: PanelId | 'canvas', params: Partial<CodeParams> = {}, o: Partial<CodeLayer> = {}): CodeLayer => ({
   ...base(id, target, null), type: 'generated', generator: 'code',
   params: { kind: 'qr', pattern: DEFAULT_CODE.pattern, color: DEFAULT_CODE.color, background: DEFAULT_CODE.background, ...params }, ...o,
+});
+
+export const newSvg = (id: string, target: PanelId | 'canvas', svg: string, o: Partial<SvgLayer> = {}): SvgLayer => ({
+  ...base(id, target, centred(50)), type: 'generated', generator: 'svg', params: { svg }, ...o,
 });
 
 /**

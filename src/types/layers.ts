@@ -140,11 +140,20 @@ export interface CodeParams {
   background: string;
 }
 
-export interface GeneratedLayer extends LayerBase {
+export interface CodeLayer extends LayerBase {
   type: 'generated';
   generator: 'code';
   params: CodeParams;
 }
+
+/** A custom graphic: an SVG with `{variables}`, filled in per item and drawn as a picture (see engine/svgTemplate.ts). */
+export interface SvgLayer extends LayerBase {
+  type: 'generated';
+  generator: 'svg';
+  params: { svg: string };
+}
+
+export type GeneratedLayer = CodeLayer | SvgLayer;
 
 /** The Branded trade dress, drawn whole by drawOfficial until it becomes ordinary layers. Shown when Branded is on. */
 export interface OfficialLayer extends LayerBase {

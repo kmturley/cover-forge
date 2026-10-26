@@ -1,6 +1,7 @@
 import { isDefaultId, layerName } from '../../../engine/layers/labels';
 import type { Layer } from '../../../types/layers';
 import { CodeInspector } from './CodeInspector';
+import { SvgInspector } from './SvgInspector';
 import { ImageInspector } from './ImageInspector';
 import { ShapeInspector } from './ShapeInspector';
 import { TextInspector } from './TextInspector';
@@ -22,7 +23,8 @@ export function LayerInspector({ layer, ed }: { layer: Layer; ed: LayerEditor })
       {layer.type === 'shape' && <ShapeInspector key={layer.id} layer={layer} ed={ed} />}
       {layer.type === 'image' && <ImageInspector key={layer.id} layer={layer} ed={ed} />}
       {layer.type === 'text' && <TextInspector key={layer.id} layer={layer} ed={ed} />}
-      {layer.type === 'generated' && <CodeInspector key={layer.id} layer={layer} ed={ed} />}
+      {layer.type === 'generated' && layer.generator === 'code' && <CodeInspector key={layer.id} layer={layer} ed={ed} />}
+      {layer.type === 'generated' && layer.generator === 'svg' && <SvgInspector key={layer.id} layer={layer} ed={ed} />}
       <div className="inspector-foot">
         {own && isDefault && (
           <button onClick={() => ed.reset(layer.id)} title="Forget every change here to this layer">
