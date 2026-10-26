@@ -14,7 +14,8 @@ import { drawLogo, markAspect, type MarkOptions } from '../logo';
 import { codeAspect, drawCode } from '../code';
 import { drawSpineText, spineText } from '../SpineTypography';
 import type { PanelBox } from '../../types/editor';
-import { contrast, drawOfficial, spineTitleCase, spineTitleColor, spineTitleScale, spineTitleStartMm } from '../official';
+import { contrast, spineTitleCase, spineTitleColor, spineTitleScale, spineTitleStartMm } from '../official';
+import { drawOfficial } from '../branding';
 import { placementToBox } from './placement';
 
 export type ImageLookup = (url: string | null | undefined) => HTMLImageElement | null;
