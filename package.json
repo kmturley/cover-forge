@@ -13,7 +13,8 @@
     "test": "vitest run",
     "gen:brands": "node scripts/gen-brands.mjs",
     "measure:covers": "tsx scripts/measure-covers.ts",
-    "compare:covers": "tsx scripts/compare-covers.ts"
+    "compare:covers": "tsx scripts/compare-covers.ts",
+    "golden:update": "UPDATE_GOLDEN=1 vitest run src/engine/regression"
   },
   "dependencies": {
     "@react-three/drei": "^9.122.0",
