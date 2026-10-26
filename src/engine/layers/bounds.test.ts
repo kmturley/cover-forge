@@ -87,6 +87,7 @@ describe('layerAt', () => {
   });
 
   it('leaves whole-panel layers to the panel', () => {
-    expect(layerAt(defaultLayers(t), env, front.xMm + 5, front.yMm + 5)).toBeNull();
+    // (low on the front, clear of the Branded header)
+    expect(layerAt(defaultLayers(t), env, front.xMm + front.widthMm / 2, front.yMm + front.heightMm * 0.7)).toBeNull();
   });
 });

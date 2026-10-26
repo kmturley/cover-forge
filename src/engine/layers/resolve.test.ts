@@ -20,15 +20,15 @@ describe('defaultLayers', () => {
 
   it('has unique ids named by target', () => {
     expect(new Set(ls.map((l) => l.id)).size).toBe(ls.length);
-    expect(ls.map((l) => l.id)).toEqual(expect.arrayContaining(['front.fill', 'front.image', 'back.image', 'spine.text', 'front.logo', 'back.code', 'official']));
+    expect(ls.map((l) => l.id)).toEqual(expect.arrayContaining(['front.fill', 'front.image', 'back.image', 'spine.text', 'front.logo', 'back.code', 'branded']));
   });
 
   it('draws panel by panel (fill, image, border), then the Branded dress, spine text, logos and codes', () => {
     const order = ls.map((l) => l.id);
     expect(order.indexOf('front.fill')).toBeLessThan(order.indexOf('front.image'));
     expect(order.indexOf('front.image')).toBeLessThan(order.indexOf('front.border'));
-    expect(order.indexOf('front.border')).toBeLessThan(order.indexOf('official'));
-    expect(order.indexOf('official')).toBeLessThan(order.indexOf('spine.text'));
+    expect(order.indexOf('front.border')).toBeLessThan(order.indexOf('branded'));
+    expect(order.indexOf('branded')).toBeLessThan(order.indexOf('spine.text'));
     expect(order.indexOf('spine.text')).toBeLessThan(order.indexOf('front.logo'));
     expect(order.indexOf('front.logo')).toBeLessThan(order.indexOf('front.code'));
   });
@@ -67,7 +67,7 @@ describe('resolveLayers matches the slot resolver', () => {
   for (const [name, sh, d, ov] of cases) {
     it(name, () => {
       const it_: MediaItem = { ...item, ...(d && { designId: d.id }), ...(ov && { panels: ov as never }) };
-      const layers = resolveLayers({ template: t, item: it_, shared: sh, designs: d ? [d] : [] });
+      const layers = resolveLayers({ template: t, item: it_, shared: sh, designs: d ? [d] : [], banner: false });
       const merged = layeredShared(sh, designOf(d ? [d] : [], it_));
       for (const id of PANEL_IDS) {
         if (!t.panels.some((p) => p.id === id)) continue;
@@ -120,7 +120,7 @@ describe('assembly panels', () => {
   });
 
   it('take their panel colour, and have no image, border, logo or code layer', () => {
-    const layers = resolveLayers({ template: t, item, shared: shared({ top: { backgroundColor: '#123456' }, tuck: { backgroundColor: '#ff0000' } }) });
+    const layers = resolveLayers({ template: t, item, shared: shared({ top: { backgroundColor: '#123456' }, tuck: { backgroundColor: '#ff0000' } }), banner: false });
     expect(find<ShapeLayer>(layers, 'tuck.fill').fill).toBe('#123456');
     expect(layers.filter((l) => l.target === 'tuck').map((l) => l.id)).toEqual(['tuck.fill']);
   });
@@ -129,8 +129,53 @@ describe('assembly panels', () => {
 describe('followers', () => {
   it('takes the colour of the panel it follows, as the slot renderer did', () => {
     const t = buildTemplateById('nfc-box-card');
-    const layers = resolveLayers({ template: t, item, shared: shared({ spine: { backgroundColor: '#abcdef' } }) });
+    const layers = resolveLayers({ template: t, item, shared: shared({ spine: { backgroundColor: '#abcdef' } }), banner: false });
     expect(find<ShapeLayer>(layers, 'dustTopLeft.fill').fill).toBe('#abcdef');
     expect(find<ShapeLayer>(layers, 'dustBottomRight.fill').fill).toBeNull();
+  });
+});
+
+describe('the Branded dress', () => {
+  const ps1 = buildTemplateById('game-case-ps1');
+  const resolve = (banner: boolean, panels: SharedSettings['panels'] = {}) => resolveLayers({ template: ps1, item, shared: shared(panels), banner });
+  const folder = (ls: Layer[]) => ls.find((l) => l.id === 'branded')!;
+
+  it('is a folder whose visibility is the Branded switch', () => {
+    expect(folder(resolve(true)).visible).toBe(true);
+    expect(folder(resolve(false)).visible).toBe(false);
+    // Whatever a design says about the folder, the switch decides.
+    const out = resolveLayers({ template: ps1, item, shared: { ...shared(), diff: { patch: { branded: { visible: false } } } }, banner: true });
+    expect(folder(out).visible).toBe(true);
+  });
+
+  it('is there, with its layers filed in the folder, whether or not it is on', () => {
+    for (const on of [true, false]) {
+      const ls = resolve(on);
+      const inside = ls.filter((l) => l.parent === 'branded');
+      expect(inside.length, String(on)).toBeGreaterThan(3);
+      expect(ls.indexOf(folder(ls))).toBeLessThan(ls.indexOf(inside[0]));
+    }
+  });
+
+  it('fits the spine title round itself only while it is on (PS1 prints it in capitals)', () => {
+    const title = (ls: Layer[]) => ls.find((l) => l.id === 'spine.text') as Extract<Layer, { type: 'text' }>;
+    expect(title(resolve(false)).textCase).toBeUndefined();
+    expect(title(resolve(false)).spineFit).toBeUndefined();
+    expect(title(resolve(true)).textCase).toBe('upper');
+    expect(title(resolve(true)).spineFit?.startMm).toBeGreaterThan(5);
+  });
+
+  it('can be edited like any layer: a patch on a layer of the dress changes it, and survives switching off and on', () => {
+    const edited = { ...shared(), diff: { patch: { 'branded.front.strip': { fill: '#ff0000' } } } };
+    for (const banner of [true, false]) {
+      const l = resolveLayers({ template: ps1, item, shared: edited, banner }).find((x) => x.id === 'branded.front.strip') as ShapeLayer;
+      expect(l.fill).toBe('#ff0000');
+    }
+  });
+
+  it('is the dress of the case it is on', () => {
+    const wii = resolveLayers({ template: buildTemplateById('game-case-wii'), item, shared: shared(), banner: true });
+    expect(wii.some((l) => l.id === 'branded.front.strip')).toBe(false);
+    expect(wii.some((l) => l.id === 'branded.front.band')).toBe(true);
   });
 });

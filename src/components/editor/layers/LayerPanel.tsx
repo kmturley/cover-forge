@@ -1,16 +1,18 @@
 import { useRef, useState } from 'react';
 import { duplicateLayer, freshId, newCode, newImage, newShape, newSvg, newText } from '../../../engine/layers/factory';
 import { SVG_PRESETS } from '../../../engine/svgTemplate';
-import { isDefaultId, isEmptyLayer, layerDetail, layerName, slotName } from '../../../engine/layers/labels';
+import { isDefaultId, isEmptyLayer, layerDetail, layerName } from '../../../engine/layers/labels';
+import { defaultLayers } from '../../../engine/layers/defaults';
+import { useAppDispatch } from '../../../context/AppContext';
 import { assetFromFile, assetFromUrl } from '../../../storage/assets';
 import type { Layer, TextLayer } from '../../../types/layers';
 import { LayerInspector } from './LayerInspector';
 import { useLayerEditor, type LayerEditor } from './useLayerEditor';
 
-const GLYPH: Record<Layer['type'], string> = { shape: '▭', image: '▨', text: 'T', generated: '▦', official: '★', group: '▸' };
+const GLYPH: Record<Layer['type'], string> = { shape: '▭', image: '▨', text: 'T', generated: '▦', group: '▸' };
 const glyphOf = (l: Layer) => (l.type === 'shape' && l.shape === 'ellipse' ? '◯' : l.type === 'image' && l.source?.kind === 'vector' ? '✦' : GLYPH[l.type]);
 
-function Row({ layer, ed, index, count }: { layer: Layer; ed: LayerEditor; index: number; count: number }) {
+function Row({ layer, ed, index, count, indent }: { layer: Layer; ed: LayerEditor; index: number; count: number; indent?: boolean }) {
   const own = ed.touched.has(layer.id);
   const empty = isEmptyLayer(layer);
   const selected = ed.selected?.id === layer.id;
@@ -19,7 +21,7 @@ function Row({ layer, ed, index, count }: { layer: Layer; ed: LayerEditor; index
   const duplicate = () => ed.add(duplicateLayer(layer, ed.layers.map((l) => l.id)), layer.id);
 
   return (
-    <li className={`layer-row ${selected ? 'selected' : ''} ${empty ? 'empty' : ''} ${layer.visible ? '' : 'off'}`}>
+    <li className={`layer-row ${selected ? 'selected' : ''} ${empty ? 'empty' : ''} ${layer.visible ? '' : 'off'} ${indent ? 'indented' : ''}`}>
       <button className="layer-eye" aria-label={layer.visible ? `Hide ${layerName(layer)}` : `Show ${layerName(layer)}`} aria-pressed={layer.visible} title={layer.visible ? 'Hide' : 'Show'} onClick={() => ed.update(layer.id, { visible: !layer.visible })}>
         {layer.visible ? '●' : '○'}
       </button>
@@ -44,6 +46,40 @@ function Row({ layer, ed, index, count }: { layer: Layer; ed: LayerEditor; index
             <button onClick={() => ed.remove(layer.id)}>Remove</button>
           </div>
         </details>
+      </span>
+    </li>
+  );
+}
+
+/**
+ * The folder a group of layers sits in (the Branded dress). Its eye is the Branded switch; the layers inside are
+ * ordinary and are changed like any others, and "Put back" forgets every change made to them.
+ */
+function FolderRow({ folder, inside, ed, open, onToggle }: { folder: Layer; inside: Layer[]; ed: LayerEditor; open: boolean; onToggle: () => void }) {
+  const dispatch = useAppDispatch();
+  const on = ed.state.banner;
+  const edited = inside.filter((c) => ed.touched.has(c.id));
+  return (
+    <li className={`layer-row folder ${on ? '' : 'off'}`}>
+      <button className="layer-eye" aria-label={on ? 'Turn Branded off' : 'Turn Branded on'} aria-pressed={on} title="Show the platform or format's trade dress on every cover" onClick={() => dispatch({ type: 'setBanner', banner: !on })}>
+        {on ? '●' : '○'}
+      </button>
+      <button className="layer-main" aria-expanded={open} onClick={onToggle}>
+        <span className="layer-glyph" aria-hidden="true">{open ? '▾' : '▸'}</span>
+        <span className="layer-text">
+          <span className="layer-name">
+            {layerName(folder)}
+            {edited.length > 0 && <span className="dot" title={ed.isOverride ? 'This item changes some of these' : 'This design changes some of these'} />}
+          </span>
+          <small>{inside.length} layer{inside.length === 1 ? '' : 's'} here{on ? '' : ' · off'}</small>
+        </span>
+      </button>
+      <span className="layer-actions">
+        {edited.length > 0 && (
+          <button title="Forget every change made to these layers" onClick={() => ed.resetMany(edited.map((c) => c.id))}>
+            Put back
+          </button>
+        )}
       </span>
     </li>
   );
@@ -125,8 +161,26 @@ function AddMenu({ ed }: { ed: LayerEditor }) {
 /** The layers on the selected tab, topmost first, with the controls of the one selected. */
 export function LayerPanel() {
   const ed = useLayerEditor();
-  const { tabLayers, selected, hidden, tab } = ed;
-  const removed = hidden.filter((id) => isDefaultId(id) && id.startsWith(`${tab}.`));
+  const { tabLayers, selected, hidden, tab, template } = ed;
+  const [openFolders, setOpenFolders] = useState<Set<string>>(new Set());
+  // Layers the case supplies that this level has taken away, to put back.
+  const removed = defaultLayers(template).filter((l) => l.type !== 'group' && hidden.includes(l.id) && l.target === tab);
+
+  // The list as shown: a folder's layers sit under one row for it (closed until opened), in the order they are drawn.
+  const folders = new Map(ed.layers.filter((l) => l.type === 'group').map((l) => [l.id, l]));
+  const rows: React.ReactNode[] = [];
+  const seen = new Set<string>();
+  tabLayers.forEach((l, i) => {
+    const folder = l.parent ? folders.get(l.parent) : undefined;
+    if (folder && !seen.has(folder.id)) {
+      seen.add(folder.id);
+      const inside = tabLayers.filter((c) => c.parent === folder.id);
+      const open = openFolders.has(folder.id);
+      rows.push(<FolderRow key={folder.id} folder={folder} ed={ed} open={open} inside={inside} onToggle={() => setOpenFolders((o) => (o.has(folder.id) ? new Set([...o].filter((x) => x !== folder.id)) : new Set(o).add(folder.id)))} />);
+    }
+    if (folder && !openFolders.has(folder.id)) return;
+    rows.push(<Row key={l.id} layer={l} ed={ed} index={i} count={tabLayers.length} indent={!!folder} />);
+  });
 
   return (
     <div className="layer-panel">
@@ -139,19 +193,17 @@ export function LayerPanel() {
         <p className="muted small">No layers here yet. Use Add layer.</p>
       ) : (
         <ul className="layers" aria-label="Layers, topmost first">
-          {tabLayers.map((l, i) => (
-            <Row key={l.id} layer={l} ed={ed} index={i} count={tabLayers.length} />
-          ))}
+          {rows}
         </ul>
       )}
       {removed.length > 0 && (
         <details className="removed">
           <summary>Removed ({removed.length})</summary>
           <ul>
-            {removed.map((id) => (
-              <li key={id}>
-                <span>{slotName(id)}</span>
-                <button className="link" onClick={() => ed.reset(id)}>
+            {removed.map((l) => (
+              <li key={l.id}>
+                <span>{layerName(l)}</span>
+                <button className="link" onClick={() => ed.reset(l.id)}>
                   Put back
                 </button>
               </li>

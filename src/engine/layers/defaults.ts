@@ -2,6 +2,7 @@ import type { TemplateConfig } from '../../types/template';
 import type { Layer } from '../../types/layers';
 import { DEFAULT_BORDER, DEFAULT_CODE, DEFAULT_LOGO } from '../../types/editor';
 import { defaultCodeKind } from '../resolve';
+import { brandedLayers } from './branded';
 
 const NO_STROKE = { color: DEFAULT_BORDER.color, widthMm: DEFAULT_BORDER.widthMm, insetMm: DEFAULT_BORDER.insetMm };
 
@@ -35,8 +36,8 @@ export function defaultLayers(t: TemplateConfig): Layer[] {
     out.push({ ...base, id: `${p.id}.image`, type: 'image', target: p.id, source: { kind: 'role', ref: 'auto' }, fit: 'fill', focus: CENTRE, tint: DEFAULT_LOGO.color });
     out.push({ ...base, id: `${p.id}.border`, type: 'shape', shape: 'rect', target: p.id, fill: null, stroke: NO_STROKE });
   }
-  const first = t.panels[0]?.id;
-  if (first) out.push({ ...base, id: 'official', type: 'official', target: first });
+  // The Branded dress: a folder of ordinary layers, between the panels' pictures and the text, logos and codes.
+  out.push(...brandedLayers(t).layers);
   for (const p of t.panels) {
     if (p.text) out.push({ ...base, id: `${p.id}.text`, type: 'text', target: p.id, fontFamily: DEFAULT_SPINE_FONT, color: DEFAULT_SPINE_COLOR, align: 'center', weight: 700, italic: false, ...TEXT_EFFECTS });
   }

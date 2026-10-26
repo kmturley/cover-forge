@@ -59,7 +59,7 @@ export function ThreeDPreview() {
       markStale(texture);
     };
     paint();
-    void preloadItem({ template, item, shared, designs, assets }).then(paint);
+    void preloadItem({ template, item, shared, designs, assets, banner }).then(paint);
     return () => {
       cancelled = true;
     };

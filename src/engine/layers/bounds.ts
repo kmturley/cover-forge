@@ -40,7 +40,7 @@ const isAnchored = (l: Layer) => !!l.placement && 'x' in l.placement;
 /** The box of one layer, or null when it isn't drawn or can't be picked (hidden, on a flap, nothing to show yet). */
 export function layerBounds(layer: Layer, env: BoundsEnv): Bounds | null {
   const { template: t, item } = env;
-  if (!layer.visible || layer.type === 'official' || layer.type === 'group') return null;
+  if (!layer.visible || layer.type === 'group') return null;
   const panel = layer.target === 'canvas' ? canvasPanel(t) : t.panels.find((p) => p.id === layer.target);
   if (!panel || (layer.target !== 'canvas' && panel.follows)) return null;
   const area = paintRect(t, panel);

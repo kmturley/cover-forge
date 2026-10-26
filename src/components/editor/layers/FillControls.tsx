@@ -42,6 +42,9 @@ export function FillControls({ fill, onChange }: Props) {
       )}
       {isGradient(fill) && (
         <div className="gradient-editor">
+          {fill.axis === 'radial' ? (
+            <p className="muted small">A round gradient from a centre point. Its colours can be changed here.</p>
+          ) : (
           <div className="seg" role="group" aria-label="Gradient direction">
             {(
               [
@@ -54,7 +57,8 @@ export function FillControls({ fill, onChange }: Props) {
               </button>
             ))}
           </div>
-          <div className="gradient-bar" style={{ background: `linear-gradient(${fill.axis === 'x' ? 'to right' : 'to bottom'}, ${fill.stops.map(([at, c]) => `${c} ${at * 100}%`).join(', ')})` }} aria-hidden="true" />
+          )}
+          <div className="gradient-bar" style={{ background: `linear-gradient(${fill.axis === 'y' ? 'to bottom' : 'to right'}, ${fill.stops.map(([at, c]) => `${c} ${at * 100}%`).join(', ')})` }} aria-hidden="true" />
           {fill.stops.map(([at, color], i) => (
             <div className="stop-row" key={i}>
               <input type="color" aria-label={`Stop ${i + 1} colour`} value={/^#[0-9a-f]{6}$/i.test(color) ? color : FALLBACK} onChange={(e) => stops(fill, fill.stops.map((s, j) => (j === i ? [s[0], e.target.value] : s)))} />

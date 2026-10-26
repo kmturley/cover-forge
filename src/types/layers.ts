@@ -47,11 +47,11 @@ export type LayerPlacement = Placement | LegacyMm | null;
 /** Colour stops: [position 0–1, colour]. */
 export type Stops = [number, string][];
 
-/** A linear gradient across a shape's box, left to right (`x`) or top to bottom (`y`). */
-export interface Gradient {
-  axis: 'x' | 'y';
-  stops: Stops;
-}
+/**
+ * A gradient over a shape's box: linear, left to right (`x`) or top to bottom (`y`); or radial (`radial`), from a centre
+ * (as fractions of the box's width and height) out to a radius (a fraction of its width).
+ */
+export type Gradient = { axis: 'x' | 'y'; stops: Stops } | { axis: 'radial'; cx: number; cy: number; r: number; stops: Stops };
 
 /** A solid colour or a gradient. */
 export type Fill = string | Gradient;
@@ -143,8 +143,8 @@ export interface TextLayer extends LayerBase {
   textRotationDeg?: number;
   /** One line of exactly the set height, sitting on the bottom edge of its box, never wrapped or shrunk (a mark's wordmark). */
   singleLine?: boolean;
-  /** Prints the words in capitals. */
-  textCase?: 'upper';
+  /** Prints the words in capitals (`none` keeps them as written, over a lower layer's `upper`). */
+  textCase?: 'upper' | 'none';
   /** How a spine title is fitted round what the Branded dress draws on the spine. */
   spineFit?: {
     /** Room to leave at the start of the spine for a cap and marks, in mm. */
@@ -188,17 +188,12 @@ export interface SvgLayer extends LayerBase {
 
 export type GeneratedLayer = CodeLayer | SvgLayer;
 
-/** The Branded trade dress, drawn whole by drawOfficial until it becomes ordinary layers. Shown when Branded is on. */
-export interface OfficialLayer extends LayerBase {
-  type: 'official';
-}
-
 /** A folder: draws nothing itself; its layers (the ones whose `parent` is its id) are shown or hidden with it. */
 export interface GroupLayer extends LayerBase {
   type: 'group';
 }
 
-export type Layer = ShapeLayer | ImageLayer | TextLayer | GeneratedLayer | OfficialLayer | GroupLayer;
+export type Layer = ShapeLayer | ImageLayer | TextLayer | GeneratedLayer | GroupLayer;
 
 /** A change to a layer lower down. Fields are merged one by one; `undefined` leaves a field alone, `null` sets it. */
 export type LayerPatch = Record<string, unknown>;

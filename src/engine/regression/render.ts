@@ -1,11 +1,20 @@
 import { createCanvas, loadImage, Path2D, type Image } from '@napi-rs/canvas';
 import { renderCover, type ImageLookup } from '../CanvasRenderer';
 import { layerImageUrls } from '../layers/images';
+import { setTextMeasurer } from '../layers/branded';
 import { resolveLayers } from '../layers/resolve';
 import { IMAGES, type Fixture } from './fixtures';
 
 // Brand logos use Path2D, which Node doesn't have.
 (globalThis as { Path2D?: unknown }).Path2D = Path2D;
+
+// The Branded dress is laid out by measuring its text; Node measures on a Skia canvas.
+const measuring = createCanvas(10, 10).getContext('2d');
+setTextMeasurer((text, font, spacing) => {
+  measuring.font = font;
+  if ('letterSpacing' in measuring) (measuring as unknown as { letterSpacing: string }).letterSpacing = spacing;
+  return measuring.measureText(text).width;
+});
 
 /** A plain gradient with a frame and a diagonal, so any shift, crop, rotation or distortion of it shows up. */
 function synthetic(width: number, height: number, hue: number): Promise<Image> {
@@ -37,8 +46,8 @@ export async function renderFixture(f: Fixture): Promise<{ width: number; height
   const base = await loadImages();
   const lookup = new Map(base);
   // Pictures a scene makes for itself (a custom graphic's SVG) are loaded here, as the app does before it draws.
-  const { template: tpl, item, shared, designs, assets } = f.scene;
-  for (const url of layerImageUrls(resolveLayers({ template: tpl, item, shared, designs }), item, assets)) {
+  const { template: tpl, item, shared, designs, assets, banner } = f.scene;
+  for (const url of layerImageUrls(resolveLayers({ template: tpl, item, shared, designs, banner }), item, assets)) {
     if (!lookup.has(url) && url.startsWith('data:image/svg+xml')) lookup.set(url, await loadImage(Buffer.from(decodeURIComponent(url.slice(url.indexOf(',') + 1)))));
   }
   const getImage: ImageLookup = (url) => (url ? ((lookup.get(url) as unknown as HTMLImageElement | undefined) ?? null) : null);

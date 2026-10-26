@@ -47,8 +47,8 @@ export function renderCover(
   ctx.fillStyle = BASE_BACKGROUND;
   ctx.fillRect(0, 0, t.totalWidthMm * px, t.totalHeightMm * px);
 
-  const layers = resolveLayers({ template: t, item, shared: scene.shared, designs: scene.designs });
-  drawLayers({ ctx, template: t, item, px, getImage, banner: scene.banner, assets: scene.assets }, layers);
+  const layers = resolveLayers({ template: t, item, shared: scene.shared, designs: scene.designs, banner: scene.banner });
+  drawLayers({ ctx, template: t, item, px, getImage, assets: scene.assets }, layers);
 
   if (scene.markAssembly) drawAssemblyHatch(ctx, t, px);
   if (scene.hideOutsideCut) {
@@ -68,9 +68,9 @@ export function renderCover(
 }
 
 /** Preloads every image the item uses so a subsequent synchronous render is complete. */
-export function preloadItem({ template, item, shared, designs, assets }: Pick<Scene, 'template' | 'item' | 'shared' | 'designs' | 'assets'>): Promise<unknown> {
+export function preloadItem({ template, item, shared, designs, assets, banner }: Pick<Scene, 'template' | 'item' | 'shared' | 'designs' | 'assets' | 'banner'>): Promise<unknown> {
   if (!item) return Promise.resolve();
-  const layers = resolveLayers({ template, item, shared, designs });
+  const layers = resolveLayers({ template, item, shared, designs, banner });
   return Promise.all([loadImages(layerImageUrls(layers, item, assets)), ...layerFonts(layers, item).map(ensureFont)]);
 }
 

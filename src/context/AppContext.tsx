@@ -103,6 +103,8 @@ export type Action =
   | { type: 'removeLayer'; id: string | null; design?: string; layerId: string }
   /** Drops every change at this level to a layer, slot settings included, so it looks as it does below. */
   | { type: 'resetLayer'; id: string | null; design?: string; layerId: string }
+  /** resetLayer for several layers, as one undo step (put back everything edited in the Branded dress). */
+  | { type: 'resetLayers'; id: string | null; design?: string; layerIds: string[] }
   | { type: 'setLayerOrder'; id: string | null; design?: string; order: string[] }
   /** Adds an image to the asset library (or replaces the one with that id). */
   | { type: 'setAsset'; asset: Asset }
@@ -348,6 +350,8 @@ function apply(state: AppState, action: Action): AppState {
           });
       return editDiff(cleared, action.id, action.design, (d) => diffReset(d, action.layerId));
     }
+    case 'resetLayers':
+      return action.layerIds.reduce((st, layerId) => apply(st, { type: 'resetLayer', id: action.id, design: action.design, layerId }), state);
     case 'setAsset':
       return { ...state, assets: { ...state.assets, [action.asset.id]: action.asset } };
     case 'removeAsset': {

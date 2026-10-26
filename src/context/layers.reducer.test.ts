@@ -9,7 +9,7 @@ import { itemHasOverrides } from '../engine/resolve';
 const item = (id: string): MediaItem => ({ id, type: 'game', title: id, assets: { cover: 'c', hero: 'h', logo: null, screenshots: [] } });
 const run = (s: AppState, ...actions: Action[]) => actions.reduce(reducer, s);
 const start = () => run(initialState, { type: 'addItem', item: item('a') });
-const layersOf = (s: AppState, i = s.items[0]) => resolveLayers({ template: s.template, item: i, shared: s.shared, designs: s.designs, });
+const layersOf = (s: AppState, i = s.items[0]) => resolveLayers({ template: s.template, item: i, shared: s.shared, designs: s.designs, banner: s.banner });
 const find = (s: AppState, id: string) => layersOf(s).find((l) => l.id === id);
 
 describe('layer actions', () => {

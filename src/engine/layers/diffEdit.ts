@@ -1,9 +1,10 @@
 import type { PanelId } from '../../types/template';
 import type { Layer, LayerDiff, LayerPatch } from '../../types/layers';
 import { applyPatch } from './diff';
+import { BRANDED_FOLDER } from './branded';
 
 /** Fields that merge field by field when a patch changes them (see applyPatch). */
-const NESTED = ['stroke', 'params', 'textStroke', 'shadow'] as const;
+const NESTED = ['stroke', 'params', 'textStroke', 'shadow', 'spineFit'] as const;
 
 /** A stored patch with `change` on top. A field set to `undefined` is dropped, so the layer inherits it again. */
 export function mergePatch(stored: LayerPatch | undefined, change: LayerPatch): LayerPatch {
@@ -64,7 +65,7 @@ export const diffOrder = (d: LayerDiff, order: string[]): LayerDiff => tidy({ ..
 /** True when the diff changes anything about layers on `panel`. Default layers are named `<panel>.<slot>`. */
 export function diffTouchesPanel(d: LayerDiff | undefined, panel: PanelId | 'canvas'): boolean {
   if (!d) return false;
-  const own = (id: string) => id.startsWith(`${panel}.`);
+  const own = (id: string) => id.startsWith(`${panel}.`) || id.startsWith(`${BRANDED_FOLDER}.${panel}.`);
   return !!d.added?.some((a) => a.layer.target === panel) || Object.keys(d.patch ?? {}).some(own) || !!d.hidden?.some(own);
 }
 
@@ -72,7 +73,7 @@ export function diffTouchesPanel(d: LayerDiff | undefined, panel: PanelId | 'can
 export function diffWithoutPanel(d: LayerDiff | undefined, panel: PanelId | 'canvas'): LayerDiff {
   if (!d) return {};
   const gone = new Set((d.added ?? []).filter((a) => a.layer.target === panel).map((a) => a.layer.id));
-  const own = (id: string) => id.startsWith(`${panel}.`) || gone.has(id);
+  const own = (id: string) => id.startsWith(`${panel}.`) || id.startsWith(`${BRANDED_FOLDER}.${panel}.`) || gone.has(id);
   return tidy({
     ...d,
     patch: Object.fromEntries(Object.entries(d.patch ?? {}).filter(([id]) => !own(id))),

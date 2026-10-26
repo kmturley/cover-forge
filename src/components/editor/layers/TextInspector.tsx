@@ -5,6 +5,7 @@ import type { TextLayer } from '../../../types/layers';
 import { NumberSlider } from '../NumberSlider';
 import { RotationOpacity } from './CommonFields';
 import { FontPicker } from './FontPicker';
+import { NumberField } from './NumberField';
 import { PlacementControls } from './PlacementControls';
 import type { LayerEditor } from './useLayerEditor';
 
@@ -79,6 +80,17 @@ export function TextInspector({ layer, ed }: { layer: TextLayer; ed: LayerEditor
         <input type="color" value={layer.color} onChange={(e) => set({ color: e.target.value }, 'color')} />
       </label>
 
+      {layer.spineFit && (
+        <>
+          <h3>Fitted round the Branded dress</h3>
+          <NumberField label="Keep clear at the start" unit="mm" step={0.5} decimals={1} min={0} value={layer.spineFit.startMm} onChange={(startMm) => set({ spineFit: { startMm } })} />
+          <NumberSlider label="Size" unit="×" min={0.5} max={2} step={0.05} decimals={2} value={layer.spineFit.scale} onChange={(scale) => set({ spineFit: { scale } }, 'fit-scale')} />
+          <label className="check small">
+            <input type="checkbox" checked={layer.textCase === 'upper'} onChange={(e) => set({ textCase: e.target.checked ? 'upper' : 'none' })} />
+            Print in capitals
+          </label>
+        </>
+      )}
       {spineTitle ? (
         <>
           <NumberSlider label="Text rotation" unit="°" min={-180} max={180} step={1} decimals={0} value={layer.textRotationDeg ?? 0} onChange={(v) => set({ textRotationDeg: v || undefined }, 'rotation')} />

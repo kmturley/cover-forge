@@ -20,7 +20,8 @@ export const slotName = (id: string): string => SLOT_NAMES[id.slice(id.lastIndex
 /** What a layer is called in the list: its own name, else what it is. */
 export function layerName(l: Layer): string {
   if (l.name) return l.name;
-  if (isDefaultId(l.id)) return SLOT_NAMES[l.id.slice(l.id.lastIndexOf('.') + 1)] ?? l.id;
+  const slot = isDefaultId(l.id) ? SLOT_NAMES[l.id.slice(l.id.lastIndexOf('.') + 1)] : undefined;
+  if (slot) return slot;
   switch (l.type) {
     case 'shape':
       return l.shape === 'ellipse' ? 'Ellipse' : 'Rectangle';
@@ -30,8 +31,6 @@ export function layerName(l: Layer): string {
       return 'Text';
     case 'generated':
       return l.generator === 'svg' ? 'Custom graphic' : CODE_LABELS[l.params.kind === 'none' ? 'qr' : l.params.kind];
-    case 'official':
-      return 'Branded';
     case 'group':
       return 'Folder';
   }
@@ -61,7 +60,6 @@ export function layerDetail(l: Layer, item: MediaItem | null, assets: Readonly<R
     }
     case 'generated':
       return l.generator === 'svg' ? 'SVG' : l.params.kind === 'none' ? 'None' : `${CODE_LABELS[l.params.kind]}`;
-    case 'official':
     case 'group':
       return '';
   }

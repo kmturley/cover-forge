@@ -362,3 +362,7 @@ h3 { font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: v
 .gradient-editor { display: flex; flex-direction: column; gap: 6px; margin: 6px 0; }
 .gradient-bar { height: 14px; border: 1px solid var(--border); border-radius: 4px; }
 .stop-row { display: grid; grid-template-columns: auto 1fr auto; gap: 8px; align-items: end; }
+
+/* A folder of layers (the Branded dress), and the layers inside it. */
+.layer-row.folder { background: var(--panel); border-style: dashed; }
+.layer-row.indented { margin-left: 18px; }

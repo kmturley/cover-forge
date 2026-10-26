@@ -578,6 +578,10 @@ Left for phase 3 and later: dragging on the canvas, the Google Fonts picker (the
 - Remove `drawOfficial` when every variant passes.
 - This is the largest single conversion: every platform's trade dress is re-expressed, one at a time.
 
+**Phase 5 as built.** The Branded dress is ordinary layers. Rather than re-express every platform by hand, the dress's drawing code (headers, bands, tabs, strips, caps, marks, the Xbox orb and the 360 swoosh) was refactored to describe what it draws to a `Sink`; one sink paints a canvas (so the old rendering is unchanged, checked by all the existing goldens), and `LayerSink` turns the same description into layers: rectangles, outlines with gradient fills, marks (a logo's layers, crop or one colour), one-line text, ridges and orb as shapes with radial gradients. `brandedLayers(template)` caches them per case, all filed in a `branded` folder with ids named by panel and piece (`branded.front.band`, `branded.spine.cap`, `branded.front.mark-1`). While Branded is on, the dress also tells the spine title how to fit round it (room at the top, capitals, a colour when the chosen one wouldn't show), as patches on `spine.text`. Every case's layers are checked against the old canvas drawing (`layers/branded.test.ts`): at most 0.42% of pixels differ by more than 24 levels (edge anti-aliasing), and the two images look the same side by side. The folder's eye is the Branded switch; the 30-odd goldens that include the dress were re-captured once, deliberately. `drawOfficial` stays as the reference the layers are tested against.
+
+Known limits: a layer is clipped to its panel (the old drawing wasn't), a lockup's parts are separate layers (moving a mark and its wordmark together means selecting both), and the Xbox 360's swoosh glow is 64 layers' worth of strips in a six-row approximation.
+
 **Phase 6: Presets and designs.** Built-in presets, fork and save-as, design JSON export and import, preset picker.
 
 **Phase 7 (parallel, independent): Slipcover (#13).**

@@ -63,13 +63,17 @@ const focus = (v: unknown) => {
   return x !== undefined && y !== undefined ? { x: Math.min(100, Math.max(0, x)), y: Math.min(100, Math.max(0, y)) } : undefined;
 };
 
-const fillOf = (v: unknown): string | { axis: 'x' | 'y'; stops: [number, string][] } | null | undefined => {
+type SafeFill = { axis: 'x' | 'y'; stops: [number, string][] } | { axis: 'radial'; cx: number; cy: number; r: number; stops: [number, string][] };
+const fillOf = (v: unknown): string | SafeFill | null | undefined => {
   if (v === null) return null;
   if (typeof v === 'string') return str(v, 40);
   if (!isObj(v) || !Array.isArray(v.stops)) return undefined;
-  const axis = oneOf(v.axis, ['x', 'y'] as const);
+  const axis = oneOf(v.axis, ['x', 'y', 'radial'] as const);
   const stops = v.stops.slice(0, 16).flatMap((st) => (Array.isArray(st) && num(st[0]) !== undefined && str(st[1], 40) !== undefined ? [[Math.min(1, Math.max(0, st[0] as number)), st[1] as string] as [number, string]] : []));
-  return axis && stops.length >= 2 ? { axis, stops } : undefined;
+  if (!axis || stops.length < 2) return undefined;
+  if (axis !== 'radial') return { axis, stops };
+  const [cx, cy, r] = [num(v.cx), num(v.cy), num(v.r)];
+  return cx !== undefined && cy !== undefined && r !== undefined && r >= 0 ? { axis, cx, cy, r, stops } : undefined;
 };
 
 /** SVG path data: only path commands and numbers, so what is stored is geometry and nothing else. */
@@ -120,7 +124,7 @@ export function sanitizePatch(raw: unknown): LayerPatch {
     path: pathData(raw.path),
     fill: fillOf(raw.fill),
     singleLine: bool(raw.singleLine),
-    textCase: raw.textCase === 'upper' ? 'upper' : undefined,
+    textCase: oneOf(raw.textCase, ['upper', 'none'] as const),
     spineFit: spineFit(raw.spineFit),
     stroke: stroke(raw.stroke),
     source: source(raw.source),

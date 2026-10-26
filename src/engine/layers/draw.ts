@@ -14,8 +14,7 @@ import { drawLogo, markAspect, type MarkOptions } from '../logo';
 import { codeAspect, drawCode } from '../code';
 import { drawSpineText, spineText } from '../SpineTypography';
 import type { PanelBox } from '../../types/editor';
-import { contrast, spineTitleCase, spineTitleColor, spineTitleScale, spineTitleStartMm } from '../official';
-import { drawOfficial } from '../branding';
+import { contrast } from '../official';
 import { placementToBox } from './placement';
 
 export type ImageLookup = (url: string | null | undefined) => HTMLImageElement | null;
@@ -30,8 +29,6 @@ export interface DrawEnv {
   getImage: ImageLookup;
   /** The session's asset library, for image layers that use one. */
   assets?: Assets;
-  /** The Branded toggle: the `official` layer is drawn only while it is on. */
-  banner: boolean;
 }
 
 const isLegacy = (p: LayerPlacement): p is LegacyMm => !!p && 'kind' in p;
@@ -145,7 +142,8 @@ function drawImage(env: DrawEnv, l: ImageLayer, panel: PanelRect) {
   const { ctx, template: t, px, item } = env;
   if (l.source?.kind === 'vector') {
     const mark = getMark(l.source.id);
-    if (!mark || !item) return;
+    // A logo needs an item to be on; the Branded dress (a folder's layers) is drawn with or without one.
+    if (!mark || (!item && !l.parent)) return;
     drawLogo(ctx, t, panel, mark, logoSettingsOf(l, panel, mark), px, markOptions(l));
     return;
   }
@@ -256,8 +254,8 @@ function drawSingleLine(env: DrawEnv, l: TextLayer, text: string, box: RectMm, p
 /** Text in a box: wrapped to its width, as large as fits it unless a height is set, aligned, rotated about the box's centre. */
 function drawTextBox(env: DrawEnv, l: TextLayer, panel: PanelRect) {
   const { ctx, item, px } = env;
-  if (!item) return;
-  const words = spineText(item, { text: l.text, textTemplate: l.textTemplate });
+  if (!item && !l.parent) return;
+  const words = item ? spineText(item, { text: l.text, textTemplate: l.textTemplate }) : (l.text ?? '');
   const text = l.textCase === 'upper' ? words.toUpperCase() : words;
   if (!text) return;
   const box = boxRect(panel, isAnchored(l.placement) ? placementToBox(panel, l.placement) : DEFAULT_TEXT_BOX);
@@ -323,18 +321,15 @@ function drawTextBox(env: DrawEnv, l: TextLayer, panel: PanelRect) {
 
 /** A spine's own text, as the text helpers take it, with the Branded dress's say over colour, case and clearance. */
 function drawSpineLayer(env: DrawEnv, l: TextLayer, panel: PanelRect) {
-  const { item, template: t, banner } = env;
+  const { item } = env;
   if (!item || !panel.text) return;
   const chosen = { fontFamily: l.fontFamily, color: l.color, textHeightMm: l.textHeightMm, rotationDeg: l.textRotationDeg, text: l.text, textTemplate: l.textTemplate };
   const words = spineText(item, chosen);
-  const length = panel.text === 'vertical' ? panel.heightMm : panel.widthMm;
+  // While Branded is on, the dress says how the title is fitted round what it prints on the spine (see layers/branded.ts).
   const fit = l.spineFit;
-  // A layer that says how the Branded dress changes the title uses that; otherwise the dress is looked up by case.
-  const color = fit ? (fit.contrast && contrast(l.color, fit.contrast.on) < 2 ? fit.contrast.color : l.color) : spineTitleColor(t.kind, t.variantId, banner, chosen.color);
-  const shown = fit ? (l.textCase === 'upper' ? words.toUpperCase() : words) : spineTitleCase(t.kind, t.variantId, banner, words);
-  const start = fit ? fit.startMm : spineTitleStartMm(t.kind, t.variantId, banner, length);
-  const scale = fit ? fit.scale : spineTitleScale(t.kind, t.variantId, banner);
-  drawSpineText(env.ctx, panel, shown, { ...chosen, color }, env.px, panel.text, { start, end: 0 }, scale);
+  const color = fit?.contrast && contrast(l.color, fit.contrast.on) < 2 ? fit.contrast.color : l.color;
+  const shown = l.textCase === 'upper' ? words.toUpperCase() : words;
+  drawSpineText(env.ctx, panel, shown, { ...chosen, color }, env.px, panel.text, { start: fit?.startMm ?? 0, end: 0 }, fit?.scale ?? 1);
 }
 
 /** Text on a spine with no placement of its own is the spine title; any other text is set in its box. */
@@ -378,10 +373,6 @@ export function drawLayers(env: DrawEnv, layers: readonly Layer[]): void {
   };
   for (const l of layers) {
     if (l.type === 'group' || hidden(l)) continue;
-    if (l.type === 'official') {
-      if (env.banner) drawOfficial(env.ctx, env.template, env.px);
-      continue;
-    }
     const onCanvas = l.target === 'canvas';
     const panel = onCanvas ? canvas : panels.get(l.target as PanelId);
     if (!panel) continue;

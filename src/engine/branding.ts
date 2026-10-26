@@ -530,7 +530,11 @@ export class CanvasSink implements Sink {
   }
 }
 
-/** Draws the header, spine caps and back logos on a canvas. `px` is pixels per mm. */
+/**
+ * Draws the header, spine caps and back logos straight on a canvas. The app no longer draws the dress this way (it
+ * draws the layers made from it); this is the reference those layers are checked against, in layers/branded.test.ts.
+ * `px` is pixels per mm.
+ */
 export function drawOfficial(ctx: Ctx, t: TemplateConfig, px: number): void {
   drawBranding(new CanvasSink(ctx), t, px);
 }
