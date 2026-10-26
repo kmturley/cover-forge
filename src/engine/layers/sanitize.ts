@@ -141,6 +141,7 @@ export function sanitizePatch(raw: unknown): LayerPatch {
     weight: ((w) => (w === undefined ? undefined : Math.min(900, Math.max(100, Math.round(w / 100) * 100))))(num(raw.weight)),
     italic: bool(raw.italic),
     letterSpacing: num(raw.letterSpacing),
+    lineHeight: ((n) => (n === undefined ? undefined : Math.min(3, Math.max(0.5, n))))(num(raw.lineHeight)),
     textStroke: textStroke(raw.textStroke),
     shadow: shadow(raw.shadow),
     params: params(raw.params),

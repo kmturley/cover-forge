@@ -13,13 +13,6 @@ export function LayerInspector({ layer, ed }: { layer: Layer; ed: LayerEditor })
   const isDefault = isDefaultId(layer.id);
   return (
     <section className="inspector" aria-label={`${layerName(layer)} settings`}>
-      <div className="inspector-head">
-        <input type="text" aria-label="Layer name" placeholder={layerName({ ...layer, name: undefined })} value={layer.name ?? ''} onChange={(e) => ed.update(layer.id, { name: e.target.value }, 'name')} />
-        <label className="check small" title="Show or hide this layer">
-          <input type="checkbox" checked={layer.visible} onChange={(e) => ed.update(layer.id, { visible: e.target.checked })} />
-          Shown
-        </label>
-      </div>
       {layer.type === 'shape' && <ShapeInspector key={layer.id} layer={layer} ed={ed} />}
       {layer.type === 'image' && <ImageInspector key={layer.id} layer={layer} ed={ed} />}
       {layer.type === 'text' && <TextInspector key={layer.id} layer={layer} ed={ed} />}

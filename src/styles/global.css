@@ -290,7 +290,6 @@ h3 { font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: v
 .removed ul { list-style: none; margin: 4px 0 0; padding: 0; }
 .removed li { display: flex; justify-content: space-between; padding: 2px 4px; }
 .inspector { border-top: 1px solid var(--border); margin-top: 10px; padding-top: 8px; }
-.inspector-head { display: grid; grid-template-columns: 1fr auto; gap: 8px; align-items: center; margin-bottom: 8px; }
 .inspector-foot { display: flex; gap: 6px; flex-wrap: wrap; border-top: 1px solid var(--border); margin-top: 14px; padding-top: 10px; }
 .inspector .seg { margin: 6px 0; }
 

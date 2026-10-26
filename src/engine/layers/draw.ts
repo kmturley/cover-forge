@@ -263,12 +263,13 @@ function drawTextBox(env: DrawEnv, l: TextLayer, panel: PanelRect) {
   if (l.singleLine) return drawSingleLine(env, l, text, box, panel);
   const font = (mm: number) => `${l.italic ? 'italic ' : ''}${l.weight} ${mm * px}px ${l.fontFamily}`;
   const spacing = `${l.letterSpacing / 1000}em`;
+  const leading = l.lineHeight ?? LINE_HEIGHT;
   const layout = (mm: number) => {
     ctx.font = font(mm);
     setSpacing(ctx, spacing);
     const lines = wrap(ctx, text, box.widthMm * px);
     const widest = Math.max(...lines.map((s) => ctx.measureText(s).width));
-    return { lines, fits: widest <= box.widthMm * px + 0.5 && lines.length * mm * LINE_HEIGHT <= box.heightMm };
+    return { lines, fits: widest <= box.widthMm * px + 0.5 && lines.length * mm * leading <= box.heightMm };
   };
   let mm = l.textHeightMm !== undefined ? l.textHeightMm / CAP_EM : box.heightMm;
   if (l.textHeightMm === undefined) {
@@ -296,7 +297,7 @@ function drawTextBox(env: DrawEnv, l: TextLayer, panel: PanelRect) {
   ctx.textBaseline = 'middle';
   ctx.textAlign = l.align;
   const x = l.align === 'left' ? (-box.widthMm / 2) * px : l.align === 'right' ? (box.widthMm / 2) * px : 0;
-  const lineMm = mm * LINE_HEIGHT;
+  const lineMm = mm * leading;
   const hasStroke = l.textStroke.widthMm > 0;
   const { blurMm, xMm, yMm } = l.shadow;
   if (blurMm > 0 || xMm !== 0 || yMm !== 0) {

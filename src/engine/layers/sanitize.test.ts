@@ -59,7 +59,7 @@ describe('sanitizeDiff', () => {
 
 describe('a text layer survives a save', () => {
   it('keeps the height, rotation and words it was given', () => {
-    const l = sanitizeLayer({ id: 't', type: 'text', target: 'front', text: 'Hi {title}', textTemplate: '{title}', textHeightMm: 6, textRotationDeg: 180, align: 'right', weight: 400, italic: true, letterSpacing: 40 }) as TextLayer;
-    expect(l).toMatchObject({ text: 'Hi {title}', textTemplate: '{title}', textHeightMm: 6, textRotationDeg: 180, align: 'right', weight: 400, italic: true, letterSpacing: 40 });
+    const l = sanitizeLayer({ id: 't', type: 'text', target: 'front', text: 'Hi {title}', textTemplate: '{title}', textHeightMm: 6, textRotationDeg: 180, align: 'right', weight: 400, italic: true, letterSpacing: 40, lineHeight: 0.9 }) as TextLayer;
+    expect(l).toMatchObject({ text: 'Hi {title}', textTemplate: '{title}', textHeightMm: 6, textRotationDeg: 180, align: 'right', weight: 400, italic: true, letterSpacing: 40, lineHeight: 0.9 });
   });
 });

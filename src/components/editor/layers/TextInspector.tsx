@@ -111,6 +111,7 @@ export function TextInspector({ layer, ed }: { layer: TextLayer; ed: LayerEditor
             <button className={layer.italic ? 'active' : ''} aria-pressed={layer.italic} onClick={() => set({ italic: !layer.italic })}><i>Italic</i></button>
           </div>
           <NumberSlider label="Letter spacing" unit="‰" min={-100} max={500} step={5} decimals={0} value={layer.letterSpacing} onChange={(letterSpacing) => set({ letterSpacing }, 'spacing')} />
+          <NumberSlider label="Line height" unit="×" min={0.6} max={2} step={0.05} decimals={2} value={layer.lineHeight ?? 1.2} onChange={(lineHeight) => set({ lineHeight }, 'line-height')} />
           <h3>Outline and shadow</h3>
           <div className="field row">
             <input type="color" aria-label="Outline colour" value={layer.textStroke.color} onChange={(e) => set({ textStroke: { color: e.target.value } }, 'stroke-color')} />

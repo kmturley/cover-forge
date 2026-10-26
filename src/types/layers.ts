@@ -160,6 +160,8 @@ export interface TextLayer extends LayerBase {
   italic: boolean;
   /** Extra space between letters, in thousandths of an em; 0 is none. */
   letterSpacing: number;
+  /** The distance between lines of wrapped text, as a multiple of the text size; unset is 1.2. */
+  lineHeight?: number;
   /** An outline round the letters; none while its width is 0. */
   textStroke: { color: string; widthMm: number };
   /** A drop shadow behind the letters; none while its blur and both offsets are 0. */
