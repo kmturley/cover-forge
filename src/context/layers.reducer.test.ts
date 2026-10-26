@@ -13,6 +13,17 @@ const layersOf = (s: AppState, i = s.items[0]) => resolveLayers({ template: s.te
 const find = (s: AppState, id: string) => layersOf(s).find((l) => l.id === id);
 
 describe('layer actions', () => {
+  it('leaves no change behind when a layer is put back as it was', () => {
+    for (const id of [null, 'a']) {
+      let s = run(start(), { type: 'updateLayer', id, layerId: 'front.image', patch: { visible: false } });
+      expect(find(s, 'front.image')?.visible).toBe(false);
+      s = run(s, { type: 'updateLayer', id, layerId: 'front.image', patch: { visible: true } });
+      expect(find(s, 'front.image')?.visible).toBe(true);
+      expect(s.shared.diff?.patch?.['front.image']).toBeUndefined();
+      expect(s.items[0].diff).toBeUndefined();
+    }
+  });
+
   it('adds a layer to the design (the Default one) and every item using it draws it', () => {
     const s = run(start(), { type: 'addLayer', id: null, layer: newShape('shape-1', 'front', { fill: '#123456' }) });
     expect(s.shared.diff?.added).toHaveLength(1);

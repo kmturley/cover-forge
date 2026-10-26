@@ -44,6 +44,29 @@ export function diffUpdate(d: LayerDiff, id: string, change: LayerPatch): LayerD
   return tidy({ ...d, patch: { ...d.patch, [id]: mergePatch(d.patch?.[id], change) } });
 }
 
+/** True when every field `a` sets already has that value in `b` (nested objects compared field by field). */
+function sameValue(a: unknown, b: unknown): boolean {
+  if (a && b && typeof a === 'object' && typeof b === 'object' && !Array.isArray(a)) return Object.entries(a).every(([k, v]) => sameValue(v, (b as Record<string, unknown>)[k]));
+  return JSON.stringify(a) === JSON.stringify(b);
+}
+
+/**
+ * Drops the fields of the patches on `ids` that say what the layer below already has, so putting a layer back as it was
+ * (hide, then show) leaves no change behind. `below` is the layers as they look without this diff.
+ */
+export function diffPrune(d: LayerDiff, ids: readonly string[], below: readonly Layer[]): LayerDiff {
+  const patch = { ...d.patch };
+  for (const id of ids) {
+    const mine = patch[id];
+    const base = below.find((l) => l.id === id) as unknown as Record<string, unknown> | undefined;
+    if (!mine || !base || isAdded(d, id)) continue;
+    const kept = Object.fromEntries(Object.entries(mine).filter(([k, v]) => !sameValue(v, base[k])));
+    if (Object.keys(kept).length > 0) patch[id] = kept as LayerPatch;
+    else delete patch[id];
+  }
+  return tidy({ ...d, patch });
+}
+
 /** Takes a layer away: a layer the diff added is dropped, a layer from below is hidden (so it can come back). */
 export function diffRemove(d: LayerDiff, id: string): LayerDiff {
   const patch = { ...d.patch };

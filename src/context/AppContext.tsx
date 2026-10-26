@@ -3,7 +3,8 @@ import type { MediaItem } from '../types/media';
 import type { PanelId, TemplateConfig } from '../types/template';
 import type { Design, PanelSettings, SharedSettings, SpineSettings } from '../types/editor';
 import type { Asset, Layer, LayerDiff, LayerPatch } from '../types/layers';
-import { diffAdd, diffOrder, diffRemove, diffReset, diffUpdate, diffWithoutPanel, mergeDiffs } from '../engine/layers/diffEdit';
+import { resolveLayers } from '../engine/layers/resolve';
+import { diffAdd, diffPrune, diffOrder, diffRemove, diffReset, diffUpdate, diffWithoutPanel, mergeDiffs } from '../engine/layers/diffEdit';
 import { DEFAULTS_VERSION } from '../engine/layers/presets';
 import { PANEL_IDS } from '../engine/resolve';
 import { DEFAULT_DESIGN_ID, designOf, mergePanelSettings } from '../engine/designs';
@@ -183,6 +184,16 @@ function editDiff(state: AppState, id: string | null, design: string | undefined
   });
 }
 
+/** After an edit, forgets what it set back to what the level below has (hiding then showing a layer is no change). */
+function pruned(before: AppState, id: string | null, design: string | undefined, layerIds: string[], after: AppState): AppState {
+  const without = editDiff(before, id, design, () => ({}));
+  const item = without.items.find((i) => i.id === (id ?? before.selectedItemId)) ?? null;
+  // A design's own view leaves the item's changes out, as the layer panel does.
+  const viewItem = item && id === null ? { ...item, panels: undefined, spineOverride: undefined, diff: undefined } : item;
+  const below = resolveLayers({ template: before.template, item: viewItem, shared: without.shared, designs: without.designs });
+  return editDiff(after, id, design, (d) => diffPrune(d, layerIds, below));
+}
+
 const nonEmpty = (d: LayerDiff): LayerDiff | undefined => (Object.keys(d).length > 0 ? d : undefined);
 
 /** The slot settings behind a default layer (`front.image`, `spine.text`…), cleared so only a reset layer's own diff is left to remove. */
@@ -325,9 +336,9 @@ function apply(state: AppState, action: Action): AppState {
       return action.asset ? { ...next, assets: { ...next.assets, [action.asset.id]: action.asset } } : next;
     }
     case 'updateLayer':
-      return editDiff(state, action.id, action.design, (d) => diffUpdate(d, action.layerId, action.patch));
+      return pruned(state, action.id, action.design, [action.layerId], editDiff(state, action.id, action.design, (d) => diffUpdate(d, action.layerId, action.patch)));
     case 'updateLayers':
-      return editDiff(state, action.id, action.design, (d) => action.layerIds.reduce((acc, id) => diffUpdate(acc, id, action.patch), d));
+      return pruned(state, action.id, action.design, action.layerIds, editDiff(state, action.id, action.design, (d) => action.layerIds.reduce((acc, id) => diffUpdate(acc, id, action.patch), d)));
     case 'removeLayer':
       return editDiff(state, action.id, action.design, (d) => diffRemove(d, action.layerId));
     case 'setLayerOrder':
