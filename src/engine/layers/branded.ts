@@ -8,6 +8,7 @@ import { rectToBox, type RectMm } from '../box';
 import { boundsOf, circlePoints, clipPolygon, isRect, quadPoints, remapStops, simplify, type Pt } from './geometry';
 import { placementOfBox, placementToBox } from './placement';
 import { paintRect } from '../placement';
+import type { PanelBox } from '../../types/editor';
 import { defaultImageRef } from '../imageLibrary';
 
 /**
@@ -306,6 +307,36 @@ function flatten(ops: PathOp[]): Pt[][] {
   return rings;
 }
 
+type Side = 'top' | 'bottom' | 'left' | 'right';
+
+/**
+ * Where a band's inner edge is, in percent of its side. A band whose edge isn't straight (GameCube's curve) is measured at
+ * its nearest point to the side's edge, so the picture beside it never leaves a gap; the band, drawn on top, covers the rest.
+ */
+function innerEdge(l: ShapeLayer, b: PanelBox, side: Side): number {
+  const bbox = side === 'top' ? b.yEnd : side === 'bottom' ? b.yStart : side === 'left' ? b.xEnd : b.xStart;
+  if (l.shape !== 'path' || !l.path || /[^MLZ\d\s.,-]/i.test(l.path)) return bbox;
+  const nums = [...l.path.matchAll(/-?\d*\.?\d+/g)].map((m) => Number(m[0]));
+  const pts: { x: number; y: number }[] = [];
+  for (let i = 0; i + 1 < nums.length; i += 2) pts.push({ x: b.xStart + (nums[i] / 100) * (b.xEnd - b.xStart), y: b.yStart + (nums[i + 1] / 100) * (b.yEnd - b.yStart) });
+  if (pts.length < 3) return bbox;
+  const across = side === 'top' || side === 'bottom' ? 'x' : 'y';
+  const along = across === 'x' ? 'y' : 'x';
+  const [lo, hi] = across === 'x' ? [Math.max(0, b.xStart), Math.min(100, b.xEnd)] : [Math.max(0, b.yStart), Math.min(100, b.yEnd)];
+  const reach: number[] = [];
+  for (let i = 0; i <= 80; i++) {
+    const t = lo + (hi - lo) * (0.0025 + (0.995 * i) / 80);
+    const hits: number[] = [];
+    pts.forEach((p, j) => {
+      const q = pts[(j + 1) % pts.length];
+      if (p[across] !== q[across] && (p[across] - t) * (q[across] - t) <= 0) hits.push(p[along] + ((t - p[across]) / (q[across] - p[across])) * (q[along] - p[along]));
+    });
+    if (hits.length) reach.push(side === 'top' || side === 'left' ? Math.max(...hits) : Math.min(...hits));
+  }
+  if (!reach.length) return bbox;
+  return side === 'top' || side === 'left' ? Math.min(...reach) : Math.max(...reach);
+}
+
 export interface Branded {
   /** The panels' folders, then the layers in drawing order. */
   layers: Layer[];
@@ -347,10 +378,10 @@ export function brandedLayers(t: TemplateConfig): Branded {
       const b = placementToBox(p, l.placement as never);
       const [wide, tall] = [b.xStart <= 2 && b.xEnd >= 98, b.yStart <= 2 && b.yEnd >= 98];
       // No deeper than a header or strip, so a shape that fills the side isn't taken for one.
-      if (wide && b.yStart <= 1 && b.yEnd <= 40) box.yStart = Math.max(box.yStart, b.yEnd);
-      else if (wide && b.yEnd >= 99 && b.yStart >= 60) box.yEnd = Math.min(box.yEnd, b.yStart);
-      else if (tall && b.xStart <= 1 && b.xEnd <= 40) box.xStart = Math.max(box.xStart, b.xEnd);
-      else if (tall && b.xEnd >= 99 && b.xStart >= 60) box.xEnd = Math.min(box.xEnd, b.xStart);
+      if (wide && b.yStart <= 1 && b.yEnd <= 40) box.yStart = Math.max(box.yStart, innerEdge(l, b, 'top'));
+      else if (wide && b.yEnd >= 99 && b.yStart >= 60) box.yEnd = Math.min(box.yEnd, innerEdge(l, b, 'bottom'));
+      else if (tall && b.xStart <= 1 && b.xEnd <= 40) box.xStart = Math.max(box.xStart, innerEdge(l, b, 'left'));
+      else if (tall && b.xEnd >= 99 && b.xStart >= 60) box.xEnd = Math.min(box.xEnd, innerEdge(l, b, 'right'));
     }
     if (box.xStart !== area.xStart || box.xEnd !== area.xEnd || box.yStart !== area.yStart || box.yEnd !== area.yEnd) patches[`${p.id}.image`] = { placement: placementOfBox(box) };
   }

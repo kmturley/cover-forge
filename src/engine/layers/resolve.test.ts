@@ -202,6 +202,17 @@ describe('the Branded dress', () => {
     expect(image(off('front')).placement).toBeNull();
   });
 
+  it('starts the picture at the nearest point of a curved band, so no gap shows beside it', () => {
+    const gc = buildTemplateById('game-case-gamecube');
+    const front = gc.panels.find((p) => p.id === 'front')!;
+    const band = resolveLayers({ template: gc, item, shared: shared() }).find((l) => l.id === 'branded.front.band') as ShapeLayer;
+    const image = resolveLayers({ template: gc, item, shared: shared() }).find((l) => l.id === 'front.image') as ImageLayer;
+    const [bandBox, imageBox] = [placementToBox(front, band.placement as never), placementToBox(front, image.placement as never)];
+    // The band dips to its deepest in the middle; the picture starts at its shallowest, at the sides.
+    expect(imageBox.yStart).toBeLessThan(bandBox.yEnd - 3);
+    expect(imageBox.yStart).toBeGreaterThan(bandBox.yStart);
+  });
+
   it('is the dress of the case it is on', () => {
     const wii = resolveLayers({ template: buildTemplateById('game-case-wii'), item, shared: shared() });
     expect(wii.some((l) => l.id === 'branded.front.strip')).toBe(false);
