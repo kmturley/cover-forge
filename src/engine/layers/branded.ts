@@ -6,7 +6,9 @@ import { brandingFor } from '../official';
 import { PANEL_IDS } from '../resolve';
 import { rectToBox, type RectMm } from '../box';
 import { boundsOf, circlePoints, clipPolygon, isRect, quadPoints, remapStops, simplify, type Pt } from './geometry';
-import { placementOfBox } from './placement';
+import { placementOfBox, placementToBox } from './placement';
+import { paintRect } from '../placement';
+import { defaultImageRef } from '../imageLibrary';
 
 /**
  * The Branded trade dress as ordinary layers (layer-system-plan.md §2.5). The drawing code in branding.ts describes
@@ -333,6 +335,19 @@ export function brandedLayers(t: TemplateConfig): Branded {
         ...(spine.titleCase === 'upper' && { textCase: 'upper' }),
       };
     }
+  }
+  // A band across the top of a side would hide the top of its picture, now that the dress sits above it: the picture
+  // starts where the band ends (while the dress is shown) and fills the rest of the side.
+  for (const p of t.panels) {
+    if (p.follows || !defaultImageRef(p.id)) continue;
+    const area = rectToBox(p, paintRect(t, p));
+    const bandEnd = Math.max(0, ...sink.layers.flatMap((l) => {
+      if (l.target !== p.id || l.type !== 'shape' || !l.placement || !('x' in l.placement)) return [];
+      const b = placementToBox(p, l.placement as never);
+      // Full width, touching the top, and no deeper than a header.
+      return b.xStart <= 2 && b.xEnd >= 98 && b.yStart <= 1 && b.yEnd <= 40 ? [b.yEnd] : [];
+    }));
+    if (bandEnd > 0) patches[`${p.id}.image`] = { placement: placementOfBox({ ...area, yStart: bandEnd }) };
   }
   const out: Branded = { layers: [...folders, ...sink.layers], patches };
   cache.set(t.id, out);

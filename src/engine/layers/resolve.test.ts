@@ -8,6 +8,7 @@ import { PANEL_IDS, resolvePanel } from '../resolve';
 import { defaultLayers } from './defaults';
 import { placementToBox } from './placement';
 import { resolveLayers } from './resolve';
+import { bannerOffDiff } from './branded';
 
 const item: MediaItem = { id: 'i', type: 'game', title: 'T', assets: { cover: 'c', hero: 'h', logo: null, screenshots: [] } };
 const shared = (panels: SharedSettings['panels'] = {}): SharedSettings => ({ panels, spine: { fontFamily: 'Arial', color: '#fff' } });
@@ -67,7 +68,8 @@ describe('resolveLayers matches the slot resolver', () => {
   for (const [name, sh, d, ov] of cases) {
     it(name, () => {
       const it_: MediaItem = { ...item, ...(d && { designId: d.id }), ...(ov && { panels: ov as never }) };
-      const layers = resolveLayers({ template: t, item: it_, shared: sh, designs: d ? [d] : [] });
+      // The slot resolver knows nothing of the Branded dress, so it is switched off here.
+      const layers = resolveLayers({ template: t, item: it_, shared: { ...sh, diff: bannerOffDiff() }, designs: d ? [d] : [] });
       const merged = layeredShared(sh, designOf(d ? [d] : [], it_));
       for (const id of PANEL_IDS) {
         if (!t.panels.some((p) => p.id === id)) continue;
@@ -175,6 +177,20 @@ describe('the Branded dress', () => {
       const l = resolve(edited).find((x) => x.id === 'branded.front.strip') as ShapeLayer;
       expect(l.fill).toBe('#ff0000');
     }
+  });
+
+  it('starts the picture below a band across the top, only while that side’s dress is shown', () => {
+    const ps4 = buildTemplateById('game-case-ps4');
+    const image = (sh: SharedSettings) => resolveLayers({ template: ps4, item, shared: sh }).find((l) => l.id === 'front.image') as ImageLayer;
+    const on = image(shared());
+    expect(on.placement).toMatchObject({ y: { anchor: 'stretch' } });
+    expect(placementToBox(ps4.panels.find((p) => p.id === 'front')!, on.placement as never).yStart).toBeGreaterThan(8);
+    expect(image(off('front')).placement).toBeNull();
+    // A design's own placement still wins.
+    const own = { ...shared(), diff: { patch: { 'front.image': { placement: null } } } };
+    expect(image(own).placement).toBeNull();
+    // A case with no header band keeps the whole panel.
+    expect((resolveLayers({ template: buildTemplateById('dvd-std-14'), item, shared: shared() }).find((l) => l.id === 'front.image') as ImageLayer).placement).toBeNull();
   });
 
   it('is the dress of the case it is on', () => {
