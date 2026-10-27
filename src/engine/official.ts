@@ -173,7 +173,7 @@ export const FORMAT_BRANDING: Record<TemplateKind, Branding> = {
   cd: format([{ logo: 'cd' }], W, '#141414', 0.108, undefined, { across: 0.9, rotate: 90, from: 0.022, to: 0.102 }),
   cassette: format([{ logo: 'cassette', color: W }], W, '#141414', 0.26, undefined, { across: 0.8, rotate: 90, from: 0.045, to: 0.215, titleScale: 1.3 }),
   vinyl: format([{ text: 'STEREO · 33⅓ RPM', weight: 700 }], W, '#1a1a1a', 0, undefined, { backH: 0.0175 }),
-  floppy: labelBand('FLOPPY', '#22252b', W, 0.086, 0),
+  floppy: labelBand('1.44MB HD', '#22252b', W, 0.086, 0),
   'nfc-card': labelBand('NFC', '#1a73e8', W, 0.082, 0, NFC_WAVES, 0.85),
   'nfc-sticker': labelBand('NFC', '#1a73e8', W, 0.1, 0, NFC_WAVES, 0.85, true, 'center'),
   'nfc-box': labelBand('NFC', '#1a73e8', W, 0.078, 0.13, NFC_WAVES, 0.85, false),
