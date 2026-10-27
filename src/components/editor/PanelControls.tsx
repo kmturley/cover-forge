@@ -22,7 +22,7 @@ export function PanelControls() {
     <section className="controls">
       <div className="controls-head">
         <CaseBar />
-        <DesignBar panel={tab} />
+        <DesignBar />
         <div className="seg wide" role="tablist" aria-label="Panel to edit">
           {tabs.map((t) => {
             const marked = grouped ? designHasPanel(state.shared, state.designs, targetDesignId(state), t.id) : panelHasOverride(item, t.id);
