@@ -33,7 +33,8 @@ export const tvProvider: Provider = {
     const term = query.trim();
     if (!term) return [];
     const data = await fetchJson<{ show: Show }[]>(`${TVMAZE}/search/shows?q=${encodeURIComponent(term)}`, { signal });
-    return data.slice(0, 12).map(({ show }) => ({
+    // A show with no poster can't make a cover, so it isn't offered.
+    return data.filter(({ show }) => show.image?.original || show.image?.medium).slice(0, 12).map(({ show }) => ({
       id: String(show.id),
       title: show.name,
       subtitle: [(show.network ?? show.webChannel)?.name, show.genres?.slice(0, 2).join('/')].filter(Boolean).join(' · '),

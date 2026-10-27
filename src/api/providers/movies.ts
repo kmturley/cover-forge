@@ -120,7 +120,7 @@ export function createMoviesProvider(
       if (!term) return [];
       if (viaTmdb) {
         const data = await tmdbFetch<TmdbSearch>(`/search/movie?query=${encodeURIComponent(term)}&include_adult=false`, signal);
-        return (data.results ?? []).slice(0, 12).map((m) => ({
+        return (data.results ?? []).filter((m) => m.poster_path).slice(0, 12).map((m) => ({
           id: String(m.id),
           title: m.title,
           subtitle: m.original_title && m.original_title !== m.title ? m.original_title : undefined,
@@ -135,7 +135,7 @@ export function createMoviesProvider(
           if (data.Error && !/movie not found/i.test(data.Error)) throw new Error(data.Error);
           return [];
         }
-        return (data.Search ?? []).slice(0, 12).map((m) => ({
+        return (data.Search ?? []).filter((m) => hasPoster(m.Poster)).slice(0, 12).map((m) => ({
           id: m.imdbID,
           title: m.Title,
           year: m.Year,
