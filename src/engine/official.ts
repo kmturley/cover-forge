@@ -133,11 +133,11 @@ const PS4_BLUE: Paint = { x: [[0, '#2e4a8e'], [0.5, '#2063a4'], [1, '#1381c0']] 
 const X360_WHITE = '#ffffff';
 
 /** A format's small spine cap and back logo (DVD, CD, VHS…), which have no front header. */
-function format(label: Part[], color: string, bg: string, cap: number, spineLabel: Part[] = label, opts: { across?: number; titleScale?: number; rotate?: 0 | 90 | -90; inset?: number; from?: number; to?: number } = {}): Branding {
+function format(label: Part[], color: string, bg: string, cap: number, spineLabel: Part[] = label, opts: { across?: number; titleScale?: number; rotate?: 0 | 90 | -90; inset?: number; from?: number; to?: number; backH?: number } = {}): Branding {
   return {
     front: { shape: 'none', marks: [] },
     spine: cap ? { cap: { length: cap, fill: bg }, marks: [{ parts: spineLabel, color, from: opts.from ?? opts.inset ?? 0.015, to: opts.to ?? cap - (opts.inset ?? 0.015), across: opts.across ?? 0.7, rotate: opts.rotate ?? 0 }], titleScale: opts.titleScale } : undefined,
-    back: [{ parts: label, color, h: 0.035, align: 'left', inset: 0.05, cy: 0.94, plate: bg }],
+    back: [{ parts: label, color, h: opts.backH ?? 0.035, align: 'left', inset: 0.05, cy: 0.94, plate: bg }],
   };
 }
 
@@ -172,7 +172,7 @@ export const FORMAT_BRANDING: Record<TemplateKind, Branding> = {
   vhs: format([{ logo: 'vhs' }], W, '#141414', 0.08, undefined, { across: 0.58, titleScale: 1.25 }),
   cd: format([{ logo: 'cd' }], W, '#141414', 0.108, undefined, { across: 0.9, rotate: 90, from: 0.022, to: 0.102 }),
   cassette: format([{ logo: 'cassette', color: W }], W, '#141414', 0.26, undefined, { across: 0.8, rotate: 90, from: 0.045, to: 0.215, titleScale: 1.3 }),
-  vinyl: format([{ text: 'STEREO · 33⅓ RPM', weight: 700 }], W, '#1a1a1a', 0),
+  vinyl: format([{ text: 'STEREO · 33⅓ RPM', weight: 700 }], W, '#1a1a1a', 0, undefined, { backH: 0.0175 }),
   floppy: labelBand('FLOPPY', '#22252b', W, 0.086, 0),
   'nfc-card': labelBand('NFC', '#1a73e8', W, 0.082, 0, NFC_WAVES, 0.85),
   'nfc-sticker': labelBand('NFC', '#1a73e8', W, 0.1, 0, NFC_WAVES, 0.85, true, 'center'),
