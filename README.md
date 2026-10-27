@@ -71,7 +71,7 @@ copyrighted, so test images stay local and aren't committed.
 
 ## Deploy (GitHub Pages)
 
-`.github/workflows/deploy.yml` type-checks, lints, tests and builds on every push to `main`, then publishes `dist/` to GitHub Pages. One-time setup:
+Pull requests run `.github/workflows/ci.yml` (type-check, lint, tests and a build). `.github/workflows/deploy.yml` type-checks, lints, tests and builds on every push to `main`, then publishes `dist/` to GitHub Pages. One-time setup:
 
 1. **Settings → Pages → Source: GitHub Actions.**
 2. *(Optional)* **Settings → Secrets and variables → Actions → Variables:**
@@ -96,7 +96,7 @@ The build uses relative asset paths (`base: './'`), so it works under `https://<
 - **Uploads:** custom images are stored untouched in the browser's IndexedDB (a browser can't keep a path to your file), so nothing is scaled. They live in that browser only and aren't part of a saved session's JSON.
 - **Links:** `src/context/share.ts` packs the session JSON with deflate and URL-safe base64 into `?c=…` (about 1.4 KB for one game). The address bar is cleaned after it is read, so later edits and reloads aren't overridden. Over about 6,000 characters the app suggests *Save* instead.
 - **Sources:** `src/api/providers/` gives every catalogue the same `search()` / `createItem()` shape. Searches only offer results that have cover art.
-- **Tests:** besides unit tests, `src/engine/regression/` renders 130 scenes (every case, the Branded dress and each kind of layer) and compares them with golden PNGs in `__golden__/`, so a drawing change shows up as a changed pixel. They are compared exactly on macOS, where they were captured, and loosely elsewhere. After a deliberate change, run `npm run golden:update` and review the changed images.
+- **Tests:** besides unit tests, `src/engine/regression/` renders 130 scenes (every case, the Branded dress and each kind of layer) and compares them with golden PNGs in `__golden__/`, so a drawing change shows up as a changed pixel. They are compared exactly on macOS, where they were captured, and loosely elsewhere (scenes with big text boxes more loosely, since Linux has different fonts). After a deliberate change, run `npm run golden:update` and review the changed images.
 
 ### Sheet geometry: what is verified
 
