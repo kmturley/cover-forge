@@ -106,9 +106,12 @@ describe('music provider (MusicBrainz + Cover Art Archive)', () => {
     expect((await musicProvider.createItem({ id: 'rg5', title: 'X' })).assets.hero).toBe('https://a/booklet.jpg');
   });
 
-  it('keeps an album in the results when the archive can’t be asked, but leaves out one it says has no art', async () => {
-    mockFetch([['release-group/?query', { 'release-groups': [{ id: 'busy', title: 'Busy', 'artist-credit': [] }, { id: 'bare', title: 'Bare', 'artist-credit': [] }] }], ['release-group/bare', () => new Response('nope', { status: 404 })], ['release-group/busy', () => new Response('x', { status: 500 })]]);
+  it('keeps an album in the results when the archive can’t be reached, but leaves out one it answers an error for', async () => {
+    mockFetch([['release-group/?query', { 'release-groups': [{ id: 'busy', title: 'Busy', 'artist-credit': [] }, { id: 'bare', title: 'Bare', 'artist-credit': [] }] }], ['release-group/bare', () => new Response('nope', { status: 404 })], ['release-group/busy', () => { throw new TypeError('Failed to fetch'); }]]);
     expect((await musicProvider.search('b')).map((r) => r.id)).toEqual(['busy']);
+    // A server error for an album (the file store failing, as it does for some with deleted scans) leaves it out too.
+    mockFetch([['release-group/?query', { 'release-groups': [{ id: 'broken', title: 'Broken', 'artist-credit': [] }] }], ['release-group/broken', () => new Response('x', { status: 500 })]]);
+    expect(await musicProvider.search('c')).toEqual([]);
   });
 
   it('explains when an album has no artwork', async () => {

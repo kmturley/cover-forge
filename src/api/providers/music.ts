@@ -29,13 +29,17 @@ const SEARCH_LIMIT = 24;
 
 const art = new Map<string, Promise<CaaImage[] | 'none' | null>>();
 
-/** An album's scans, `'none'` when the archive has none, or null when it couldn't be asked (offline, busy). Remembered, so adding it needn't ask again. */
+/**
+ * An album's scans, `'none'` when the archive has none, or null when it couldn't be asked at all (offline). The archive
+ * answers with an error, not a clean "none", for some albums whose scans are gone (a 404, or a 500 from the file store),
+ * so any error it sends back means there is no art to use. Remembered, so adding an album needn't ask again.
+ */
 function artOf(id: string, signal?: AbortSignal): Promise<CaaImage[] | 'none' | null> {
   let p = art.get(id);
   if (!p) {
-    p = fetchJson<{ images: CaaImage[] }>(`${CAA}/release-group/${id}`, { signal })
+    p = fetchJson<{ images: CaaImage[] }>(`${CAA}/release-group/${id}`, { signal, retries: 2 })
       .then((r) => (r.images?.length ? r.images : ('none' as const)))
-      .catch((e: unknown) => (e instanceof HttpError && e.status === 404 ? ('none' as const) : null));
+      .catch((e: unknown) => (e instanceof HttpError ? ('none' as const) : null));
     art.set(id, p);
     // Only a clear answer is kept; a failure may pass.
     void p.then((r) => r === null && art.delete(id));
@@ -58,7 +62,7 @@ export const musicProvider: Provider = {
     if (!term) return [];
     // MusicBrainz asks clients to stay under one request a second and answers 503 when busy.
     const data = await fetchJson<MbResponse>(`${MB}/release-group/?query=${encodeURIComponent(term)}&fmt=json&limit=${SEARCH_LIMIT}`, { signal, retries: 3 });
-    // Many albums have no scans, so only the ones with art are offered (an album that can't be checked stays in).
+    // Many albums have no scans, so only the ones with art are offered (when the archive can't be reached at all, they stay in).
     const checked = await Promise.all((data['release-groups'] ?? []).map(async (g) => ((await artOf(g.id, signal)) === 'none' ? null : g)));
     return checked.filter((g) => g !== null).slice(0, 12).map((g) => ({
       id: g.id,
@@ -72,7 +76,8 @@ export const musicProvider: Provider = {
 
   async createItem(result, signal): Promise<MediaItem> {
     const images = await artOf(result.id, signal);
-    if (images === 'none' || !images?.length) throw new Error('No cover art for this album on the Cover Art Archive.');
+    if (images === null) throw new Error('Couldn’t reach the Cover Art Archive. Try again in a moment.');
+    if (images === 'none') throw new Error('No cover art for this album on the Cover Art Archive.');
     const front = images.find((i) => i.front) ?? images[0];
     // The back cover, else the tray card (a jewel case's back), else any other scan but the disc itself. With only
     // the front, the Back panel reuses it (see defaultImageRef).
