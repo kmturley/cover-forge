@@ -10,6 +10,17 @@ import { useLayerEditor, type LayerEditor } from './useLayerEditor';
 const GLYPH: Record<Layer['type'], string> = { shape: '▭', image: '▨', text: 'T', generated: '▦', group: '▸' };
 const glyphOf = (l: Layer) => (l.type === 'shape' && l.shape === 'ellipse' ? '◯' : l.type === 'image' && l.source?.kind === 'vector' ? '✦' : GLYPH[l.type]);
 
+/** The show/hide icon: an open eye while shown, a crossed one while hidden. */
+function EyeIcon({ on }: { on: boolean }) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z" />
+      <circle cx="12" cy="12" r="3" />
+      {!on && <path d="M4 4l16 16" />}
+    </svg>
+  );
+}
+
 function Row({ layer, ed, index, count, indent }: { layer: Layer; ed: LayerEditor; index: number; count: number; indent?: boolean }) {
   const own = ed.touched.has(layer.id);
   const empty = isEmptyLayer(layer);
@@ -21,7 +32,7 @@ function Row({ layer, ed, index, count, indent }: { layer: Layer; ed: LayerEdito
   return (
     <li className={`layer-row ${selected ? 'selected' : ''} ${empty ? 'empty' : ''} ${layer.visible ? '' : 'off'} ${indent ? 'indented' : ''}`}>
       <button className="layer-eye" aria-label={layer.visible ? `Hide ${layerName(layer)}` : `Show ${layerName(layer)}`} aria-pressed={layer.visible} title={layer.visible ? 'Hide' : 'Show'} onClick={() => ed.update(layer.id, { visible: !layer.visible })}>
-        {layer.visible ? '●' : '○'}
+        <EyeIcon on={layer.visible} />
       </button>
       <button className="layer-main" aria-pressed={selected} onClick={() => ed.select(selected ? null : layer.id)}>
         <span className="layer-glyph" aria-hidden="true">{glyphOf(layer)}</span>
@@ -59,7 +70,7 @@ function FolderRow({ folder, inside, ed, open, onToggle }: { folder: Layer; insi
   return (
     <li className={`layer-row folder ${on ? '' : 'off'}`}>
       <button className="layer-eye" aria-label={on ? 'Hide Branded on this side' : 'Show Branded on this side'} aria-pressed={on} title="Show the platform or format's trade dress on this side" onClick={() => ed.update(folder.id, { visible: !on })}>
-        {on ? '●' : '○'}
+        <EyeIcon on={on} />
       </button>
       <button className="layer-main" aria-expanded={open} onClick={onToggle}>
         <span className="layer-glyph" aria-hidden="true">{open ? '▾' : '▸'}</span>
