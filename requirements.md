@@ -102,15 +102,13 @@ CoverForge supports standardized physical media dimensions and commercial office
 * **Cross-Media Formatting:** Normalized asset slots (Front Cover, Spine, Rear Metadata/Screenshots) map to the selected dieline regardless of the source media type (e.g., a queue containing a Movie, a Video Game, and a Music Album assigned to a DVD Keepcase Template will render three uniform DVD keepcase wraps using each item's respective assets).
 
 
-* **Global Style Overlays:** A single style selection applies across the entire queue:
-1. **Clean:** Pure artwork rendering with zero branding overlays or wear.
-2. **Digital / Official:** Injects platform or media header banners matching the selected template (e.g., PS5 top header, DVD Video header, Compact Disc logo, VHS Hi-Fi header).
-3. **Scanned / Retro Wear:** Applies procedural plastic wrap glare, spine creasing, and shelf-wear textures across all covers in the batch.
+* **Branded dress (replaces the original global style overlays):** each side of a template can carry its platform or media branding (e.g., PS5 top header, DVD Video header, Compact Disc logo, VHS Hi-Fi header) as ordinary, editable layers in a "Branded" folder. Each side's folder shows or hides on its own, and the layers inside can be recoloured, moved, resized, edited or deleted like any other. The scanned / retro wear overlay was dropped.
 
 
 
 ### B. Global vs. Individual Customization Matrix
 
+* **Designs and layers:** every side is an ordered list of layers (text, images, shapes, codes, custom graphics). A design stores only what it changes from the template's default layers, and *Applies to* chooses whether an edit goes to the design (all media using it) or to one item. See `layer-system-plan.md`.
 * **Global Controls:** Adjust background fill colors, default spine fonts, border accents, or scannable codes across **all** queued items simultaneously.
 * **Item-Level Overrides:** Clicking into an individual queue item allows fine-grained adjustments without breaking the rest of the queue:
 * Pan, zoom, rotate, and scale image framing within panel bounding boxes.
