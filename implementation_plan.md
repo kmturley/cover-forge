@@ -1,5 +1,7 @@
 # CoverForge — Implementation Plan
 
+> This is the original v1 plan and is kept for history. The editor has since been rebuilt around layers and designs; see `layer-system-plan.md` for the current design and `README.md` for what the app does today.
+
 A client-side web platform for creating physical media cover art. This plan covers the **v1 MVP**: a full end-to-end flow for one template (Blu-ray keepcase) with game search via Steam, a 2D canvas editor, 3D WebGL preview, and print-ready export.
 
 ---
