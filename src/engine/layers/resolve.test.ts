@@ -193,6 +193,15 @@ describe('the Branded dress', () => {
     expect((resolveLayers({ template: buildTemplateById('dvd-std-14'), item, shared: shared() }).find((l) => l.id === 'front.image') as ImageLayer).placement).toBeNull();
   });
 
+  it('starts the picture beside a strip down a side (PS1), not under it', () => {
+    const front = ps1.panels.find((p) => p.id === 'front')!;
+    const image = (sh: SharedSettings) => resolveLayers({ template: ps1, item, shared: sh }).find((l) => l.id === 'front.image') as ImageLayer;
+    const box = placementToBox(front, image(shared()).placement as never);
+    expect(box.xStart).toBeGreaterThan(10);
+    expect(box.yStart).toBeLessThan(0);
+    expect(image(off('front')).placement).toBeNull();
+  });
+
   it('is the dress of the case it is on', () => {
     const wii = resolveLayers({ template: buildTemplateById('game-case-wii'), item, shared: shared() });
     expect(wii.some((l) => l.id === 'branded.front.strip')).toBe(false);

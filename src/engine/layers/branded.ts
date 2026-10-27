@@ -336,18 +336,23 @@ export function brandedLayers(t: TemplateConfig): Branded {
       };
     }
   }
-  // A band across the top of a side would hide the top of its picture, now that the dress sits above it: the picture
-  // starts where the band ends (while the dress is shown) and fills the rest of the side.
+  // A band along an edge of a side (a header across the top, a strip down the side) would hide that edge of its picture,
+  // now that the dress sits above it: the picture starts where the band ends (while the dress is shown).
   for (const p of t.panels) {
     if (p.follows || !defaultImageRef(p.id)) continue;
     const area = rectToBox(p, paintRect(t, p));
-    const bandEnd = Math.max(0, ...sink.layers.flatMap((l) => {
-      if (l.target !== p.id || l.type !== 'shape' || !l.placement || !('x' in l.placement)) return [];
+    const box = { ...area };
+    for (const l of sink.layers) {
+      if (l.target !== p.id || l.type !== 'shape' || !l.placement || !('x' in l.placement)) continue;
       const b = placementToBox(p, l.placement as never);
-      // Full width, touching the top, and no deeper than a header.
-      return b.xStart <= 2 && b.xEnd >= 98 && b.yStart <= 1 && b.yEnd <= 40 ? [b.yEnd] : [];
-    }));
-    if (bandEnd > 0) patches[`${p.id}.image`] = { placement: placementOfBox({ ...area, yStart: bandEnd }) };
+      const [wide, tall] = [b.xStart <= 2 && b.xEnd >= 98, b.yStart <= 2 && b.yEnd >= 98];
+      // No deeper than a header or strip, so a shape that fills the side isn't taken for one.
+      if (wide && b.yStart <= 1 && b.yEnd <= 40) box.yStart = Math.max(box.yStart, b.yEnd);
+      else if (wide && b.yEnd >= 99 && b.yStart >= 60) box.yEnd = Math.min(box.yEnd, b.yStart);
+      else if (tall && b.xStart <= 1 && b.xEnd <= 40) box.xStart = Math.max(box.xStart, b.xEnd);
+      else if (tall && b.xEnd >= 99 && b.xStart >= 60) box.xEnd = Math.min(box.xEnd, b.xStart);
+    }
+    if (box.xStart !== area.xStart || box.xEnd !== area.xEnd || box.yStart !== area.yStart || box.yEnd !== area.yEnd) patches[`${p.id}.image`] = { placement: placementOfBox(box) };
   }
   const out: Branded = { layers: [...folders, ...sink.layers], patches };
   cache.set(t.id, out);
