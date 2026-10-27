@@ -42,6 +42,11 @@ export interface CodePlacement {
 /** Below this width (quiet zones included) a code is left off rather than printed too small for a phone or scanner to read. */
 export const MIN_CODE_MM: Record<Drawable, number> = { qr: 8, ean13: 20, upca: 20, code128: 20 };
 
+/** Width / height of a kind's symbol, for sizing a placement that leaves one axis automatic. */
+export function codeAspect(kind: Drawable): number {
+  return ASPECT[kind];
+}
+
 export function defaultCodeWidth(kind: Drawable): number {
   return DEFAULT_WIDTH_MM[kind];
 }

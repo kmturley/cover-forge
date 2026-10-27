@@ -24,6 +24,29 @@ interface CaaImage {
   thumbnails: Record<string, string>;
 }
 
+/** Asking for more than are shown leaves enough once the ones without art are dropped. */
+const SEARCH_LIMIT = 24;
+
+const art = new Map<string, Promise<CaaImage[] | 'none' | null>>();
+
+/**
+ * An album's scans, `'none'` when the archive has none, or null when it couldn't be asked at all (offline). The archive
+ * answers with an error, not a clean "none", for some albums whose scans are gone (a 404, or a 500 from the file store),
+ * so any error it sends back means there is no art to use. Remembered, so adding an album needn't ask again.
+ */
+function artOf(id: string, signal?: AbortSignal): Promise<CaaImage[] | 'none' | null> {
+  let p = art.get(id);
+  if (!p) {
+    p = fetchJson<{ images: CaaImage[] }>(`${CAA}/release-group/${id}`, { signal, retries: 2 })
+      .then((r) => (r.images?.length ? r.images : ('none' as const)))
+      .catch((e: unknown) => (e instanceof HttpError ? ('none' as const) : null));
+    art.set(id, p);
+    // Only a clear answer is kept; a failure may pass.
+    void p.then((r) => r === null && art.delete(id));
+  }
+  return p;
+}
+
 /** The largest thumbnail Cover Art Archive makes (1200 px), falling back to the original scan. */
 const bestUrl = (i: CaaImage) => https(i.thumbnails['1200'] ?? i.thumbnails.large ?? i.image);
 
@@ -38,27 +61,23 @@ export const musicProvider: Provider = {
     const term = query.trim();
     if (!term) return [];
     // MusicBrainz asks clients to stay under one request a second and answers 503 when busy.
-    const data = await fetchJson<MbResponse>(`${MB}/release-group/?query=${encodeURIComponent(term)}&fmt=json&limit=12`, { signal, retries: 3 });
-    return (data['release-groups'] ?? []).map((g) => ({
+    const data = await fetchJson<MbResponse>(`${MB}/release-group/?query=${encodeURIComponent(term)}&fmt=json&limit=${SEARCH_LIMIT}`, { signal, retries: 3 });
+    // Many albums have no scans, so only the ones with art are offered (when the archive can't be reached at all, they stay in).
+    const checked = await Promise.all((data['release-groups'] ?? []).map(async (g) => ((await artOf(g.id, signal)) === 'none' ? null : g)));
+    return checked.filter((g) => g !== null).slice(0, 12).map((g) => ({
       id: g.id,
       title: g.title,
       subtitle: [g['artist-credit']?.map((a) => a.name).join(', '), g['primary-type']].filter(Boolean).join(' · '),
       year: g['first-release-date']?.slice(0, 4),
-      // Not every release has art; the thumbnail simply doesn't show when it doesn't.
       thumbnail: `${CAA}/release-group/${g.id}/front-250`,
       payload: { artist: g['artist-credit']?.[0]?.name ?? '' },
     }));
   },
 
   async createItem(result, signal): Promise<MediaItem> {
-    let images: CaaImage[];
-    try {
-      images = (await fetchJson<{ images: CaaImage[] }>(`${CAA}/release-group/${result.id}`, { signal })).images;
-    } catch (e) {
-      if (e instanceof HttpError && e.status === 404) throw new Error('No cover art for this album on the Cover Art Archive.', { cause: e });
-      throw e;
-    }
-    if (!images.length) throw new Error('No cover art for this album on the Cover Art Archive.');
+    const images = await artOf(result.id, signal);
+    if (images === null) throw new Error('Couldn’t reach the Cover Art Archive. Try again in a moment.');
+    if (images === 'none') throw new Error('No cover art for this album on the Cover Art Archive.');
     const front = images.find((i) => i.front) ?? images[0];
     // The back cover, else the tray card (a jewel case's back), else any other scan but the disc itself. With only
     // the front, the Back panel reuses it (see defaultImageRef).

@@ -176,7 +176,7 @@ button.link.selected { color: var(--accent); text-decoration: none; cursor: defa
 
 .design-row { display: grid; grid-template-columns: auto 1fr auto; gap: 8px; align-items: center; margin: 8px 0 4px; font-size: 12px; color: var(--muted); }
 .design-row select { min-width: 0; }
-.scope-tools { display: flex; gap: 6px; align-items: flex-start; margin: 4px 0 8px; }
+.scope-tools { display: flex; gap: 6px; align-items: center; margin: 12px 0 8px; }
 .scope-tools > button, .menu summary { padding: 4px 10px; font-size: 12px; background: var(--panel-2); border: 1px solid var(--border); border-radius: 6px; cursor: pointer; list-style: none; }
 .menu { position: relative; }
 .menu summary::-webkit-details-marker { display: none; }
@@ -260,3 +260,119 @@ button.link.selected { color: var(--accent); text-decoration: none; cursor: defa
 .add-own { align-self: flex-start; margin: 0 0 8px; }
 .search-dropdown .provider-tabs { flex-wrap: wrap; overflow-x: visible; position: sticky; top: -8px; z-index: 1; background: var(--panel); padding: 0 0 6px; margin-bottom: 6px; }
 .search-dropdown .provider-tabs button { flex: 0 1 auto; }
+
+/* Layers: the list, its rows and the inspector for the selected one. */
+textarea { background: var(--panel-2); border: 1px solid var(--border); border-radius: 6px; padding: 5px 8px; width: 100%; font: inherit; color: inherit; resize: vertical; }
+h3 { font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); margin: 14px 0 6px; font-weight: 600; }
+.check.small { display: inline-flex; align-items: center; gap: 4px; font-size: 12px; color: var(--muted); }
+.layer-panel { padding-top: 2px; }
+.layer-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.layer-head h2 { margin: 12px 0 8px; }
+.add-menu summary { background: var(--accent); border-color: var(--accent); color: #fff; }
+.add-menu .menu-list { left: auto; right: 0; }
+.layers { list-style: none; margin: 0 0 8px; padding: 0; display: flex; flex-direction: column; gap: 3px; }
+.layer-row { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 4px; border: 1px solid var(--border); border-radius: 8px; background: var(--panel-2); padding: 2px 4px; }
+.layer-row.selected { border-color: var(--accent); }
+.layer-row.off .layer-main { opacity: .45; }
+.layer-row.empty .layer-main { opacity: .6; }
+.layer-row button { background: none; border: none; padding: 3px 5px; }
+.layer-row:hover:not(.selected) { border-color: var(--muted); }
+.layer-row button { cursor: pointer; }
+.layer-row button:disabled { cursor: default; }
+.layer-eye { display: inline-flex; align-items: center; color: var(--text, inherit); }
+.layer-eye svg { width: 16px; height: 16px; }
+.layer-row.off .layer-eye, .layer-row .layer-eye[aria-pressed='false'] { color: var(--muted); }
+.layer-main { display: flex; align-items: center; gap: 8px; min-width: 0; text-align: left; border-radius: 6px; }
+.layer-glyph { flex: none; width: 20px; text-align: center; color: var(--muted); }
+.layer-text { display: flex; flex-direction: column; min-width: 0; }
+.layer-name { display: flex; align-items: center; gap: 6px; font-size: 13px; }
+.layer-text small { color: var(--muted); font-size: 11px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.layer-actions { display: inline-flex; align-items: center; gap: 0; }
+.layer-actions button, .layer-actions summary { font-size: 11px; color: var(--muted); padding: 3px 5px; background: none; border: none; cursor: pointer; list-style: none; }
+.layer-name .dot { display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: #f59e0b; }
+.removed { margin: 0 0 8px; font-size: 12px; color: var(--muted); }
+.removed ul { list-style: none; margin: 4px 0 0; padding: 0; }
+.removed li { display: flex; justify-content: space-between; padding: 2px 4px; }
+.inspector { border-top: 1px solid var(--border); margin-top: 10px; padding-top: 8px; }
+.inspector-foot { display: flex; gap: 6px; flex-wrap: wrap; border-top: 1px solid var(--border); margin-top: 14px; padding-top: 10px; }
+.inspector .seg { margin: 6px 0; }
+
+/* Placement: the anchor grid, align buttons and typed numbers. */
+.placement { display: flex; flex-direction: column; gap: 8px; }
+.placement-grid-row { display: flex; gap: 12px; align-items: center; }
+.anchor-grid { display: grid; grid-template-columns: repeat(3, 20px); gap: 4px; padding: 6px; border: 1px solid var(--border); border-radius: 6px; background: var(--panel); flex: none; }
+.anchor-grid button { width: 20px; height: 20px; padding: 0; border-radius: 4px; background: var(--panel-2); }
+.anchor-grid button.near { border-color: var(--muted); }
+.anchor-grid button.on { background: var(--accent); border-color: var(--accent); }
+.axis { border-top: 1px solid var(--border); padding-top: 6px; }
+.axis-head { display: flex; justify-content: space-between; align-items: center; font-size: 12px; color: var(--muted); margin-bottom: 4px; }
+.axis-fields { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.size-field { display: flex; flex-direction: column; gap: 2px; }
+.num-field { display: flex; flex-direction: column; gap: 3px; font-size: 12px; color: var(--muted); min-width: 0; }
+.num-field-box { display: flex; align-items: center; gap: 4px; }
+.num-field input[type='text'] { text-align: right; padding: 3px 6px; min-width: 0; }
+.num-field .unit { color: var(--muted); font-size: 11px; width: 18px; flex: none; }
+
+/* Your images, and the focus point. */
+.assets { display: grid; grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); gap: 8px; margin: 6px 0 8px; }
+.asset { display: flex; flex-direction: column; gap: 2px; font-size: 11px; min-width: 0; }
+.asset-thumb { padding: 0; aspect-ratio: 1; overflow: hidden; border-width: 2px; background: var(--panel-2); display: flex; align-items: center; justify-content: center; }
+.asset-thumb img { width: 100%; height: 100%; object-fit: contain; }
+.asset.selected .asset-thumb { border-color: var(--accent); }
+.asset.missing .asset-thumb { border-style: dashed; color: #f59e0b; }
+.asset-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--muted); }
+.asset-actions { display: flex; gap: 8px; }
+.asset-url { display: flex; gap: 6px; margin: 6px 0; }
+.focus-pad { display: flex; gap: 10px; align-items: flex-start; margin: 8px 0; }
+.focus-image { position: relative; flex: none; width: 110px; cursor: crosshair; touch-action: none; border: 1px solid var(--border); border-radius: 4px; overflow: hidden; line-height: 0; }
+.focus-image img { width: 100%; display: block; user-select: none; }
+.focus-dot { position: absolute; width: 14px; height: 14px; margin: -7px 0 0 -7px; border-radius: 50%; border: 2px solid #fff; background: rgba(59,130,246,.7); box-shadow: 0 0 0 1px rgba(0,0,0,.6); pointer-events: none; }
+.focus-fields { display: flex; flex-direction: column; gap: 6px; flex: 1; min-width: 0; }
+.undo-redo { display: inline-flex; gap: 4px; }
+.undo-redo button { padding: 4px 8px; font-size: 12px; }
+
+/* Direct manipulation on the 2D canvas. */
+.layer-overlay { position: absolute; inset: 0; pointer-events: none; overflow: hidden; }
+.layer-outline { position: absolute; outline: 1.5px solid #38bdf8; box-shadow: 0 0 0 1px rgba(0,0,0,.45); }
+.layer-outline.whole { outline-style: dashed; }
+.layer-outline.fixed { outline-color: #a3a3a3; }
+.layer-handle { position: absolute; width: 9px; height: 9px; margin: -4.5px 0 0 -4.5px; background: #fff; border: 1.5px solid #0284c7; border-radius: 2px; }
+.snap-guide { position: absolute; background: #f43f5e; }
+.snap-guide.vertical { width: 1px; }
+.snap-guide.horizontal { height: 1px; }
+.drag-readout { position: absolute; transform: translateX(-50%); padding: 1px 6px; font-size: 11px; background: rgba(15,23,42,.9); color: #e2e8f0; border-radius: 4px; white-space: nowrap; }
+
+/* The font picker. */
+.font-picker { display: flex; flex-direction: column; gap: 4px; }
+.font-current { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; text-align: left; padding: 6px 10px; font-size: 15px; color: var(--text); }
+.font-current small { color: var(--muted); font-size: 11px; }
+.font-panel { border: 1px solid var(--border); border-radius: 8px; background: var(--panel); padding: 6px; }
+.font-search { display: grid; grid-template-columns: 1fr auto; gap: 6px; margin-bottom: 6px; }
+.font-search select { width: auto; }
+.font-list { max-height: 320px; overflow-y: auto; }
+.font-list .group-label { position: sticky; top: 0; background: var(--panel); padding: 4px 4px 2px; margin: 0; z-index: 1; }
+.font-row { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; width: 100%; text-align: left; background: none; border: 1px solid transparent; padding: 5px 8px; color: var(--text); }
+.font-row.selected { border-color: var(--accent); }
+.font-row:hover { background: var(--panel-2); }
+.font-sample { font-size: 16px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.font-row small { color: var(--muted); font-size: 10px; flex: none; }
+.code-area { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 11px; line-height: 1.35; }
+.svg-preview { display: block; max-width: 100%; max-height: 120px; margin: 6px 0; background: repeating-conic-gradient(#2a2d34 0 25%, #20232a 0 50%) 0 0 / 14px 14px; border-radius: 4px; }
+
+/* Gradient fills. */
+.gradient-editor { display: flex; flex-direction: column; gap: 6px; margin: 6px 0; }
+.gradient-bar { height: 14px; border: 1px solid var(--border); border-radius: 4px; }
+.stop-row { display: grid; grid-template-columns: auto 1fr auto; gap: 8px; align-items: end; }
+
+/* A folder of layers (the Branded dress), and the layers inside it. */
+.layer-row.folder { background: var(--panel); border-style: dashed; }
+.layer-row.indented { margin-left: 18px; }
+
+/* Presets. */
+.preset-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 10px; max-height: min(60vh, 520px); overflow-y: auto; padding-right: 4px; }
+.preset-card { display: flex; flex-direction: column; align-items: stretch; gap: 6px; text-align: left; padding: 8px; border-width: 2px; border-radius: 8px; }
+.preset-card small { color: var(--muted); font-size: 11px; line-height: 1.35; }
+.preset-name { font-weight: 600; }
+.preset-preview { width: 100%; height: auto; background: var(--bg); border-radius: 4px; }
+.layer-actions .menu-list { left: auto; right: 0; }
+.scope-label { font-size: 12px; color: var(--muted); }

@@ -1,4 +1,5 @@
 import type { PanelId } from './template';
+import type { LayerDiff } from './layers';
 
 /** The single style setting older saves and links used; 'digital' meant the official banner. */
 export type StyleOverlay = 'clean' | 'digital' | 'retro';
@@ -35,6 +36,8 @@ export interface PanelTransform extends LegacyPlacement {
   /** `null` = the whole panel, bleed included. */
   box: PanelBox | null;
   fit: ImageFit;
+  /** Which part stays in view when a fill crops the image, in percent of the image; unset = the middle. */
+  focus?: { x: number; y: number };
   /** About the box's centre. */
   rotationDeg: number;
   /** 0 (transparent) to 1 (opaque). */
@@ -148,6 +151,8 @@ export type SharedSpine = Omit<SpineSettings, 'text'>;
 export interface SharedSettings {
   panels: Partial<Record<PanelId, PanelSettings>>;
   spine: SharedSpine;
+  /** Layer changes beyond the slot settings above: added, removed, reordered or further patched layers. Applied after them. */
+  diff?: LayerDiff;
 }
 
 /**
@@ -159,4 +164,8 @@ export interface Design {
   name: string;
   panels: Partial<Record<PanelId, PanelSettings>>;
   spine: Partial<SharedSpine>;
+  /** See SharedSettings.diff. */
+  diff?: LayerDiff;
+  /** The version of the default layers this was made against (see DEFAULTS_VERSION). Unset on designs from before it. */
+  base?: number;
 }

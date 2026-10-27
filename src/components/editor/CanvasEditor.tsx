@@ -4,6 +4,9 @@ import { useSelectionPulse } from '../../context/useSelectionPulse';
 import { CanvasRenderer } from '../../engine/CanvasRenderer';
 import { downscaleInto } from '../../engine/downscale';
 import { MEASURE_MARGIN_MM, drawMeasurements } from '../../engine/MeasurementOverlay';
+import { LayerOverlay } from './LayerOverlay';
+import { useLayerEditor } from './layers/useLayerEditor';
+import { useLayerDrag } from './useLayerDrag';
 
 const PADDING = 24;
 const MIN_ZOOM = 0.25;
@@ -39,7 +42,7 @@ function useDevicePixelRatio(): number {
  * (about the cursor); images are positioned from the sidebar. A click selects the panel under the cursor.
  */
 export function CanvasEditor() {
-  const { template, shared, designs, showGuides, showMeasurements, banner } = useAppState();
+  const { template, shared, designs, assets, showGuides, showMeasurements } = useAppState();
   const item = useSelectedItem();
   const dispatch = useAppDispatch();
   const wrapRef = useRef<HTMLDivElement>(null);
@@ -52,6 +55,8 @@ export function CanvasEditor() {
   const dpr = useDevicePixelRatio();
   const pulse = useSelectionPulse();
   const pulsed = pulse && template.panels.find((p) => p.id === pulse.panel);
+  const layerEditor = useLayerEditor();
+  const layerDrag = useLayerDrag(layerEditor, canvasRef);
 
   useEffect(() => {
     const renderer = new CanvasRenderer(canvasRef.current!);
@@ -63,8 +68,8 @@ export function CanvasEditor() {
   }, []);
 
   useEffect(() => {
-    rendererRef.current?.setScene({ template, item, shared, designs, banner, showGuides, hideOutsideCut: true });
-  }, [template, item, shared, designs, banner, showGuides]);
+    rendererRef.current?.setScene({ template, item, shared, designs, assets, showGuides, hideOutsideCut: true, markAssembly: true });
+  }, [template, item, shared, designs, assets, showGuides]);
 
   // Track the viewport size so the canvas can be fitted to it.
   useEffect(() => {
@@ -136,10 +141,13 @@ export function CanvasEditor() {
 
   function onPointerDown(e: React.PointerEvent) {
     e.currentTarget.setPointerCapture(e.pointerId);
+    // A press on a layer picks (and may drag) it; anywhere else it pans the view.
+    if (layerDrag.down(e)) return;
     drag.current = { x: e.clientX, y: e.clientY, ox: view.ox, oy: view.oy, moved: false };
   }
 
   function onPointerMove(e: React.PointerEvent) {
+    if (layerDrag.move(e)) return;
     const d = drag.current;
     if (!d) return;
     const dx = e.clientX - d.x;
@@ -150,6 +158,7 @@ export function CanvasEditor() {
   }
 
   function onPointerUp(e: React.PointerEvent) {
+    if (layerDrag.up()) return;
     const d = drag.current;
     drag.current = null;
     if (!d || d.moved) return;
@@ -165,10 +174,11 @@ export function CanvasEditor() {
     <div
       ref={wrapRef}
       className="viewport"
+      style={layerDrag.cursor ? { cursor: layerDrag.cursor } : undefined}
       onPointerDown={onPointerDown}
       onPointerMove={onPointerMove}
       onPointerUp={onPointerUp}
-      onPointerCancel={() => (drag.current = null)}
+      onPointerCancel={() => ((drag.current = null), layerDrag.up())}
       onDoubleClick={() => setView(FIT)}
     >
       <canvas
@@ -191,6 +201,20 @@ export function CanvasEditor() {
             width: w + (MEASURE_MARGIN_MM * 2 * w) / template.totalWidthMm,
             height: h + (MEASURE_MARGIN_MM * 2 * w) / template.totalWidthMm,
           }}
+        />
+      )}
+      {item && fitW > 0 && (
+        <LayerOverlay
+          selected={layerDrag.selected}
+          guides={layerDrag.guides}
+          readout={layerDrag.readout}
+          left={box.w / 2 + view.ox - w / 2}
+          top={box.h / 2 + view.oy - h / 2}
+          width={w}
+          height={h}
+          mm={w / template.totalWidthMm}
+          totalWidthMm={template.totalWidthMm}
+          totalHeightMm={template.totalHeightMm}
         />
       )}
       {pulsed && fitW > 0 && (

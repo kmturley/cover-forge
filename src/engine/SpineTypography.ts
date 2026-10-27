@@ -50,7 +50,7 @@ export const SPINE_VARIABLES: { name: string; label: string }[] = [
   { name: 'subtitle', label: 'Subtitle as found (TV: network and genres)' },
 ];
 
-function variables(item: MediaItem): Record<string, string> {
+export function variables(item: MediaItem): Record<string, string> {
   const creator = item.type === 'music' || item.type === 'game' ? (item.subtitle ?? '') : '';
   return {
     title: item.title,

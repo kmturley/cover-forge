@@ -1,18 +1,16 @@
 import type { MediaItem } from '../types/media';
 import type { TemplateConfig } from '../types/template';
 import type { Design, SharedSettings } from '../types/editor';
+import type { Asset } from '../types/layers';
 import { canvasSizePx } from '../templates';
-import { drawGuides } from './GuideOverlays';
-import { drawSpineText, spineText } from './SpineTypography';
+import { drawAssemblyHatch, drawGuides } from './GuideOverlays';
 import { getCachedImage, loadImages } from './imageCache';
-import { BASE_BACKGROUND, PANEL_IDS, resolvePanel, resolveSpine } from './resolve';
-import { computePlacement, paintRect } from './placement';
-import { designOf, layeredShared } from './designs';
-import { drawLogo } from './logo';
-import { drawCode } from './code';
-import { drawBorder } from './border';
-import { getMark } from '../brands';
-import { drawOfficial, spineTitleCase, spineTitleColor, spineTitleScale, spineTitleStartMm } from './official';
+import { BASE_BACKGROUND } from './resolve';
+import { drawLayers, type ImageLookup } from './layers/draw';
+import { resolveLayers } from './layers/resolve';
+import { layerImageUrls } from './layers/images';
+import { layerFonts } from './layers/fonts';
+import { ensureFont } from '../fonts/loader';
 
 export interface Scene {
   template: TemplateConfig;
@@ -20,14 +18,16 @@ export interface Scene {
   shared: SharedSettings;
   /** The designs items can use; an item's design sits between `shared` (Default) and its own overrides. */
   designs?: Design[];
-  /** Draw the template's official banner (platform or format header) and spine cap. */
-  banner: boolean;
+  /** The session's asset library (images that layers can use on every item). */
+  assets?: Record<string, Asset>;
   showGuides: boolean;
   /** Clear everything outside the cut lines (bleed, and any gaps between panels), so the canvas looks like the cut-out piece (the 2D view). */
   hideOutsideCut?: boolean;
+  /** Shade the flaps and tabs that fold away (the 2D editor's preview aid; never in the 3D texture or an export). */
+  markAssembly?: boolean;
 }
 
-export type ImageLookup = (url: string | null | undefined) => HTMLImageElement | null;
+export type { ImageLookup };
 
 /**
  * Renders the full flat cover. Pure and synchronous: used by the editor, the 3D texture and export.
@@ -40,69 +40,15 @@ export function renderCover(
   getImage: ImageLookup = getCachedImage,
 ): void {
   const { template: t, item } = scene;
-  const shared = layeredShared(scene.shared, designOf(scene.designs, item));
   ctx.save();
   ctx.clearRect(0, 0, t.totalWidthMm * px, t.totalHeightMm * px);
   ctx.fillStyle = BASE_BACKGROUND;
   ctx.fillRect(0, 0, t.totalWidthMm * px, t.totalHeightMm * px);
 
-  for (const panel of t.panels) {
-    const area = paintRect(t, panel);
-    const r = resolvePanel(shared, item, panel.follows ?? panel.id, t.kind);
-    if (r.backgroundColor) {
-      ctx.fillStyle = r.backgroundColor;
-      // Snapped outwards to whole pixels so neighbouring panels leave no hairline of the base colour between them.
-      const [x0, y0] = [Math.floor(area.xMm * px), Math.floor(area.yMm * px)];
-      ctx.fillRect(x0, y0, Math.ceil((area.xMm + area.widthMm) * px) - x0, Math.ceil((area.yMm + area.heightMm) * px) - y0);
-    }
-    if (panel.follows) continue; // a dust flap is plain: no image, border, logo or code
+  const layers = resolveLayers({ template: t, item, shared: scene.shared, designs: scene.designs });
+  drawLayers({ ctx, template: t, item, px, getImage, assets: scene.assets }, layers);
 
-    const img = getImage(r.imageUrl);
-    if (img) {
-      const tr = r.transform;
-      // Sized to its box (filling or fitting it) and clipped to it when filling; rotation is about the image centre.
-      const pl = computePlacement(t, panel, img.naturalWidth, img.naturalHeight, tr);
-      ctx.save();
-      ctx.beginPath();
-      ctx.rect(pl.clip.xMm * px, pl.clip.yMm * px, pl.clip.widthMm * px, pl.clip.heightMm * px);
-      ctx.clip();
-      ctx.globalAlpha = tr.opacity ?? 1;
-
-      ctx.translate((pl.area.xMm + pl.xMm + pl.widthMm / 2) * px, (pl.area.yMm + pl.yMm + pl.heightMm / 2) * px);
-      ctx.rotate((tr.rotationDeg * Math.PI) / 180);
-      ctx.scale(pl.fit * px, pl.fit * px);
-      ctx.drawImage(img, -img.naturalWidth / 2, -img.naturalHeight / 2);
-      ctx.restore();
-    }
-    drawBorder(ctx, panel, r.border, px);
-  }
-
-  const digital = scene.banner;
-  if (digital) drawOfficial(ctx, t, px);
-
-  if (item) {
-    const chosen = resolveSpine(shared, item);
-    const settings = { ...chosen, color: spineTitleColor(t.kind, t.variantId, digital, chosen.color) };
-    for (const p of t.panels) {
-      // Branded spines have a cap and marks at their start; keep the title clear of them.
-      if (p.text) drawSpineText(ctx, p, spineTitleCase(t.kind, t.variantId, digital, spineText(item, settings)), settings, px, p.text, { start: spineTitleStartMm(t.kind, t.variantId, digital, p.text === 'vertical' ? p.heightMm : p.widthMm), end: 0 }, spineTitleScale(t.kind, t.variantId, digital));
-    }
-  }
-
-  // Brand logos sit above every image and the spine text.
-  for (const panel of t.panels.filter((q) => !q.follows)) {
-    const { logo } = resolvePanel(shared, item, panel.id, t.kind);
-    const mark = getMark(logo.brand);
-    if (mark && item) drawLogo(ctx, t, panel, mark, logo, px);
-  }
-
-  // QR codes and barcodes go on top of logos.
-  for (const panel of t.panels.filter((q) => !q.follows)) {
-    const { code } = resolvePanel(shared, item, panel.id, t.kind);
-    if (item && code.kind !== 'none') drawCode(ctx, t, panel, code, item, px);
-  }
-
-
+  if (scene.markAssembly) drawAssemblyHatch(ctx, t, px);
   if (scene.hideOutsideCut) {
     // Keep only what's inside the panels' trim rects. Snapped outwards to whole pixels, so touching panels leave no seam.
     ctx.globalCompositeOperation = 'destination-in';
@@ -120,10 +66,10 @@ export function renderCover(
 }
 
 /** Preloads every image the item uses so a subsequent synchronous render is complete. */
-export function preloadItem({ item, shared, designs }: Pick<Scene, 'item' | 'shared' | 'designs'>): Promise<unknown> {
+export function preloadItem({ template, item, shared, designs, assets }: Pick<Scene, 'template' | 'item' | 'shared' | 'designs' | 'assets'>): Promise<unknown> {
   if (!item) return Promise.resolve();
-  const layered = layeredShared(shared, designOf(designs, item));
-  return loadImages(PANEL_IDS.map((id) => resolvePanel(layered, item, id, null).imageUrl));
+  const layers = resolveLayers({ template, item, shared, designs });
+  return Promise.all([loadImages(layerImageUrls(layers, item, assets)), ...layerFonts(layers, item).map(ensureFont)]);
 }
 
 /**
@@ -135,6 +81,7 @@ export class CanvasRenderer {
   private dirty = false;
   private raf = 0;
   private disposed = false;
+  private painted = false;
   private readonly ctx: CanvasRenderingContext2D;
   private readonly paintListeners = new Set<() => void>();
 
@@ -156,9 +103,13 @@ export class CanvasRenderer {
     this.invalidate();
   }
 
-  /** Calls `fn` after every repaint, so a view that shows a reduced copy can refresh it. Returns the unsubscribe. */
+  /**
+   * Calls `fn` after every repaint, so a view that shows a reduced copy can refresh it, and once now if a paint has already
+   * happened (the copy can be set up after the artwork finished loading, and would otherwise stay as it was). Returns the unsubscribe.
+   */
   onPaint(fn: () => void): () => void {
     this.paintListeners.add(fn);
+    if (this.painted) fn();
     return () => this.paintListeners.delete(fn);
   }
 
@@ -176,6 +127,7 @@ export class CanvasRenderer {
     this.dirty = false;
     if (!this.scene || this.disposed) return;
     renderCover(this.ctx, this.scene, this.scene.template.dpiScale);
+    this.painted = true;
     for (const fn of this.paintListeners) fn();
   }
 

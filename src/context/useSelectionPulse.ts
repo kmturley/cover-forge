@@ -9,5 +9,6 @@ import { useAppState } from './AppContext';
 export function useSelectionPulse(): { panel: PanelId; key: number } | null {
   const { selectedPanel, panelPulse } = useAppState();
   const [opened] = useState(panelPulse);
-  return panelPulse !== opened ? { panel: selectedPanel, key: panelPulse } : null;
+  // The canvas tab covers every panel, so there is no single one to flash.
+  return panelPulse !== opened && selectedPanel !== 'canvas' ? { panel: selectedPanel, key: panelPulse } : null;
 }

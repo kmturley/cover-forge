@@ -3,6 +3,7 @@ import type { PanelId } from '../types/template';
 import type { Design, PanelSettings, SharedSettings, SharedSpine } from '../types/editor';
 import { PANEL_IDS } from './resolve';
 import { LEGACY_FIELDS, overlayPlacement } from './box';
+import { diffTouchesPanel } from './layers/diffEdit';
 
 export const DEFAULT_DESIGN_ID = 'default';
 export const DEFAULT_DESIGN_NAME = 'Default';
@@ -41,15 +42,15 @@ export function layeredShared(shared: SharedSettings, design: Design | undefined
 }
 
 /** The settings stored in a design itself (Default is `shared`), nothing inherited. */
-export function designLayer(shared: SharedSettings, designs: readonly Design[], id: string): { panels: SharedSettings['panels']; spine: Partial<SharedSpine> } {
+export function designLayer(shared: SharedSettings, designs: readonly Design[], id: string): { panels: SharedSettings['panels']; spine: Partial<SharedSpine>; diff?: SharedSettings['diff'] } {
   return id === DEFAULT_DESIGN_ID ? shared : (designs.find((d) => d.id === id) ?? { panels: {}, spine: {} });
 }
 
-export function designHasPanel(shared: SharedSettings, designs: readonly Design[], id: string, panel: PanelId): boolean {
+export function designHasPanel(shared: SharedSettings, designs: readonly Design[], id: string, panel: PanelId | 'canvas'): boolean {
   const layer = designLayer(shared, designs, id);
-  const p = layer.panels[panel];
+  const p = panel === 'canvas' ? undefined : layer.panels[panel];
   const hasPanel = !!p && Object.values(p).some((v) => v !== undefined);
-  return hasPanel || ((panel === 'spine' || panel === 'spineRight') && id !== DEFAULT_DESIGN_ID && Object.keys(layer.spine).length > 0);
+  return hasPanel || diffTouchesPanel(layer.diff, panel) || ((panel === 'spine' || panel === 'spineRight') && id !== DEFAULT_DESIGN_ID && Object.keys(layer.spine).length > 0);
 }
 
 /** The items using a design. */

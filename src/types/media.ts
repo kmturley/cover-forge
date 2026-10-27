@@ -1,5 +1,6 @@
 import type { PanelId } from './template';
 import type { PanelSettings, SpineSettings } from './editor';
+import type { LayerDiff } from './layers';
 
 export type MediaType = 'game' | 'movie' | 'tv' | 'music' | 'custom';
 
@@ -22,6 +23,8 @@ export interface MediaItem {
   /** Item-level overrides; anything unset inherits the global settings. */
   panels?: Partial<Record<PanelId, PanelSettings>>;
   spineOverride?: Partial<SpineSettings>;
+  /** Layer changes beyond the slot overrides above (see SharedSettings.diff). */
+  diff?: LayerDiff;
   /** The design this item uses on top of the Default one; unset = Default. */
   designId?: string;
   /** The template (case) this item is printed for, a library id such as `game-case-ps4`. Set when it is added. */

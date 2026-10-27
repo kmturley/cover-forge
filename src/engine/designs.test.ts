@@ -49,7 +49,7 @@ describe('designs in the reducer', () => {
     s = reducer(s, { type: 'updatePanel', id: null, panel: 'front', patch: { backgroundColor: '#111111' } });
     expect(s.shared.panels.front!.backgroundColor).toBe('#111111');
     s = reducer(s, { type: 'forkDesign', id: 'd1', name: 'Fork', from: DEFAULT_DESIGN_ID, items: ['a'] });
-    expect(s.designs).toEqual([{ id: 'd1', name: 'Fork', panels: {}, spine: {} }]);
+    expect(s.designs).toEqual([{ id: 'd1', name: 'Fork', panels: {}, spine: {}, base: 1 }]);
     s = reducer(s, { type: 'selectItem', id: 'a' });
     expect(targetDesignId(s)).toBe('d1');
     s = reducer(s, { type: 'updatePanel', id: null, panel: 'front', patch: { logo: { brand: 'gog' } } });

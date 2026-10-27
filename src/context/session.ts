@@ -1,5 +1,6 @@
 import type { MediaItem } from '../types/media';
 import type { Design, PanelSettings, SharedSettings, StyleOverlay } from '../types/editor';
+import type { Asset } from '../types/layers';
 import type { TemplateKind } from '../types/template';
 import { DEFAULT_KIND, defaultVariantId, isTemplateKind, variantsFor } from '../templates';
 import { entryFor, getEntry, upgradeTemplateId, type LastTemplates } from '../templates/library';
@@ -9,6 +10,10 @@ import { TEMPLATE_DEFS } from '../templates';
 import { PANEL_IDS, defaultCodeKind } from '../engine/resolve';
 import type { MediaType } from '../types/media';
 import type { AppState, ViewMode } from './AppContext';
+import { sanitizeAssets, sanitizeDiff } from '../engine/layers/sanitize';
+import { mergeDiffs } from '../engine/layers/diffEdit';
+import { bannerOffDiff } from '../engine/layers/branded';
+import { DEFAULT_SPINE_COLOR, DEFAULT_SPINE_FONT } from '../engine/layers/defaults';
 
 /**
  * Portable JSON form of a working session: the media queue, every option and the shared settings.
@@ -17,7 +22,8 @@ import type { AppState, ViewMode } from './AppContext';
  */
 export interface SessionV2 {
   app: 'coverforge';
-  version: 2;
+  /** 3 adds layer diffs (`diff` on the shared settings, designs and items) and the asset library; otherwise as 2. */
+  version: 2 | 3;
   items: MediaItem[];
   selectedItemId: string | null;
   options: {
@@ -39,6 +45,8 @@ export interface SessionV2 {
   shared: SharedSettings;
   /** Named designs on top of the Default one (`shared`); items refer to them by `designId`. */
   designs?: Design[];
+  /** Images layers can use on every item (a publisher logo, a rating icon). */
+  assets?: Asset[] | Record<string, Asset>;
   /** Superseded by `designs`: per media type / template rules from an earlier version, converted on load. */
   scopes?: unknown;
 }
@@ -48,17 +56,17 @@ export const STORAGE_KEY = 'coverforge:session';
 export function serializeSession(s: AppState): SessionV2 {
   return {
     app: 'coverforge',
-    version: 2,
+    version: 3,
     items: s.items,
     selectedItemId: s.selectedItemId,
     options: {
       templateId: s.templateId,
       lastTemplates: s.lastTemplates,
-      banner: s.banner,
       view: s.view,
     },
     shared: s.shared,
     ...(s.designs.length > 0 && { designs: s.designs }),
+    ...(Object.keys(s.assets).length > 0 && { assets: s.assets }),
   };
 }
 
@@ -76,8 +84,12 @@ function restoreShared(raw: unknown, defaults: SharedSettings): SharedSettings {
   const spine = isObj(raw.spine) ? { ...defaults.spine, ...(raw.spine as Partial<SharedSettings['spine']>) } : defaults.spine;
   // Every earlier save stored the old fixed default of 4 mm; that now means "automatic", which fits the template.
   if (spine.textHeightMm === 4) delete spine.textHeightMm;
-  return { panels, spine };
+  const diff = sanitizeDiff(raw.diff);
+  return { panels, spine, ...(diff && { diff }) };
 }
+
+/** The asset library, saved as a list or an object by id. */
+const restoreAssets = (raw: unknown): Record<string, Asset> => sanitizeAssets(Array.isArray(raw) ? Object.fromEntries(raw.filter(isObj).map((a) => [a.id, a])) : raw);
 
 const MEDIA_TYPES: MediaType[] = ['game', 'movie', 'tv', 'music', 'custom'];
 
@@ -95,8 +107,8 @@ function restoreDesigns(raw: unknown, defaults: SharedSettings): Design[] {
   const out: Design[] = [];
   for (const d of raw) {
     if (!isObj(d) || typeof d.id !== 'string' || typeof d.name !== 'string' || d.id === 'default' || out.some((o) => o.id === d.id)) continue;
-    const { panels } = restoreShared({ panels: d.panels }, defaults);
-    out.push({ id: d.id, name: d.name, panels, spine: isObj(d.spine) ? (d.spine as Design['spine']) : {} });
+    const { panels, diff } = restoreShared({ panels: d.panels, diff: d.diff }, defaults);
+    out.push({ id: d.id, name: d.name, panels, spine: isObj(d.spine) ? (d.spine as Design['spine']) : {}, ...(diff && { diff }), ...(typeof d.base === 'number' && Number.isFinite(d.base) && { base: d.base }) });
   }
   return out;
 }
@@ -162,13 +174,13 @@ function pinLegacyDefaults(shared: SharedSettings, items: MediaItem[]): SharedSe
  * Version 1 (no shared layer) is migrated: its global spine font/colour become the shared spine style.
  */
 export function restoreSession(raw: unknown, defaults: AppState): AppState {
-  if (!isObj(raw) || raw.app !== 'coverforge' || (raw.version !== 1 && raw.version !== 2)) return defaults;
+  if (!isObj(raw) || raw.app !== 'coverforge' || (raw.version !== 1 && raw.version !== 2 && raw.version !== 3)) return defaults;
   const o = isObj(raw.options) ? raw.options : {};
   const items = Array.isArray(raw.items) ? sortItems(raw.items.filter(isItem).map(migrateItem)) : [];
 
   const legacy = !('templateId' in o);
   const templateId = upgradeTemplateId(o.templateId) ?? legacyTemplateId(o);
-  const restored = raw.version === 2 ? restoreDesigns(raw.designs, defaults.shared) : [];
+  const restored = raw.version >= 2 ? restoreDesigns(raw.designs, defaults.shared) : [];
   const migrated = restored.length === 0 ? migrateScopes(raw.scopes, items, defaults.shared) : { designs: [], items };
   const designs = [...restored, ...migrated.designs];
   // An item can only use a design that exists.
@@ -177,7 +189,7 @@ export function restoreSession(raw: unknown, defaults: AppState): AppState {
   const selected = typeof raw.selectedItemId === 'string' && finalItems.some((i) => i.id === raw.selectedItemId);
 
   let shared = defaults.shared;
-  if (raw.version === 2) {
+  if (raw.version >= 2) {
     shared = restoreShared(raw.shared, defaults.shared);
   } else if (isObj(o.spine)) {
     // v1 stored the old default text height too; keep only font and colour so the new default applies.
@@ -193,6 +205,8 @@ export function restoreSession(raw: unknown, defaults: AppState): AppState {
   }
 
   if (legacy) shared = pinLegacyDefaults(shared, finalItems);
+  // Branded was one switch for every side; a save that had it off keeps those folders hidden.
+  if (o.banner === false || (o.banner === undefined && o.styleOverlay !== undefined && o.styleOverlay !== 'digital')) shared = { ...shared, diff: mergeDiffs(shared.diff, bannerOffDiff()) };
 
   return syncTemplate({
     ...defaults,
@@ -203,10 +217,10 @@ export function restoreSession(raw: unknown, defaults: AppState): AppState {
     lastTemplates: legacy ? Object.fromEntries([...new Set(finalItems.map((i) => i.type))].map((t) => [t, templateId])) : restoreLastTemplates(o.lastTemplates),
     template: defaults.template,
     selectedPanel: defaults.selectedPanel,
-    banner: typeof o.banner === 'boolean' ? o.banner : o.styleOverlay === undefined ? defaults.banner : o.styleOverlay === 'digital',
     view: o.view === '2d' || o.view === '3d' ? o.view : defaults.view,
     shared,
     designs,
+    assets: restoreAssets(raw.assets),
   });
 }
 
@@ -270,4 +284,9 @@ export function clearBackup(): void {
   } catch {
     // Nothing to clear.
   }
+}
+
+/** Designs from a file of their own (not a session): the well-formed ones, with their layers checked. */
+export function restoreDesignsFrom(raw: unknown): Design[] {
+  return restoreDesigns(raw, { panels: {}, spine: { fontFamily: DEFAULT_SPINE_FONT, color: DEFAULT_SPINE_COLOR } });
 }

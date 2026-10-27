@@ -72,12 +72,13 @@ describe('music provider (MusicBrainz + Cover Art Archive)', () => {
   };
 
   it('maps release groups to results and searches politely', async () => {
-    const calls = mockFetch([['musicbrainz.org', mb]]);
+    const calls = mockFetch([['release-group/rg1', caa], ['musicbrainz.org', mb]]);
     const results = await musicProvider.search('dark side');
     expect(calls[0]).toContain('release-group/?query=dark%20side&fmt=json');
     expect(results[0]).toMatchObject({ id: 'rg1', title: 'The Dark Side of the Moon', subtitle: 'Pink Floyd · Album', year: '1973' });
     expect(results[0].thumbnail).toBe('https://coverartarchive.org/release-group/rg1/front-250');
-    expect(results[1].subtitle).toBe('');
+    // Untitled has no art in the archive (404), so it isn't offered.
+    expect(results).toHaveLength(1);
     expect(await musicProvider.search('  ')).toEqual([]);
   });
 
@@ -105,6 +106,14 @@ describe('music provider (MusicBrainz + Cover Art Archive)', () => {
     expect((await musicProvider.createItem({ id: 'rg5', title: 'X' })).assets.hero).toBe('https://a/booklet.jpg');
   });
 
+  it('keeps an album in the results when the archive can’t be reached, but leaves out one it answers an error for', async () => {
+    mockFetch([['release-group/?query', { 'release-groups': [{ id: 'busy', title: 'Busy', 'artist-credit': [] }, { id: 'bare', title: 'Bare', 'artist-credit': [] }] }], ['release-group/bare', () => new Response('nope', { status: 404 })], ['release-group/busy', () => { throw new TypeError('Failed to fetch'); }]]);
+    expect((await musicProvider.search('b')).map((r) => r.id)).toEqual(['busy']);
+    // A server error for an album (the file store failing, as it does for some with deleted scans) leaves it out too.
+    mockFetch([['release-group/?query', { 'release-groups': [{ id: 'broken', title: 'Broken', 'artist-credit': [] }] }], ['release-group/broken', () => new Response('x', { status: 500 })]]);
+    expect(await musicProvider.search('c')).toEqual([]);
+  });
+
   it('explains when an album has no artwork', async () => {
     mockFetch([['release-group/none', () => new Response('nope', { status: 404 })]]);
     await expect(musicProvider.createItem({ id: 'none', title: 'X' })).rejects.toThrow(/No cover art/);
@@ -128,7 +137,8 @@ describe('TV provider (TVMaze)', () => {
     mockFetch([['search/shows', search]]);
     const r = await tvProvider.search('breaking bad');
     expect(r[0]).toMatchObject({ id: '169', title: 'Breaking Bad', subtitle: 'AMC · Drama/Crime', year: '2008', thumbnail: 'https://s/m.jpg' });
-    expect(r[1]).toMatchObject({ subtitle: 'Web', year: undefined });
+    // A show with no poster can't make a cover, so it isn't offered.
+    expect(r).toHaveLength(1);
   });
 
   it('builds an item with poster, backdrop, title logo and alternate posters', async () => {
@@ -161,7 +171,8 @@ describe('movies provider (TMDB, via a relay or called directly)', () => {
     const r = await p.search('inception');
     expect(calls[0]).toBe(`https://relay.example?url=${encodeURIComponent('https://api.themoviedb.org/3/search/movie?query=inception&include_adult=false')}`);
     expect(r[0]).toMatchObject({ id: '27205', title: 'Inception', year: '2010', thumbnail: 'https://image.tmdb.org/t/p/w92/p.jpg' });
-    expect(r[1].thumbnail).toBeUndefined();
+    // La Vita has no poster, so it can't make a cover and isn't offered.
+    expect(r).toHaveLength(1);
   });
 
   it('supports a cors-anywhere-style prefix relay', async () => {
@@ -225,7 +236,7 @@ describe('movies provider (OMDb, used when no TMDB relay or token is available)'
     await expect(p.createItem({ id: 'tt1', title: 'X' })).rejects.toThrow(/not configured/);
   });
 
-  it('searches with the personal key and maps results, skipping posterless entries', async () => {
+  it('searches with the personal key and maps results, leaving out posterless entries', async () => {
     const calls = mockFetch([
       ['omdbapi.com', { Response: 'True', Search: [{ imdbID: 'tt1375666', Title: 'Inception', Year: '2010', Poster: 'https://img/p.jpg' }, { imdbID: 'tt2', Title: 'No Art', Year: '2011', Poster: 'N/A' }] }],
     ]);
@@ -235,7 +246,6 @@ describe('movies provider (OMDb, used when no TMDB relay or token is available)'
     expect(calls[0]).toBe('https://www.omdbapi.com/?apikey=mykey&type=movie&s=inception');
     expect(r).toEqual([
       { id: 'tt1375666', title: 'Inception', year: '2010', thumbnail: 'https://img/p.jpg', payload: {} },
-      { id: 'tt2', title: 'No Art', year: '2011', thumbnail: undefined, payload: {} },
     ]);
   });
 

@@ -83,9 +83,10 @@ describe('plain link parameters', () => {
     expect(parseParams('?template=cd&variant=slim-9').template).toBe('cd-jewel'); // not a CD size: the CD's default
   });
 
-  it('applies template, banner and view', () => {
+  it('applies template and view, and the Branded switch of an older link', () => {
     const s = applyParams(initialState, parseParams('?template=dvd-slim-9&banner=0&view=2d'));
-    expect([s.templateId, s.template.id, s.banner, s.view]).toEqual(['dvd-slim-9', 'dvd-slim-9', false, '2d']);
+    expect([s.templateId, s.template.id, s.view]).toEqual(['dvd-slim-9', 'dvd-slim-9', '2d']);
+    expect(s.shared.diff?.patch?.['branded.front']).toEqual({ visible: false });
   });
 
   it('changes nothing when there are no parameters', () => {
@@ -106,7 +107,7 @@ describe('readable share link', () => {
 
   it('uses plain parameters for untouched Steam games, with the selected game last', async () => {
     const { url } = await buildShareLink(reducer(base, { type: 'selectItem', id: 'steam-570' }), 'https://x.dev/');
-    expect(url).toBe('https://x.dev/?template=cd-jewel&banner=1&view=3d&app=1091500,570');
+    expect(url).toBe('https://x.dev/?template=cd-jewel&view=3d&app=1091500,570');
     expect(parseParams(new URL(url).search).apps).toEqual([1091500, 570]);
   });
 
