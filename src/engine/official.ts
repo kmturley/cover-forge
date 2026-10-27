@@ -168,7 +168,7 @@ export const FORMAT_BRANDING: Record<TemplateKind, Branding> = {
     front: { shape: 'band', depth: flat(0.08), fill: K, line: { color: '#979797', size: 0.0018 }, marks: [{ parts: [{ logo: 'blu-ray-ultra-hd-4k' }], color: W, h: 0.0448, align: 'center' }] },
     spine: { cap: { length: 0.08, fill: K, line: { color: '#979797', size: 0.0018 } }, marks: [{ parts: [{ logo: 'blu-ray-ultra-hd' }], color: W, from: 0.88, to: 0.98, across: 0.85, rotate: 90 }], titleFrom: 0.13 },
   },
-  dvd: format([{ stack: [{ text: 'DVD', weight: 800, h: 0.65 }, { text: 'VIDEO', weight: 600, h: 0.35, spacing: 0.15 }] }], W, '#141414', 0.08, [{ logo: 'dvd' }]),
+  dvd: format([{ logo: 'dvd' }], W, '#141414', 0.08),
   vhs: format([{ logo: 'vhs' }], W, '#141414', 0.08, undefined, { across: 0.58, titleScale: 1.25 }),
   cd: format([{ logo: 'cd' }], W, '#141414', 0.108, undefined, { across: 0.9, rotate: 90, from: 0.022, to: 0.102 }),
   cassette: format([{ logo: 'cassette', color: W }], W, '#141414', 0.26, undefined, { across: 0.8, rotate: 90, from: 0.045, to: 0.215, titleScale: 1.3 }),
