@@ -1,5 +1,6 @@
 import { templateIdOf, useAppDispatch, useAppState } from '../../context/AppContext';
-import { LIBRARY_ORDER, getEntry } from '../../templates/library';
+import { PIECES, PIECE_NAME } from '../../templates/pieces';
+import { LIBRARY_ORDER, getEntry, pieceOf, splitId } from '../../templates/library';
 import { useMemo, useState } from 'react';
 import { TemplatePickerModal } from '../templates/TemplatePickerModal';
 import { itemHasOverrides } from '../../engine/resolve';
@@ -30,8 +31,8 @@ export function QueueList() {
       else byCase.set(id, [i]);
     }
     // Like the library: games first, then films and TV, music, and the rest.
-    const order = (id: string) => LIBRARY_ORDER.get(id) ?? Number.MAX_SAFE_INTEGER;
-    return [...byCase.entries()].sort(([a], [b]) => order(a) - order(b)).map(([id, members]) => ({ entry: getEntry(id), members }));
+    const order = (id: string) => (LIBRARY_ORDER.get(splitId(id).base) ?? Number.MAX_SAFE_INTEGER) + PIECES.indexOf(pieceOf(id)) / 10;
+    return [...byCase.entries()].sort(([a], [b]) => order(a) - order(b)).map(([id, members]) => ({ id, entry: getEntry(id), piece: pieceOf(id), members }));
   }, [items, templateId]);
 
   function resetOverrides(id: string, title: string) {
@@ -43,11 +44,11 @@ export function QueueList() {
   return (
     <section className="queue">
       {!items.length && <p className="muted">Search above and click a result to add it here.</p>}
-      {groups.map(({ entry, members }) => (
-        <div key={entry?.id} className="queue-group">
+      {groups.map(({ id, entry, piece, members }) => (
+        <div key={id} className="queue-group">
           <div className="queue-group-head">
             <span>
-              {entry?.name} <small>· {members.length}</small>
+              {entry?.name}{splitId(id).piece && ` ${PIECE_NAME[piece].toLowerCase()}`} <small>· {members.length}</small>
             </span>
             <button title={`Change the case for these ${members.length === 1 ? 'item' : `${members.length} items`}`} onClick={() => setPicking(members.map((m) => m.id))}>
               Change…

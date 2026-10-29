@@ -30,7 +30,7 @@ export function PrintSheetPreview({ template, paper, labelSheet }: { template: T
       </svg>
       <figcaption>
         {layout.oversize
-          ? 'Too large for this paper at 100% — it will be scaled to fit (not to physical size).'
+          ? `This ${template.piece ?? 'template'} is ${Math.round(layout.cellWidthMm)} × ${Math.round(layout.cellHeightMm)} mm, bigger than this paper: it needs a larger printer or paper size. The export is scaled to fit, not to physical size.`
           : `${layout.placements.length} per sheet${layout.placements[0]?.rotated ? ' (rotated)' : ''}`}
         {layout.warnings?.map((w) => (
           <span key={w} className="warn">

@@ -5,7 +5,7 @@ import { newCode, newGroup, newImage, newShape, newSvg, newText } from '../layer
 import type { PanelId } from '../../types/template';
 import { LOGOS } from '../../brands';
 import { PRESETS, designFromPreset } from '../layers/presets';
-import { LIBRARY } from '../../templates/library';
+import { LIBRARY, piecesOf } from '../../templates/library';
 import { buildTemplateById } from '../../templates';
 import type { Scene } from '../CanvasRenderer';
 import { mergeDiffs } from '../layers/diffEdit';
@@ -57,6 +57,17 @@ const everyCase: Fixture[] = LIBRARY.flatMap((e) => [
   { name: `case/${e.id}/branded`, scene: scene(e.id, { banner: true }), px: 1 },
   { name: `case/${e.id}/plain`, scene: scene(e.id), px: 1 },
 ]);
+
+/** A slipcover and a box for a spread of cases (the biggest, vinyl, are left out: their renders are huge), with the Branded dress on. */
+const PIECE_CASES = ['dvd-std-14', 'bluray-us-11', 'game-case-ps1', 'game-case-switch', 'cassette-std', 'floppy-face', 'nfc-card-cr80-duplex', 'vhs-std-25'];
+const everyPiece: Fixture[] = PIECE_CASES.flatMap((id) =>
+  Object.values(piecesOf(id))
+    .filter((t): t is string => !!t && t !== id)
+    .map((t) => ({ name: `piece/${t.replace('~', '-')}`, scene: scene(t, { banner: true }), px: 1 })),
+);
+
+/** A box's lid, bottom and tuck flaps start in the spine's colour. */
+const boxColours: Fixture[] = [{ name: 'piece/dvd-std-14-box-spine-colour', scene: scene('dvd-std-14~box', { shared: shared({ spine: { backgroundColor: '#aa2233' } }) }), px: 1 }];
 
 const item = (panels: Partial<Record<PanelId, PanelSettings>>, rest: Partial<MediaItem> = {}): MediaItem => ({ ...ITEM, panels, ...rest });
 const withShared = (templateId: string, panels: SharedSettings['panels'], o: Parameters<typeof scene>[1] = {}, spine?: Partial<SharedSettings['spine']>): Scene =>
@@ -191,4 +202,4 @@ const features: Fixture[] = [
 /** Each built-in preset, applied to the same item on a Blu-ray case. */
 const presets: Fixture[] = PRESETS.map((p) => ({ name: `preset/${p.id}`, scene: scene(BR, { designs: [designFromPreset(p, 'd1')], item: { ...ITEM, designId: 'd1' } }), px: 2 }));
 
-export const FIXTURES: Fixture[] = [...features, ...presets, ...everyCase];
+export const FIXTURES: Fixture[] = [...features, ...presets, ...everyCase, ...everyPiece, ...boxColours];
