@@ -1,5 +1,6 @@
 import type { TemplateConfig, TemplateKind, TemplateVariant } from '../types/template';
 import { TEMPLATE_DEFS, type TemplateDef } from './definitions';
+import { PIECE_SEPARATOR, box, caseSpecOf, slipcover } from './pieces';
 
 export { TEMPLATE_DEFS, type TemplateDef };
 export { PX_PER_MM } from './definitions';
@@ -49,6 +50,17 @@ const built = new Map<string, TemplateConfig>();
 export function buildTemplateById(id: string): TemplateConfig {
   const hit = built.get(id);
   if (hit) return hit;
+  // A slipcover or box is built from its case's own template (`dvd-std-14~slipcover`); an id that doesn't name one falls back to the case.
+  const at = id.indexOf(PIECE_SEPARATOR);
+  if (at >= 0) {
+    const base = buildTemplateById(id.slice(0, at));
+    const piece = id.slice(at + 1);
+    const spec = caseSpecOf(base);
+    const made = spec && (piece === 'slipcover' ? slipcover(base, spec) : piece === 'box' ? box(base, spec) : null);
+    if (!made) return base;
+    built.set(id, deepFreeze(made));
+    return made;
+  }
   const def = TEMPLATE_DEFS.find((d) => d.variants.some((v) => `${d.kind}-${v.id}` === id));
   const variant = def?.variants.find((v) => `${def.kind}-${v.id}` === id);
   if (!def || !variant) {

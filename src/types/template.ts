@@ -21,7 +21,12 @@ export interface PanelRect {
    * it can't be designed. It is printed in this panel's colour so the paper edge looks continuous.
    */
   follows?: PanelId;
+  /** A second spine that starts as a copy of this panel's look (colour, title), until it is edited on its own. */
+  mirrors?: PanelId;
 }
+
+/** What is printed for a case: its own insert or label, a sleeve round the case, or a box that holds it. */
+export type Piece = 'insert' | 'slipcover' | 'box';
 
 export type TemplateKind = 'bluray' | 'uhd' | 'dvd' | 'vhs' | 'cd' | 'cassette' | 'floppy' | 'nfc-card' | 'nfc-sticker' | 'nfc-box' | 'vinyl' | 'game-case';
 
@@ -46,6 +51,8 @@ export type PreviewSpec =
       heightMm: number;
       depthMm: number;
       faces: Partial<Record<BoxFace, PanelId>>;
+      /** A sleeve with open ends (a slipcover): the top and bottom are left out, and the inside shows. */
+      hollow?: boolean;
       /** Artwork covering only part of a face (e.g. a cassette's back flap), against one edge of it. */
       decals?: { panel: PanelId; face: '-z'; align: 'min-x' | 'max-x' }[];
       casing: PreviewMaterial;
@@ -98,6 +105,8 @@ export interface TemplateConfig {
   totalWidthMm: number;
   totalHeightMm: number;
   panels: PanelRect[];
+  /** Set on the slipcover and box built for a case; an insert (and a template that already is a box) leaves it out. */
+  piece?: Piece;
   /** Guide-only markings (not printed). */
   marks?: TemplateMark[];
   /** Pixels per mm at 300 DPI. */

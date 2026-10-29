@@ -60,8 +60,13 @@ export function createBodyGeometry(t: TemplateConfig, spec: PreviewSpec): Rounde
     }
   }
   uv.needsUpdate = true;
+  // An open-ended sleeve: with no group for the top and bottom, they aren't drawn at all.
+  if (spec.kind === 'box' && spec.hollow) geo.groups = geo.groups.filter((g) => FACE_ORDER[g.materialIndex ?? 0] !== '+y' && FACE_ORDER[g.materialIndex ?? 0] !== '-y');
   return geo;
 }
+
+/** How much thinner than the sleeve its inside is modelled (card is about this thick), in mm per side. */
+export const SLEEVE_WALL_MM = 0.8;
 
 export interface InsetFace {
   face: BoxFace;

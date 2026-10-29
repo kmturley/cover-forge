@@ -345,3 +345,23 @@ Note: a rectangular alternative (~68 × 51 mm, sold as "2 11/16 × 2 in" diskett
 | VHS width/depth, DVD Slim insert, cassette back flap | Improved but not fully resolved this round | Plausible, minor/no priority to change |
 | Cassette case exterior, floppy shell | Not researched — not needed for what our templates print | N/A by design |
 
+
+
+## 11. Slipcovers and boxes (clearance)
+
+A slipcover or box is printed on card, folded and glued, so it is the case's outside size (the "Case exterior" tables
+above) plus some room to slide on. **No published figure for that room was found**: print vendors' templates cover
+inserts and wraps (e.g. [4over4](https://www.4over4.com/guide/dvd-cover-size-dimensions-and-print-specs),
+[Duplication.ca](https://www.duplication.ca/bluray-trapsheets-offset.html)), not hand-folded sleeves. The code uses
+assumed values and says so:
+
+| Piece | Added to the case's width, height and depth | Source |
+| :--- | :--- | :--- |
+| Slipcover | 1.5 mm | assumed |
+| Box | 2 mm | assumed |
+
+Outside sizes used for the pieces: DVD, PC, PS2, Wii, Wii U, GameCube, Xbox and Xbox 360 135 × 190 mm; Blu-ray, UHD,
+PS3, PS4 and PS5 135 × 171 mm (sources give 170–171.5; 171 is the most repeated); Xbox One and Series 135 × 170 mm;
+Switch 105 × 170 mm; Vita 105 × 135 × 11 mm (one source); CD jewel and PS1 142 × 125 × 10 mm; floppy 90 × 94 × 3.3 mm;
+a record jacket its own size. **Cassette**: the case wasn't researched, so it is the J-card plus the margin a DVD case
+adds to its insert (5.5 × 7 mm), and is marked derived. Depth is the insert's spine width unless noted.

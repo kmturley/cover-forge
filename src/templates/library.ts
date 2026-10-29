@@ -1,6 +1,8 @@
 import type { MediaType } from '../types/media';
-import type { TemplateConfig, TemplateKind } from '../types/template';
+import type { Piece, TemplateConfig, TemplateKind } from '../types/template';
 import { TEMPLATE_DEFS } from './definitions';
+import { PIECES, PIECE_SEPARATOR, caseSpecOf } from './pieces';
+import { buildTemplateById } from './index';
 
 /** Groups the library is shown in, in display order. */
 export const LIBRARY_GROUPS = ['Games', 'Movies & TV', 'Music', 'Labels, cards & NFC'] as const;
@@ -118,11 +120,63 @@ export const LIBRARY: LibraryEntry[] = ALL_ENTRIES.filter((e) => !e.hidden);
 
 const byId = new Map(ALL_ENTRIES.map((e) => [e.id, e]));
 
+/** A template id split into its case and its piece (a slipcover or box has a `~piece` suffix; the case's own id has none). */
+export function splitId(id: string): { base: string; piece: Piece | null } {
+  const at = id.indexOf(PIECE_SEPARATOR);
+  const piece = at < 0 ? null : (id.slice(at + 1) as Piece);
+  return at < 0 ? { base: id, piece: null } : { base: id.slice(0, at), piece: PIECES.includes(piece as Piece) ? piece : null };
+}
+
+/** Kinds that are a box already: their own template is the Box piece, and there is no insert. */
+const BOX_KINDS = new Set<TemplateKind>(['vhs', 'nfc-box']);
+
+/**
+ * Cases that are one thing in two library rows: the NFC card and the box made for it. Each row's pieces are the same
+ * set, so switching Type moves between them; the card is the root the slipcover is built from.
+ */
+const ROOT_OF: Record<string, string> = { 'nfc-box-card': 'nfc-card-cr80-duplex' };
+const BOX_OF_ROOT: Record<string, string> = { 'nfc-card-cr80-duplex': 'nfc-box-card' };
+
+/**
+ * The template for each Type of a case, or null where the case has none (a sticker has no slipcover or box; a VHS box
+ * has no insert). This is what the Type buttons offer, and which ids are valid.
+ */
+export function piecesOf(id: string): Record<Piece, string | null> {
+  const none = { insert: null, slipcover: null, box: null };
+  const { base } = splitId(id);
+  const entry = byId.get(base);
+  if (!entry) return none;
+  const root = ROOT_OF[base] ?? base;
+  const rootEntry = byId.get(root) ?? entry;
+  const spec = caseSpecOf(buildTemplateById(root));
+  const isBox = BOX_KINDS.has(rootEntry.kind);
+  return {
+    insert: isBox ? null : root,
+    slipcover: spec ? `${root}${PIECE_SEPARATOR}slipcover` : null,
+    box: isBox ? root : (BOX_OF_ROOT[root] ?? (spec ? `${root}${PIECE_SEPARATOR}box` : null)),
+  };
+}
+
+/** Which Type a template id is. A case's own id is an insert, unless the case is a box (VHS, the NFC boxes). */
+export function pieceOf(id: string): Piece {
+  const { base, piece } = splitId(id);
+  if (piece) return piece;
+  const kind = byId.get(base)?.kind;
+  return kind && BOX_KINDS.has(kind) ? 'box' : 'insert';
+}
+
+/** The case's entry (a slipcover or box shares its case's row in the library). */
+export const getEntry = (id: string | null | undefined): LibraryEntry | undefined => (id ? byId.get(splitId(id).base) : undefined);
+export const isTemplateId = (id: unknown): id is string => {
+  if (typeof id !== 'string') return false;
+  const { base, piece } = splitId(id);
+  if (!byId.has(base)) return false;
+  if (piece === null) return !id.includes(PIECE_SEPARATOR);
+  return Object.values(piecesOf(base)).includes(id);
+};
+
 /** Display order: by library group, then library order; retired templates sort after their group's offered ones. */
 export const LIBRARY_ORDER = new Map(ALL_ENTRIES.map((e, i) => [e.id, LIBRARY_GROUPS.indexOf(e.group) * 1000 + (e.hidden ? 500 : 0) + i]));
-
-export const getEntry = (id: string | null | undefined): LibraryEntry | undefined => (id ? byId.get(id) : undefined);
-export const isTemplateId = (id: unknown): id is string => typeof id === 'string' && byId.has(id);
 
 /** Templates that were removed or renamed, and what saves and links that used them get instead. */
 const REPLACED: Record<string, string> = {

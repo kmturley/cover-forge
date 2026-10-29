@@ -32,7 +32,7 @@ export function defaultLayers(t: TemplateConfig): Layer[] {
   const out: Layer[] = [];
   for (const p of t.panels) {
     // A dust flap is plain: it only mirrors its panel's colour.
-    out.push({ ...base, id: `${p.id}.fill`, type: 'shape', shape: 'rect', target: p.id, fill: null, stroke: NO_STROKE, ...(p.follows && { follows: `${p.follows}.fill` }) });
+    out.push({ ...base, id: `${p.id}.fill`, type: 'shape', shape: 'rect', target: p.id, fill: null, stroke: NO_STROKE, ...((p.follows ?? p.mirrors) && { follows: `${p.follows ?? p.mirrors}.fill` }) });
     if (p.follows) continue;
     out.push({ ...base, id: `${p.id}.image`, type: 'image', target: p.id, source: defaultImageRef(p.id) ? { kind: 'role', ref: 'auto' } : null, fit: 'fill', focus: CENTRE, tint: DEFAULT_LOGO.color });
     out.push({ ...base, id: `${p.id}.border`, type: 'shape', shape: 'rect', target: p.id, fill: null, stroke: NO_STROKE });

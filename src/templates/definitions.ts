@@ -11,6 +11,7 @@ interface Spec {
   h: number;
   text?: SpineOrientation;
   follows?: PanelId;
+  mirrors?: PanelId;
 }
 
 /** Panels laid out edge to edge: a row (left→right, folds are vertical) or a column (top→bottom). */
@@ -25,7 +26,7 @@ interface FreePiece {
   specs: (Spec & { x: number; y: number })[];
 }
 
-interface Build {
+export interface Build {
   kind: TemplateKind;
   name: string;
   variantId: string;
@@ -39,7 +40,7 @@ interface Build {
 /** Separate pieces (e.g. a CD booklet and its tray card) sit side by side with room for both bleeds plus a little slack. */
 const pieceGap = (bleed: number) => bleed * 2 + 2;
 
-function assemble(b: Build): TemplateConfig {
+export function assemble(b: Build): TemplateConfig {
   const panels: PanelRect[] = [];
   let cursorX = b.bleedMm;
   let tallest = 0;
@@ -51,12 +52,12 @@ function assemble(b: Build): TemplateConfig {
     for (const s of piece.specs) {
       if (piece.dir === 'free') {
         const f = s as FreePiece['specs'][number];
-        panels.push({ id: f.id, label: f.label, xMm: cursorX + f.x, yMm: y + f.y, widthMm: f.w, heightMm: f.h, text: f.text, follows: f.follows });
+        panels.push({ id: f.id, label: f.label, xMm: cursorX + f.x, yMm: y + f.y, widthMm: f.w, heightMm: f.h, text: f.text, follows: f.follows, ...(f.mirrors && { mirrors: f.mirrors }) });
         width = Math.max(width, f.x + f.w);
         height = Math.max(height, f.y + f.h);
         continue;
       }
-      panels.push({ id: s.id, label: s.label, xMm: x, yMm: y, widthMm: s.w, heightMm: s.h, text: s.text, follows: s.follows });
+      panels.push({ id: s.id, label: s.label, xMm: x, yMm: y, widthMm: s.w, heightMm: s.h, text: s.text, follows: s.follows, ...(s.mirrors && { mirrors: s.mirrors }) });
       if (piece.dir === 'row') {
         x += s.w;
         width += s.w;
@@ -157,7 +158,7 @@ const NFC_WALLET = { w: 58, h: 90 };
 const NFC_STICKER_MM: Record<string, number> = { '25': 25, '30': 30, '35': 35 };
 const NFC_STICKER_NAME: Record<string, string> = { '25': 'NFC Sticker Small', '30': 'NFC Sticker Medium', '35': 'NFC Sticker Large' };
 
-interface TuckBox {
+export interface TuckBox {
   kind: TemplateKind;
   name: string;
   variantId: string;
@@ -168,6 +169,8 @@ interface TuckBox {
   casing: PreviewMaterial;
   radiusMm: number;
   marks?: (panels: PanelRect[]) => TemplateMark[];
+  /** The box built for a case: the right side carries the title too, and it and the lid and bottom start in the left side's colour. By default none do. */
+  mirrorSpine?: boolean;
 }
 
 /**
@@ -175,7 +178,7 @@ interface TuckBox {
  * the glue tab needs sticking (double-sided tape works). The lid above the front and the bottom below it each carry
  * a tuck flap that slots inside the box, so the ends close with a fold and a tuck and no glue.
  */
-function tuckBox(b: TuckBox): TemplateConfig {
+export function tuckBox(b: TuckBox): TemplateConfig {
   const { w, h, d } = b;
   const glue = 10;
   const tuck = Math.max(12, Math.round(d * 0.85 * 10) / 10); // long enough to hold, even on a slim box
@@ -196,11 +199,11 @@ function tuckBox(b: TuckBox): TemplateConfig {
           { id: 'back', label: 'Back', w, h, x: 0, y: stripY },
           { id: 'spine', label: 'Side (spine)', w: d, h, x: w, y: stripY, text: 'vertical' },
           { id: 'front', label: 'Front', w, h, x: w + d, y: stripY },
-          { id: 'spineRight', label: 'Side (right)', w: d, h, x: 2 * w + d, y: stripY },
+          { id: 'spineRight', label: 'Side (right)', w: d, h, x: 2 * w + d, y: stripY, ...(b.mirrorSpine && { text: 'vertical' as const, mirrors: 'spine' as const }) },
           { id: 'glue', label: 'Glue tab', w: glue, h, x: 2 * w + 2 * d, y: stripY, follows: 'spineRight' },
           { id: 'tuck', label: 'Top tuck flap', w, h: tuck, x: w + d, y: 0, follows: 'top' },
-          { id: 'top', label: 'Top (lid)', w, h: d, x: w + d, y: tuck },
-          { id: 'bottom', label: 'Bottom', w, h: d, x: w + d, y: stripY + h },
+          { id: 'top', label: 'Top (lid)', w, h: d, x: w + d, y: tuck, ...(b.mirrorSpine && { mirrors: 'spine' as const }) },
+          { id: 'bottom', label: 'Bottom', w, h: d, x: w + d, y: stripY + h, ...(b.mirrorSpine && { mirrors: 'spine' as const }) },
           { id: 'bottomTuck', label: 'Bottom tuck flap', w, h: tuck, x: w + d, y: stripY + h + d, follows: 'bottom' },
           { id: 'dustTopLeft', label: 'Dust flap', w: d - gap, h: dust, x: w, y: stripY - dust, follows: 'spine' },
           { id: 'dustBottomLeft', label: 'Dust flap', w: d - gap, h: dust, x: w, y: stripY + h, follows: 'spine' },

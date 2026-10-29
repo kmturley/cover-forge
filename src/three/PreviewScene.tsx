@@ -1,9 +1,9 @@
 import { useEffect, useMemo, useRef, type ElementRef } from 'react';
 import { Canvas } from '@react-three/fiber';
 import { ContactShadows, Environment, OrbitControls } from '@react-three/drei';
-import { MeshStandardMaterial, type BufferGeometry, type Texture } from 'three';
+import { BackSide, MeshStandardMaterial, type BufferGeometry, type Texture } from 'three';
 import type { TemplateConfig } from '../types/template';
-import { FACE_ORDER, createBodyGeometry, createInsetGeometry, createLabelGeometry, createLabelSliceGeometry, createSlabBodyGeometry, createSlabFaceGeometry, bodyPrintedFaces, insetFaces, insetPlacement, labelWrap, modelSizeMm, previewScale } from './PreviewGeometry';
+import { FACE_ORDER, createBodyGeometry, createInsetGeometry, createLabelGeometry, createLabelSliceGeometry, createSlabBodyGeometry, createSlabFaceGeometry, bodyPrintedFaces, insetFaces, insetPlacement, labelWrap, modelSizeMm, previewScale, SLEEVE_WALL_MM } from './PreviewGeometry';
 import { Measurements3D } from './Measurements3D';
 import { createBodyMaterial, createSleeveMaterial } from './PreviewMaterials';
 
@@ -66,12 +66,16 @@ function Model({ texture, template }: { texture: Texture; template: TemplateConf
     return FACE_ORDER.map((f) => (printed[f] ? sleeve : body));
   }, [template, spec, sleeve, body]);
   const metal = useMemo(() => new MeshStandardMaterial({ color: '#b9bcc2', metalness: 0.9, roughness: 0.35 }), []);
+  // The inside of an open-ended sleeve: a slightly smaller copy of the shell, seen from behind through the open ends.
+  const hollow = spec.kind === 'box' && spec.hollow ? spec : undefined;
+  const inner = useMemo(() => (hollow ? new MeshStandardMaterial({ color: hollow.casing.color, roughness: 0.9, side: BackSide }) : undefined), [hollow]);
   const dark = useMemo(() => new MeshStandardMaterial({ color: '#0b0c0f', roughness: 0.9 }), []);
 
   useEffect(() => () => geometry.dispose(), [geometry]);
   useEffect(() => () => pieces.forEach((p) => p.geometry.dispose()), [pieces]);
   useEffect(() => () => metal.dispose(), [metal]);
   useEffect(() => () => dark.dispose(), [dark]);
+  useEffect(() => () => inner?.dispose(), [inner]);
   useEffect(
     () => () => {
       sleeve.dispose();
@@ -86,6 +90,7 @@ function Model({ texture, template }: { texture: Texture; template: TemplateConf
   return (
     <group scale={previewScale(spec)}>
       <mesh geometry={geometry} material={materials} />
+      {hollow && inner && <mesh geometry={geometry} material={[inner, inner, inner, inner, inner, inner]} scale={[(hollow.widthMm - 2 * SLEEVE_WALL_MM) / hollow.widthMm, 1, (hollow.depthMm - 2 * SLEEVE_WALL_MM) / hollow.depthMm]} />}
       {pieces.map((p, i) => (
         <mesh key={i} geometry={p.geometry} material={sleeve} position={p.position} rotation={p.rotation} />
       ))}
