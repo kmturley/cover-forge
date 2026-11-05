@@ -137,9 +137,14 @@ const BLURAY: Record<string, { label: string; spine: number; hidden?: boolean }>
   'eu-14': { label: 'Blu-ray (EU)', spine: 14, hidden: true },
 };
 
-/** Blu-ray 4K UHD cases: the Blu-ray case in black. */
+/**
+ * Blu-ray 4K UHD cases: the Blu-ray case in black. Severin Films ships its single, 2-disc and 3-disc 4K UHD cases at
+ * 12.5 mm and its 4-disc case at 15 mm; the front panel is the same size in every one.
+ */
 const UHD: Record<string, { label: string; spine: number }> = {
   'us-11': { label: 'Blu-ray 4K UHD', spine: 11 },
+  'elite-12.5': { label: 'Blu-ray 4K UHD (Elite)', spine: 12.5 },
+  'multi4-15': { label: 'Blu-ray 4K UHD (4-disc)', spine: 15 },
 };
 
 const DVD: Record<string, { label: string; spine: number; hidden?: boolean }> = {
