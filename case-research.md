@@ -365,3 +365,12 @@ PS3, PS4 and PS5 135 × 171 mm (sources give 170–171.5; 171 is the most repeat
 Switch 105 × 170 mm; Vita 105 × 135 × 11 mm (one source); CD jewel and PS1 142 × 125 × 10 mm; floppy 90 × 94 × 3.3 mm;
 a record jacket its own size. **Cassette**: the case wasn't researched, so it is the J-card plus the margin a DVD case
 adds to its insert (5.5 × 7 mm), and is marked derived. Depth is the insert's spine width unless noted.
+
+## 12. Blu-ray 4K UHD multi-disc cases (Severin)
+
+[Severin Films](https://severin-films.com/products/black-blu-ray-cases) sells replacement black cases: single, 2-disc and
+3-disc 4K UHD at **12.5 mm**, and a 4-disc 4K UHD at **15 mm**. We offer these as UHD variants `elite-12.5` and
+`multi4-15`. Severin publishes no outer or insert dimensions, so both reuse the Blu-ray-class size (135 × 171 mm case,
+128 × 149 mm front); a retailer lists the 4-disc case at 171.5 × 136 × 15 mm
+([desertcart](https://www.desertcart.nl/products/313337750-new-1-official-4-discs-4k-uhd-replacement-case-black.md)) and
+a distributor lists 129 mm panels with a 15 mm spine, which agree within 1 mm. Not measured on a physical case.

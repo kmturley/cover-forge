@@ -68,6 +68,7 @@ const STANDARDS: { name: string; front: [number, number]; spine?: number; back?:
   { name: 'Blu-ray Slim Case', front: [128, 149], spine: 7 },
   { name: 'Blu-ray Elite Case', front: [128, 149], spine: 12.5 },
   { name: 'Blu-ray Case (EU)', front: [128, 149], spine: 14 },
+  { name: 'Blu-ray 4-Disc Case', front: [128, 149], spine: 15 },
   { name: 'CD Jewel Case', front: [120, 120], spine: 6.5, back: [137, 118] },
   { name: 'VHS Sleeve', front: [105, 190], spine: 25 },
   { name: 'Cassette J-Card', front: [65.1, 101.6], spine: 12.7 },
