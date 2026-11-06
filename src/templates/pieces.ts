@@ -51,10 +51,10 @@ const GAME_OUTER: Record<string, { w: number; h: number; depth?: number }> = {
   ps5: TALL_CASE,
   'xbox-one': { w: 135, h: 170 },
   'xbox-series': { w: 135, h: 170 },
-  // Published figures run 134–136 × 122–125 mm; the insert is 130 × 116.
-  ds: { w: 135, h: 123 },
-  // The same shell as the DS (the 3DS case is a little thinner, taken from its insert's spine).
-  '3ds': { w: 135, h: 123 },
+  // The DS and 3DS share one footprint, 136 × 124 mm (Walvis lists both at that size; seller figures run 134–137 × 123–125),
+  // but not the thickness: the DS case is about 19 mm deep and the 3DS case 12.5 (case-research.md §15).
+  ds: { w: 136, h: 124, depth: 19 },
+  '3ds': { w: 136, h: 124, depth: 12.5 },
   switch: { w: 105, h: 170 },
   switch2: { w: 105, h: 170 },
   // A single manufacturer source; the case is 11 mm deep against the insert's 9 mm spine.

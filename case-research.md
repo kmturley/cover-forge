@@ -386,8 +386,7 @@ Every file is a 276 × 116 mm wrap laid out back | spine | front.
 | :--- | :--- | :--- |
 | Front and back | 130 × 116 mm | the spine/front fold is a sharp black-to-white step at 145.9 mm on all three scans; the front is 276 − 145.9 = 130.1 mm |
 | Spine | 16 mm (15.9 measured) | 276 − 2 × 130; the back/spine fold is hidden by the art, so it is taken as symmetric |
-| Case outside (box, slipcover) | 135 × 123 mm | published figures are about 134–136 × 122–125 mm (Q&A pages, retailers of replacement cases) |
-| Case depth | spine width (16 mm) | published figures run 13–20 mm, so this is the least certain number; measure a real case if it matters |
+| Case outside (box, slipcover) | 136 × 124 mm, 19 mm deep | the footprint is shared with the 3DS and the depth is the DS's own; see §15 for the sources |
 
 `scripts/measure-covers.ts` locked onto the wrong edge on one scan (GTA: back 138, spine 8): the white strip beside the
 spine looks like a spine to an edge detector. The other rows and the Mode are right, and the known 16 mm spine is the
@@ -434,7 +433,7 @@ fan-made `template.png`. The 3DS wrap is the DS's turned round: the white strip 
 | Wrap | 274 × 116.2 mm (scans), 276 × 116 mm (template) | the template is 2 mm wider than all three scans |
 | Front and back | 131 × 116 mm | the spine's white run is 131–143 mm on all three scans (130.7–131.2 mm at the left, 142.7–143.1 mm at the right), and the report's Mode is 130.9 back, 131.0 front |
 | Spine | 12 mm (12.0–12.4 measured) | 274 − 2 × 131; the template's spine is 12.1 mm |
-| Case outside (box, slipcover) | 135 × 123 mm, depth 12 mm | no 3DS-specific figures were found: it is the DS case's size with the insert's spine for depth, an assumption |
+| Case outside (box, slipcover) | 136 × 124 mm, 12.5 mm deep | Walvis lists the 3DS case at 136 × 124 × 12.5 mm; see §15 |
 
 The scans and the template disagree by about 1 mm on each side, so the app follows the scans (a real print), not the
 template (which is also why its overlay score is lower than the DS's, see below). The edge detector got Tetris Axis wrong
@@ -464,8 +463,31 @@ is 2 mm wider and its logos sit about 0.7 mm differently, so this score understa
 
 ## 15. Nintendo DS and 3DS side by side
 
-The two wraps differ by 1 mm per panel and 2 mm overall, so they were measured the same way (the white run of the spine
-at three rows, on all three scans of each) to check that the difference is real and not a slip:
+**Question:** the DS and 3DS wraps differ by 1 mm per panel (130 vs 131) and the spines by 4 mm (16 vs 12). Are the cases
+the same size, or different? **Answer, from the cases themselves: the same footprint, but the DS case is much thicker.**
+
+### Case exterior
+
+| Source | Case | Width | Height | Depth | Link |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| Walvis Products (manufacturer) | Nintendo 3DS, white | 136 | 124 | 12.5 (insert pocket 118 mm tall) | [walvisproducts.eu](https://www.walvisproducts.eu/a-54221072/blue-ray-boxes-game-cases/nintendo-3ds-game-case-colour-white/) |
+| Walvis Products (shown as "customers also bought" on that page) | Nintendo DS | 136 | 124 | 19 | same page |
+| shop4tech, titled "Fits all Nintendo DS and 3DS Games" | 12 mm standard, white | 134 | 123 | 12 | [shop4tech.com](https://www.shop4tech.com/item10280.html) |
+| shop4tech | 3DS standard, black | 134 | 125 | 14 | [shop4tech.com](https://www.shop4tech.com/item10812.html) |
+| Pearl.fr | 3DS | 135 | 125 | 15 | [pearl.fr](https://www.pearl.fr/article/TG3011/boitier-pour-jeux-nintendo-3ds) |
+| ZedLabz | 3DS, white | 137 | 125 | 13 | [zedlabz.com](https://www.zedlabz.com/en-eu/products/game-case-for-nintendo-3ds-retail-compatible-cartridge-replacement-white-zedlabz) |
+| Coolshop | DS-compatible replacement | 136 | 124 | 20 | [coolshop.dk](https://www.coolshop.dk/produkt/AC3TM9/) |
+| Stone Age Gamer | DS replacement | — | — | 14 | [stoneagegamer.com](https://stoneagegamer.com/nintendo-ds-replacement-cartridge-case.html) |
+| Wikipedia, *Nintendo Game Card* | the cards themselves | 33–35 | 35 | 3.8 | [wikipedia.org](https://en.wikipedia.org/wiki/Nintendo_Game_Card) |
+| **Mode (per column)** | | **136** | **124** | DS **19–20** (Walvis, Coolshop), 3DS **12–13** (four sellers, 12.5 most repeated) | |
+
+- **The footprint is the same**: every source is 134–137 × 123–125 mm, with 136 × 124 the most repeated (Walvis for both, Coolshop). Cards are the same size too, and shop4tech sells one case that "fits all Nintendo DS and 3DS games".
+- **The thickness is not**: 3DS cases are 12–15 mm (12.5 from the manufacturer), the DS case 19–20 mm from the two sources that give one. A single 14 mm DS figure and the 12 mm "fits both" case disagree, so the DS depth rests on two sources; the scans' 16 mm DS spine against a 19 mm case suggests the printed spine is a little narrower than the shell, which the other cases here don't do.
+- **The insert pocket** is 118 mm tall on the 3DS case (Walvis), 2 mm more than the scans' 116 mm covers, which is the usual margin. No source gives a pocket *width*, so the scans stand for the 1 mm per panel difference.
+
+### The covers, measured
+
+Both were measured the same way (the white run of the spine at three rows, on all three scans of each):
 
 | | DS | 3DS |
 | :--- | :--- | :--- |
@@ -475,9 +497,12 @@ at three rows, on all three scans of each) to check that the difference is real 
 | Back, spine, front | 130, 16, 130 | 131, 12, 131 |
 | Front strip | left, 18.9–21.7 mm, curved, bordered, with a cutout | right, 13.5 mm, straight, soft shadow |
 
-Both are consistent across their own three scans, to about 0.3 mm, so neither is a mistake in copying. What the
-measurements can't say is whether the printed cover really differs by 1 mm per panel between the two cases or the two
-sets of scans were trimmed differently: scans from different sources are cut to within about ±0.5 mm of the trim, the
-3DS scans are 0.2 mm taller than the DS ones, and the two cases are believed to share one outer shell (the app uses the
-same 135 × 123 mm for both). If a physical DS and 3DS case are to hand, measuring both insert pockets settles it; until
-then the app uses each platform's own measured sizes.
+Each platform's three scans agree to about 0.3 mm, so the 4 mm spine difference is real (and matches the 19 vs 12.5 mm
+cases). The 1 mm per-panel difference is within the ±0.5 mm that scans from different sources are trimmed to, the 3DS scans are 0.2 mm
+taller, and the cases have one footprint, so it may not be a real difference between the covers. It is kept as measured
+because no source says the covers are the same.
+
+### What the app uses
+
+Insert: each platform's measured size (DS 130 × 116, 16 mm spine; 3DS 131 × 116, 12 mm spine). Box and slipcover: the
+shared 136 × 124 mm footprint with each case's own depth, DS 19 mm and 3DS 12.5 mm (`src/templates/pieces.ts`).
