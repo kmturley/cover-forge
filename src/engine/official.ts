@@ -330,7 +330,7 @@ export const GAME_CASE_BRANDING: Record<string, Branding> = {
       fill: { x: [[0, '#b1b1b1'], [0.037, '#b6b6b6'], [0.067, '#c2c2c2'], [0.096, '#d0d0d0'], [0.126, '#dfdfdf'], [0.156, '#eaeaea'], [0.185, '#f5f5f5'], [0.215, '#fcfcfc'], [0.245, '#fefefe'], [0.27, W]] },
       marks: [{ parts: [{ logo: '3ds' }], color: K, from: 0.2325, to: 0.757, across: 0.54, dx: -0.01, rotate: -90 }],
     },
-    spine: { fill: W, titleColor: '#333333', marks: [{ parts: [{ logo: '3ds' }], color: K, from: 0.0244, to: 0.2332, across: 0.8, dx: 0.017, rotate: 90 }] },
+    spine: { fill: W, titleColor: '#333333', marks: [{ parts: [{ logo: '3ds' }], color: K, from: 0.0344, to: 0.2432, across: 0.8, dx: 0.017, rotate: 90 }] },
   },
   'wii-u': {
     front: {
