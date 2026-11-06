@@ -412,7 +412,10 @@ function drawSpine(s: Sink, t: TemplateConfig, p: PanelRect, sp: SpineBranding, 
       const [cx0, cy0, cw, ch] = rect;
       const [rl, rr] = sp.cap.corners.map((mm) => mm * px);
       const bottom = cy0 + ch;
-      s.fillPath([['M', cx0, cy0], ['L', cx0 + cw, cy0], ['L', cx0 + cw, bottom + rr], ['Q', cx0 + cw, bottom, cx0 + cw - rr, bottom], ['L', cx0 + rl, bottom], ['Q', cx0, bottom, cx0, bottom + rl], ['Z']], capInk);
+      // A positive radius rounds the coloured area below (the cap runs down into the gap); a negative one rounds the cap's own corner.
+      const right: PathOp[] = rr >= 0 ? [['L', cx0 + cw, bottom + rr], ['Q', cx0 + cw, bottom, cx0 + cw - rr, bottom]] : [['L', cx0 + cw, bottom + rr], ['Q', cx0 + cw, bottom, cx0 + cw + rr, bottom]];
+      const left: PathOp[] = rl >= 0 ? [['L', cx0 + rl, bottom], ['Q', cx0, bottom, cx0, bottom + rl]] : [['L', cx0 - rl, bottom], ['Q', cx0, bottom, cx0, bottom + rl]];
+      s.fillPath([['M', cx0, cy0], ['L', cx0 + cw, cy0], ...right, ...left, ['Z']], capInk);
     } else s.fillRect(rect[0], rect[1], rect[2], rect[3], capInk);
     if (sp.cap.line) {
       const t2 = sp.cap.line.size * along;

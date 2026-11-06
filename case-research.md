@@ -403,10 +403,10 @@ the template's alpha channel (opaque white where the strip is, transparent where
 - **A black border**, a constant 1.27 mm, along that edge.
 - **An angular cutout** from 42.5 mm to 74.5 mm down (36.6 % to 64.2 % of H). The white pulls back to 18.25 mm from the front's left, slanting in over 3 mm (42.5 to 45.5 mm) and out over 4 mm (70.5 to 74.5 mm). The border is 3 mm thicker in between, which is the thumb notch the black wedge in the template shows.
 - **The logo** (`src/brands/svg/ds.svg`) reads **bottom to top** (rotate −90, N at the bottom, the DS and ™ at the top). Its ink spans 151.8–160.4 mm across and 26.3–88.2 mm down (22.6–76.1 % of H), 62 mm long. The first version had it reading top to bottom, 180° the wrong way round.
-- **The spine** has a white cap down to 34.1 mm (29.4 % of L), carrying a small copy of the logo reading top to bottom (136.3–140.2 mm across, 3.5–31.0 mm down). Below it the spine is the game's own colour. **Two subtle curves**: the top corners of that coloured area are rounded, about 0.4 mm on the left and 1 mm on the right, so the white cap runs down into the gaps.
+- **The spine** has a white cap down to 34.1 mm (29.4 % of L), carrying a small copy of the logo reading top to bottom (136.3–140.2 mm across, 3.5–31.0 mm down). Below it the spine is the game's own colour. **Two subtle curves**: the white cap's bottom-left corner is itself rounded (about 1 mm, so the black shows through), and the coloured area's top-right corner is rounded (about 1 mm, so the white cap runs down into the gap).
 
 The engine got two small features for this, both optional on existing branding data (`src/engine/official.ts`):
-`edge` on a `strip` header (a curve, a border and a cutout, drawn as two ordinary layers) and `corners` on a spine cap.
+`edge` on a `strip` header (a curve, a border and a cutout, drawn as two ordinary layers) and `corners` on a spine cap (a positive radius rounds the area below, a negative one rounds the cap's own corner).
 
 ### How the match was checked
 

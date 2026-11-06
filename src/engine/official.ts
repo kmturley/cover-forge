@@ -106,7 +106,7 @@ export interface SpineBranding {
   /** Colours the whole spine (Switch red, Wii white). */
   fill?: Paint;
   /** A block at the top of the spine, `length` of L, closed by an optional line. `dome` curves its lower edge up in the middle by that share of L. */
-  cap?: { length: number; fill: Paint; line?: { color: string; size: number; gap?: number }; dome?: number; /** Rounds the corners of what lies below the cap: the left and right radius in mm (the white fills the gaps). */ corners?: [number, number] };
+  cap?: { length: number; fill: Paint; line?: { color: string; size: number; gap?: number }; dome?: number; /** Rounds a corner at the cap's lower edge, left then right, radius in mm. Positive rounds what lies below (the cap's colour fills the gap); negative rounds the cap's own corner. */ corners?: [number, number] };
   /** A thin outline round the whole spine (or its cap), `mm` thick. `top: false` leaves the top edge off, and `rightFrom`
    * starts the right edge that far down (fraction of L) so it doesn't run along a header that meets it. */
   outline?: { color: string; mm: number; top?: boolean; right?: boolean; rightFrom?: number };
@@ -318,7 +318,7 @@ export const GAME_CASE_BRANDING: Record<string, Branding> = {
       marks: [{ parts: [{ logo: 'ds' }], color: K, from: 0.226, to: 0.7605, across: 0.52, dx: 0.046, rotate: -90 }],
     },
     spine: {
-      cap: { length: 0.294, fill: W, corners: [0.4, 1] },
+      cap: { length: 0.294, fill: W, corners: [-1.3, 1] },
       marks: [{ parts: [{ logo: 'ds' }], color: K, from: 0.029, to: 0.267, across: 0.415, dx: 0.019, rotate: 90 }],
     },
   },
