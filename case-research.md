@@ -431,12 +431,12 @@ fan-made `template.png`. The 3DS wrap is the DS's turned round: the white strip 
 | Measure | Value | How it was found |
 | :--- | :--- | :--- |
 | Wrap | 274 × 116.2 mm (scans), 276 × 116 mm (template) | the template is 2 mm wider than all three scans |
-| Front and back | 131 × 116 mm | the spine's white run is 131–143 mm on all three scans (130.7–131.2 mm at the left, 142.7–143.1 mm at the right), and the report's Mode is 130.9 back, 131.0 front |
+| Front and back | 131 × 116 mm measured; **130 × 116 mm in the app** (the DS's, see §15) | the spine's white run is 131–143 mm on all three scans (130.7–131.2 mm at the left, 142.7–143.1 mm at the right), and the report's Mode is 130.9 back, 131.0 front |
 | Spine | 12 mm (12.0–12.4 measured) | 274 − 2 × 131; the template's spine is 12.1 mm |
+| Wrap in the app | 272 × 116 mm | 130 + 12 + 130 |
 | Case outside (box, slipcover) | 136 × 124 mm, 12.5 mm deep | Walvis lists the 3DS case at 136 × 124 × 12.5 mm; see §15 |
 
-The scans and the template disagree by about 1 mm on each side, so the app follows the scans (a real print), not the
-template (which is also why its overlay score is lower than the DS's, see below). The edge detector got Tetris Axis wrong
+The scans and the template disagree by about 1 mm on each side. The app follows the scans for the spine, the strip and the logos, but takes the DS's 130 mm for the front and back (§15). The overlay score is lower than the DS's for the same reason (see below). The edge detector got Tetris Axis wrong
 (back 127.2, spine 15.7) because the game's own art has a white run near the spine.
 
 ### Trade dress
@@ -499,10 +499,9 @@ Both were measured the same way (the white run of the spine at three rows, on al
 
 Each platform's three scans agree to about 0.3 mm, so the 4 mm spine difference is real (and matches the 19 vs 12.5 mm
 cases). The 1 mm per-panel difference is within the ±0.5 mm that scans from different sources are trimmed to, the 3DS scans are 0.2 mm
-taller, and the cases have one footprint, so it may not be a real difference between the covers. It is kept as measured
-because no source says the covers are the same.
+taller, and the cases have one footprint, so it may not be a real difference between the covers. It was first kept as measured because no source says the covers are the same; then set to 130 for both (see below).
 
 ### What the app uses
 
-Insert: each platform's measured size (DS 130 × 116, 16 mm spine; 3DS 131 × 116, 12 mm spine). Box and slipcover: the
+Insert: 130 × 116 mm front for both, with each platform's own spine (DS 16 mm, 3DS 12 mm). The 3DS scans measure 131 mm; it was set to 130 because the cases share one 136 × 124 mm footprint, the usual shell-to-cover gap on every other case here is 5.5–7 mm (so 130 on 136), and 1 mm is inside scan trimming tolerance. The 3DS strip and logos are anchored to the right edge and the spine logo to the spine's fold, so they sit where the scans have them (3.3 mm in from the right edge; 4.8 mm in from the fold). Box and slipcover: the
 shared 136 × 124 mm footprint with each case's own depth, DS 19 mm and 3DS 12.5 mm (`src/templates/pieces.ts`).
