@@ -266,9 +266,45 @@ function drawFront(s: Sink, t: TemplateConfig, p: PanelRect, h: FrontHeader, px:
   } else if (h.shape === 'strip') {
     const sw = h.w * W;
     const [sy, sh] = [area.yMm * px, area.heightMm * px];
-    s.begin(`${key}.strip`, 'Side strip', p);
-    s.fillRect(ax, sy, x0 + sw - ax, sh, ink(h.fill, ax, sy, x0 + sw - ax, sh));
-    h.marks.forEach((m, i) => drawSpan(s, m, { x: x0, y: y0, across: sw, along: H }, 'vertical', px, p, `${key}.mark-${i + 1}`));
+    if (h.edge) {
+      // The edge is sampled down the panel: a border-coloured shape out to the edge, then the strip's own colour
+      // pulled back by the border's thickness, further in a cut.
+      const e = h.edge;
+      const bw = e.border.mm * px;
+      const [W2, top, bottom] = [p.widthMm * px, sy, sy + sh];
+      const clampT = (y: number) => Math.min(1, Math.max(0, (y - y0) / H));
+      const outer = (y: number) => x0 + e.depth(clampT(y)) * W2;
+      const ramp = (t: number, a: number, b: number) => Math.min(1, Math.max(0, (t - a) / (b - a)));
+      const inner = (y: number) => {
+        const t = clampT(y);
+        const base = outer(y) - bw;
+        if (!e.cut) return base;
+        const k = Math.min(ramp(t, e.cut.from, e.cut.hold[0]), 1 - ramp(t, e.cut.hold[1], e.cut.to));
+        return base + (x0 + e.cut.inset * W2 - base) * k;
+      };
+      const shape = (edge: (y: number) => number): PathOp[] => {
+        const ops: PathOp[] = [['M', ax, top]];
+        const steps = 96;
+        for (let i = 0; i <= steps; i++) {
+          const y = top + ((bottom - top) * i) / steps;
+          ops.push(['L', edge(y), y]);
+        }
+        ops.push(['L', ax, bottom], ['Z']);
+        return ops;
+      };
+      s.begin(`${key}.strip-border`, 'Strip border', p);
+      s.fillPath(shape(outer), e.border.color);
+      s.begin(`${key}.strip`, 'Side strip', p);
+      s.fillPath(shape(inner), ink(h.fill, ax, sy, sw, sh));
+    } else {
+      s.begin(`${key}.strip`, 'Side strip', p);
+      // On the right the paint runs on past the trim into the bleed.
+      const sx = h.side === 'right' ? x0 + W - sw : ax;
+      const rw = h.side === 'right' ? ax + aw - sx : x0 + sw - ax;
+      s.fillRect(sx, sy, rw, sh, ink(h.fill, sx, sy, rw, sh));
+    }
+    const stripX = h.side === 'right' ? x0 + W - sw : x0;
+    h.marks.forEach((m, i) => drawSpan(s, m, { x: stripX, y: y0, across: sw, along: H }, 'vertical', px, p, `${key}.mark-${i + 1}`));
   } else {
     h.marks.forEach((m, i) => drawFrontMark(s, m, panelBox, p, px, () => 0, `${key}.mark-${i + 1}`));
   }
@@ -375,6 +411,15 @@ function drawSpine(s: Sink, t: TemplateConfig, p: PanelRect, sp: SpineBranding, 
       const rise = sp.cap.dome * along;
       const [cx0, cy0, cw, ch] = rect;
       s.fillPath([['M', cx0, cy0], ['L', cx0 + cw, cy0], ['L', cx0 + cw, cy0 + ch], ['Q', cx0 + cw / 2, cy0 + ch - 2 * rise, cx0, cy0 + ch], ['Z']], capInk);
+    } else if (sp.cap.corners && vertical) {
+      // What lies below the cap has rounded corners; the cap's colour fills the gap each one leaves.
+      const [cx0, cy0, cw, ch] = rect;
+      const [rl, rr] = sp.cap.corners.map((mm) => mm * px);
+      const bottom = cy0 + ch;
+      // A positive radius rounds the coloured area below (the cap runs down into the gap); a negative one rounds the cap's own corner.
+      const right: PathOp[] = rr >= 0 ? [['L', cx0 + cw, bottom + rr], ['Q', cx0 + cw, bottom, cx0 + cw - rr, bottom]] : [['L', cx0 + cw, bottom + rr], ['Q', cx0 + cw, bottom, cx0 + cw + rr, bottom]];
+      const left: PathOp[] = rl >= 0 ? [['L', cx0 + rl, bottom], ['Q', cx0, bottom, cx0, bottom + rl]] : [['L', cx0 - rl, bottom], ['Q', cx0, bottom, cx0, bottom + rl]];
+      s.fillPath([['M', cx0, cy0], ['L', cx0 + cw, cy0], ...right, ...left, ['Z']], capInk);
     } else s.fillRect(rect[0], rect[1], rect[2], rect[3], capInk);
     if (sp.cap.line) {
       const t2 = sp.cap.line.size * along;

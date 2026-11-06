@@ -82,20 +82,31 @@ export const arc = (edge: number, centre: number): Depth => (x) => edge + (centr
 /** A curve deepening from `left` to `right`, slowly at first. */
 export const ease = (left: number, right: number): Depth => (x) => left + (right - left) * x * x;
 
+/**
+ * A curved right edge for a front strip (the Nintendo DS's): `depth` is how far the edge reaches from the panel's left
+ * (fraction of W) at a height `y` (fraction of H), and a `border` of that thickness runs along it. In a `cut` the
+ * strip's white pulls back to `inset` (fraction of W) with straight slants, leaving the border thick there.
+ */
+export interface StripEdge {
+  depth: Depth;
+  border: { color: string; mm: number };
+  cut?: { from: number; hold: [number, number]; to: number; inset: number };
+}
+
 export type FrontHeader =
   /** Full width across the top. */
   | { shape: 'band'; depth: Depth; fill: Paint; line?: Line; decor?: 'xbox-orb' | 'x360-swoosh'; marks: FrontMark[] }
   /** A block in the top-left corner, `w` × `h`; with `wBottom` its right edge is a diagonal. */
   | { shape: 'tab'; w: number; h: number; wBottom?: number; /** Also paints the top bleed this far across (a share of W), so a logo flush with the top edge has none showing above it. */ lip?: number; fill: Paint; plate?: { top: number; bottom: number; fill: string; line: string }; marks: FrontMark[] }
   /** Full height down the left edge, `w` wide. Its marks run along it. */
-  | { shape: 'strip'; w: number; fill: Paint; marks: SpanMark[] }
+  | { shape: 'strip'; w: number; /** Down the right edge instead of the left (the 3DS's). A curved `edge` is for the left side only. */ side?: 'left' | 'right'; fill: Paint; /** The strip's right edge when it isn't straight. */ edge?: StripEdge; marks: SpanMark[] }
   | { shape: 'none'; marks: FrontMark[] };
 
 export interface SpineBranding {
   /** Colours the whole spine (Switch red, Wii white). */
   fill?: Paint;
   /** A block at the top of the spine, `length` of L, closed by an optional line. `dome` curves its lower edge up in the middle by that share of L. */
-  cap?: { length: number; fill: Paint; line?: { color: string; size: number; gap?: number }; dome?: number };
+  cap?: { length: number; fill: Paint; line?: { color: string; size: number; gap?: number }; dome?: number; /** Rounds a corner at the cap's lower edge, left then right, radius in mm. Positive rounds what lies below (the cap's colour fills the gap); negative rounds the cap's own corner. */ corners?: [number, number] };
   /** A thin outline round the whole spine (or its cap), `mm` thick. `top: false` leaves the top edge off, and `rightFrom`
    * starts the right edge that far down (fraction of L) so it doesn't run along a header that meets it. */
   outline?: { color: string; mm: number; top?: boolean; right?: boolean; rightFrom?: number };
@@ -292,6 +303,35 @@ export const GAME_CASE_BRANDING: Record<string, Branding> = {
     spine: { fill: SWITCH2_RED, marks: [{ parts: [{ stack: [{ logo: 'switch2', only: [1] }, { logo: 'switch2', only: [2] }] }], color: W, gap: 0.7, from: 0.0235, to: 0.112, across: 0.5, rotate: 0 }], titleFrom: 0.12 },
   },
   // Wii U: a cyan band with a convex lower edge and a yellow-green line, "Wii U" centred; a white spine.
+  // Nintendo DS: a white strip down the left of the front with the logo reading downwards, and a white spine cap with
+  // the same logo small. (The real strip's edge is a slight curve, 164–168 mm from the wrap's left; ours is straight.)
+  ds: {
+    front: {
+      shape: 'strip', w: 0.143, fill: W,
+      // Measured on the fan template: the edge reaches 18.9 mm at the top and bottom and 21.7 mm in the middle, with a
+      // 1.3 mm black border, and between 42.5–74.5 mm down the white pulls back to 18.25 mm, slanting in and out.
+      edge: {
+        depth: slope([[0, 0.1456], [0.1, 0.1515], [0.2, 0.1567], [0.3, 0.1619], [0.4, 0.1652], [0.5, 0.1671], [0.6, 0.1652], [0.7, 0.1619], [0.8, 0.1567], [0.9, 0.1515], [1, 0.1456]]),
+        border: { color: K, mm: 1.27 },
+        cut: { from: 0.3664, hold: [0.3922, 0.6078], to: 0.6422, inset: 0.1404 },
+      },
+      marks: [{ parts: [{ logo: 'ds' }], color: K, from: 0.226, to: 0.7605, across: 0.52, dx: 0.046, rotate: -90 }],
+    },
+    spine: {
+      cap: { length: 0.294, fill: W, corners: [-1.3, 1] },
+      marks: [{ parts: [{ logo: 'ds' }], color: K, from: 0.029, to: 0.267, across: 0.415, dx: 0.019, rotate: 90 }],
+    },
+  },
+  // Nintendo 3DS: the DS's dress turned round: a white strip down the RIGHT of the front with a soft grey shadow along
+  // its left edge and the logo reading upwards, and an all-white spine with the same logo small at the top.
+  '3ds': {
+    front: {
+      shape: 'strip', side: 'right', w: 0.103,
+      fill: { x: [[0, '#b1b1b1'], [0.037, '#b6b6b6'], [0.067, '#c2c2c2'], [0.096, '#d0d0d0'], [0.126, '#dfdfdf'], [0.156, '#eaeaea'], [0.185, '#f5f5f5'], [0.215, '#fcfcfc'], [0.245, '#fefefe'], [0.27, W]] },
+      marks: [{ parts: [{ logo: '3ds' }], color: K, from: 0.2325, to: 0.757, across: 0.54, dx: -0.01, rotate: -90 }],
+    },
+    spine: { fill: W, titleColor: '#333333', marks: [{ parts: [{ logo: '3ds' }], color: K, from: 0.0344, to: 0.2432, across: 0.8, dx: 0.017, rotate: 90 }] },
+  },
   'wii-u': {
     front: {
       shape: 'band', depth: arc(0.0346, 0.0941), fill: '#019fcc', line: { color: '#fcee38', size: 0.0078, taper: 0 },

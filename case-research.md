@@ -374,3 +374,134 @@ adds to its insert (5.5 × 7 mm), and is marked derived. Depth is the insert's s
 128 × 149 mm front); a retailer lists the 4-disc case at 171.5 × 136 × 15 mm
 ([desertcart](https://www.desertcart.nl/products/313337750-new-1-official-4-discs-4k-uhd-replacement-case-black.md)) and
 a distributor lists 129 mm panels with a 15 mm spine, which agree within 1 mm. Not measured on a physical case.
+
+## 13. Nintendo DS
+
+Measured from three 300 dpi scans in `scans/ds` (git-ignored, like the other scans) and the fan-made `template.png`.
+Every file is a 276 × 116 mm wrap laid out back | spine | front.
+
+### Size
+
+| Measure | Value | How it was found |
+| :--- | :--- | :--- |
+| Front and back | 130 × 116 mm | the spine/front fold is a sharp black-to-white step at 145.9 mm on all three scans; the front is 276 − 145.9 = 130.1 mm |
+| Spine | 16 mm (15.9 measured) | 276 − 2 × 130; the back/spine fold is hidden by the art, so it is taken as symmetric |
+| Case outside (box, slipcover) | 136 × 124 mm, 19 mm deep | the footprint is shared with the 3DS and the depth is the DS's own; see §15 for the sources |
+
+`scripts/measure-covers.ts` locked onto the wrong edge on one scan (GTA: back 138, spine 8): the white strip beside the
+spine looks like a spine to an edge detector. The other rows and the Mode are right, and the known 16 mm spine is the
+fallback, as for the other cases.
+
+### Trade dress (what Branded draws)
+
+The DS front has no header band. It has a **white strip down the left**, 18.9 mm wide at the top and bottom and 21.7 mm in
+the middle (14.6–16.7 % of the front's width), and the cover art starts at its curved right edge. The edge was read from
+the template's alpha channel (opaque white where the strip is, transparent where the art goes):
+
+- **A gradual curve.** The edge reaches 18.93 mm from the front's left at the top and bottom and 21.72 mm at mid-height, and is symmetric about the middle (19.69 at 10 % and 90 %, 20.37 at 20 % and 80 %, 21.05 at 30 % and 70 %, 21.47 at 40 % and 60 %). It is nearly straight for the first third, then flattens.
+- **A black border**, a constant 1.27 mm, along that edge.
+- **An angular cutout** from 42.5 mm to 74.5 mm down (36.6 % to 64.2 % of H). The white pulls back to 18.25 mm from the front's left, slanting in over 3 mm (42.5 to 45.5 mm) and out over 4 mm (70.5 to 74.5 mm). The border is 3 mm thicker in between, which is the thumb notch the black wedge in the template shows.
+- **The logo** (`src/brands/svg/ds.svg`) reads **bottom to top** (rotate −90, N at the bottom, the DS and ™ at the top). Its ink spans 151.8–160.4 mm across and 26.3–88.2 mm down (22.6–76.1 % of H), 62 mm long. The first version had it reading top to bottom, 180° the wrong way round.
+- **The spine** has a white cap down to 34.1 mm (29.4 % of L), carrying a small copy of the logo reading top to bottom (136.3–140.2 mm across, 3.5–31.0 mm down). Below it the spine is the game's own colour. **Two subtle curves**: the white cap's bottom-left corner is itself rounded (about 1 mm, so the black shows through), and the coloured area's top-right corner is rounded (about 1 mm, so the white cap runs down into the gap).
+
+The engine got two small features for this, both optional on existing branding data (`src/engine/official.ts`):
+`edge` on a `strip` header (a curve, a border and a cutout, drawn as two ordinary layers) and `corners` on a spine cap (a positive radius rounds the area below, a negative one rounds the cap's own corner).
+
+### How the match was checked
+
+`npm run compare:covers -- ds --scans` renders the app's cover with Branded on and no artwork (`compare/ds/app.png`, 300 dpi, on the same pixel grid as the scans) and writes an overlay of it against the template. The overlay score and the logo positions, from the ink bounding boxes of the app and the template:
+
+| Step | Overlay match | Logo error |
+| :--- | :--- | :--- |
+| Straight strip, logo the wrong way round | 84.6 % | n/a |
+| Curved edge, border, cutout, logo rotated, spine corners | 94.8 % | up to 0.4 mm and 7 % in size |
+| Logo and cap positions tuned to the template | 98.0 % | within 0.1 mm |
+
+What is left: the template has no art, so the app's dark base colour shows where the template is transparent, and the
+border can't be told from it in the overlay. The edge is a polyline sampled 96 times (not a true curve), which is
+indistinguishable at print size.
+
+## 14. Nintendo 3DS
+
+Measured from three 300 dpi scans in `scans/3ds` (Kirby: Planet Robobot, Rayman 3D, Tetris Axis; git-ignored) and the
+fan-made `template.png`. The 3DS wrap is the DS's turned round: the white strip is on the **right** of the front.
+
+### Size
+
+| Measure | Value | How it was found |
+| :--- | :--- | :--- |
+| Wrap | 274 × 116.2 mm (scans), 276 × 116 mm (template) | the template is 2 mm wider than all three scans |
+| Front and back | 131 × 116 mm measured; **130 × 116 mm in the app** (the DS's, see §15) | the spine's white run is 131–143 mm on all three scans (130.7–131.2 mm at the left, 142.7–143.1 mm at the right), and the report's Mode is 130.9 back, 131.0 front |
+| Spine | 12 mm (12.0–12.4 measured) | 274 − 2 × 131; the template's spine is 12.1 mm |
+| Wrap in the app | 272 × 116 mm | 130 + 12 + 130 |
+| Case outside (box, slipcover) | 136 × 124 mm, 12.5 mm deep | Walvis lists the 3DS case at 136 × 124 × 12.5 mm; see §15 |
+
+The scans and the template disagree by about 1 mm on each side. The app follows the scans for the spine, the strip and the logos, but takes the DS's 130 mm for the front and back (§15). The overlay score is lower than the DS's for the same reason (see below). The edge detector got Tetris Axis wrong
+(back 127.2, spine 15.7) because the game's own art has a white run near the spine.
+
+### Trade dress
+
+- **Strip.** White, down the **right** edge of the front, 13.5 mm wide on the scans (10.3 % of the front's width; the template has 14.3 mm). Its left edge is straight (260.1–261.1 mm on the three scans) with a **soft grey shadow** fading from about `#b1b1b1` at the edge to white over 3.5 mm (read from the template; the scans' shadow is a little shorter and lighter). Ours is a horizontal gradient from the strip's left edge.
+- **Logo** (`src/brands/svg/3ds.svg`, "NINTENDO 3DS" with a red 3 and grey squares): reads **bottom to top**, like the DS's. Ink 7.2 mm across and 26.8–87.8 mm down (23.1–75.7 % of H); its right edge is 3.2 mm in from the wrap's right edge.
+- **Spine.** All white, full length. The logo is at the top, reading top to bottom, 2.9 mm across and 2.8–27.0 mm down on the scans (2.4–23.3 % of L), centred a little right of the spine's middle. Ours sits 1.2 mm lower (4.0 mm down, 3.4–24.3 % of L) so it isn't tight against the top edge. Below it the game's own icon and title (the app's spine title takes the dark-grey fallback on white, as the Wii does).
+- **No curve, border, cutout or rounded corners**: unlike the DS, the 3DS strip's edge is straight and its spine has square corners.
+
+The engine got one small feature for it: `side: 'right'` on a `strip` header (the curved `edge` is for the left side only).
+
+### How the match was checked
+
+`npm run compare:covers -- 3ds --scans` renders the app (`compare/3ds/app.png`, 300 dpi on the scans' pixel grid) and the same ink-bounding-box check as the DS, against the template and the scans:
+
+| | Front logo (x, y, mm) | Spine logo (x, y, mm) |
+| :--- | :--- | :--- |
+| App, first version | 264.2–271.5, 26.6–88.0 | 135.7–138.6, 2.4–26.1 |
+| Kirby / Rayman / Tetris scans | right edge 271.0 / 270.7 / 270.5, 26.7–87.5 / 26.8–87.8 / 27.3–88.2 | 135.8–138.7, 2.8–27.0 / 2.9–27.1 / 3.6–27.8 |
+| App, tuned to the scans | 263.6–270.8, 27.0–87.9 | 135.7–138.6, 3.0–27.0 (since moved down 1.2 mm) |
+
+The overlay against the template is 90.0 %: it was 91.0 % before the logos were moved onto the scans, because the template
+is 2 mm wider and its logos sit about 0.7 mm differently, so this score understates how well it matches the scans.
+
+## 15. Nintendo DS and 3DS side by side
+
+**Question:** the DS and 3DS wraps differ by 1 mm per panel (130 vs 131) and the spines by 4 mm (16 vs 12). Are the cases
+the same size, or different? **Answer, from the cases themselves: the same footprint, but the DS case is much thicker.**
+
+### Case exterior
+
+| Source | Case | Width | Height | Depth | Link |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| Walvis Products (manufacturer) | Nintendo 3DS, white | 136 | 124 | 12.5 (insert pocket 118 mm tall) | [walvisproducts.eu](https://www.walvisproducts.eu/a-54221072/blue-ray-boxes-game-cases/nintendo-3ds-game-case-colour-white/) |
+| Walvis Products (shown as "customers also bought" on that page) | Nintendo DS | 136 | 124 | 19 | same page |
+| shop4tech, titled "Fits all Nintendo DS and 3DS Games" | 12 mm standard, white | 134 | 123 | 12 | [shop4tech.com](https://www.shop4tech.com/item10280.html) |
+| shop4tech | 3DS standard, black | 134 | 125 | 14 | [shop4tech.com](https://www.shop4tech.com/item10812.html) |
+| Pearl.fr | 3DS | 135 | 125 | 15 | [pearl.fr](https://www.pearl.fr/article/TG3011/boitier-pour-jeux-nintendo-3ds) |
+| ZedLabz | 3DS, white | 137 | 125 | 13 | [zedlabz.com](https://www.zedlabz.com/en-eu/products/game-case-for-nintendo-3ds-retail-compatible-cartridge-replacement-white-zedlabz) |
+| Coolshop | DS-compatible replacement | 136 | 124 | 20 | [coolshop.dk](https://www.coolshop.dk/produkt/AC3TM9/) |
+| Stone Age Gamer | DS replacement | — | — | 14 | [stoneagegamer.com](https://stoneagegamer.com/nintendo-ds-replacement-cartridge-case.html) |
+| Wikipedia, *Nintendo Game Card* | the cards themselves | 33–35 | 35 | 3.8 | [wikipedia.org](https://en.wikipedia.org/wiki/Nintendo_Game_Card) |
+| **Mode (per column)** | | **136** | **124** | DS **19–20** (Walvis, Coolshop), 3DS **12–13** (four sellers, 12.5 most repeated) | |
+
+- **The footprint is the same**: every source is 134–137 × 123–125 mm, with 136 × 124 the most repeated (Walvis for both, Coolshop). Cards are the same size too, and shop4tech sells one case that "fits all Nintendo DS and 3DS games".
+- **The thickness is not**: 3DS cases are 12–15 mm (12.5 from the manufacturer), the DS case 19–20 mm from the two sources that give one. A single 14 mm DS figure and the 12 mm "fits both" case disagree, so the DS depth rests on two sources; the scans' 16 mm DS spine against a 19 mm case suggests the printed spine is a little narrower than the shell, which the other cases here don't do.
+- **The insert pocket** is 118 mm tall on the 3DS case (Walvis), 2 mm more than the scans' 116 mm covers, which is the usual margin. No source gives a pocket *width*, so the scans stand for the 1 mm per panel difference.
+
+### The covers, measured
+
+Both were measured the same way (the white run of the spine at three rows, on all three scans of each):
+
+| | DS | 3DS |
+| :--- | :--- | :--- |
+| Wrap (width × height) | 276.0 × 116.0 mm | 274.0 × 116.2 mm |
+| Back / spine fold | 129.8–130.3 mm | 130.7–131.2 mm |
+| Spine / front fold | 145.9 mm (all three scans) | 142.7–143.1 mm |
+| Back, spine, front | 130, 16, 130 | 131, 12, 131 |
+| Front strip | left, 18.9–21.7 mm, curved, bordered, with a cutout | right, 13.5 mm, straight, soft shadow |
+
+Each platform's three scans agree to about 0.3 mm, so the 4 mm spine difference is real (and matches the 19 vs 12.5 mm
+cases). The 1 mm per-panel difference is within the ±0.5 mm that scans from different sources are trimmed to, the 3DS scans are 0.2 mm
+taller, and the cases have one footprint, so it may not be a real difference between the covers. It was first kept as measured because no source says the covers are the same; then set to 130 for both (see below).
+
+### What the app uses
+
+Insert: 130 × 116 mm front for both, with each platform's own spine (DS 16 mm, 3DS 12 mm). The 3DS scans measure 131 mm; it was set to 130 because the cases share one 136 × 124 mm footprint, the usual shell-to-cover gap on every other case here is 5.5–7 mm (so 130 on 136), and 1 mm is inside scan trimming tolerance. The 3DS strip and logos are anchored to the right edge and the spine logo to the spine's fold, so they sit where the scans have them (3.3 mm in from the right edge; 4.8 mm in from the fold). Box and slipcover: the
+shared 136 × 124 mm footprint with each case's own depth, DS 19 mm and 3DS 12.5 mm (`src/templates/pieces.ts`).

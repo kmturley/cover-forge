@@ -336,6 +336,10 @@ const GAME_CASE: Record<string, { label: string; w: number; h: number; spine: nu
   'ps5':       { label: 'PS5',                 w: 129.5, h: 161, spine: 14,   color: '#ffffff' },
   // From a reported 207 × 125 mm full cover.
   'ps-vita':   { label: 'PS Vita',             w: 99,    h: 125, spine: 9,    color: '#003791' },
+  // From the 276 × 116 mm covers in scans/ds: front 130 × 116, spine 16.
+  'ds':        { label: 'Nintendo DS',         w: 130,   h: 116, spine: 16,   color: '#b9bcc2' },
+  // The scans in scans/3ds measure 131 × 116 front, spine 12; the front is 130 like the DS, which shares its case's footprint (case-research.md §15).
+  '3ds':       { label: 'Nintendo 3DS',        w: 130,   h: 116, spine: 12,   color: '#1a1a1a' },
   'switch':    { label: 'Nintendo Switch',     w: 99,    h: 161, spine: 10,   color: '#e60012' },
   'switch2':   { label: 'Nintendo Switch 2',   w: 99,    h: 161, spine: 10,   color: '#e60012' },
   'wii-u':     { label: 'Wii U',               w: 129.5, h: 183, spine: 14,   color: '#0096d6' },

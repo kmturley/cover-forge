@@ -12,6 +12,8 @@ exports[`template ids > never change the physical size of an existing template 1
   "dvd-slim-9": "274 × 189 | back 129.5×183, spine 9×183, front 129.5×183",
   "dvd-std-14": "279 × 189 | back 129.5×183, spine 14×183, front 129.5×183",
   "floppy-face": "71.85 × 71.85 | front 69.85×69.85",
+  "game-case-3ds": "278 × 122 | back 130×116, spine 12×116, front 130×116",
+  "game-case-ds": "282 × 122 | back 130×116, spine 16×116, front 130×116",
   "game-case-gamecube": "279 × 189 | back 129.5×183, spine 14×183, front 129.5×183",
   "game-case-pc": "279 × 189 | back 129.5×183, spine 14×183, front 129.5×183",
   "game-case-ps-vita": "213 × 131 | back 99×125, spine 9×125, front 99×125",
