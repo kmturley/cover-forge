@@ -72,6 +72,7 @@ const LOGO_LABELS = {
   gamecube: 'GameCube',
   'playstation-mark-colour': 'PlayStation symbol (colour)',
   'playstation-wordmark': 'PlayStation wordmark',
+  '3ds': 'Nintendo 3DS',
   ds: 'Nintendo DS',
   switch: 'Nintendo Switch',
   switch2: 'Nintendo Switch 2',

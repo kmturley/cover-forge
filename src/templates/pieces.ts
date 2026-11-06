@@ -53,6 +53,8 @@ const GAME_OUTER: Record<string, { w: number; h: number; depth?: number }> = {
   'xbox-series': { w: 135, h: 170 },
   // Published figures run 134–136 × 122–125 mm; the insert is 130 × 116.
   ds: { w: 135, h: 123 },
+  // The same shell as the DS (the 3DS case is a little thinner, taken from its insert's spine).
+  '3ds': { w: 135, h: 123 },
   switch: { w: 105, h: 170 },
   switch2: { w: 105, h: 170 },
   // A single manufacturer source; the case is 11 mm deep against the insert's 9 mm spine.

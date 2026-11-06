@@ -298,9 +298,13 @@ function drawFront(s: Sink, t: TemplateConfig, p: PanelRect, h: FrontHeader, px:
       s.fillPath(shape(inner), ink(h.fill, ax, sy, sw, sh));
     } else {
       s.begin(`${key}.strip`, 'Side strip', p);
-      s.fillRect(ax, sy, x0 + sw - ax, sh, ink(h.fill, ax, sy, x0 + sw - ax, sh));
+      // On the right the paint runs on past the trim into the bleed.
+      const sx = h.side === 'right' ? x0 + W - sw : ax;
+      const rw = h.side === 'right' ? ax + aw - sx : x0 + sw - ax;
+      s.fillRect(sx, sy, rw, sh, ink(h.fill, sx, sy, rw, sh));
     }
-    h.marks.forEach((m, i) => drawSpan(s, m, { x: x0, y: y0, across: sw, along: H }, 'vertical', px, p, `${key}.mark-${i + 1}`));
+    const stripX = h.side === 'right' ? x0 + W - sw : x0;
+    h.marks.forEach((m, i) => drawSpan(s, m, { x: stripX, y: y0, across: sw, along: H }, 'vertical', px, p, `${key}.mark-${i + 1}`));
   } else {
     h.marks.forEach((m, i) => drawFrontMark(s, m, panelBox, p, px, () => 0, `${key}.mark-${i + 1}`));
   }

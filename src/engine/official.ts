@@ -99,7 +99,7 @@ export type FrontHeader =
   /** A block in the top-left corner, `w` × `h`; with `wBottom` its right edge is a diagonal. */
   | { shape: 'tab'; w: number; h: number; wBottom?: number; /** Also paints the top bleed this far across (a share of W), so a logo flush with the top edge has none showing above it. */ lip?: number; fill: Paint; plate?: { top: number; bottom: number; fill: string; line: string }; marks: FrontMark[] }
   /** Full height down the left edge, `w` wide. Its marks run along it. */
-  | { shape: 'strip'; w: number; fill: Paint; /** The strip's right edge when it isn't straight. */ edge?: StripEdge; marks: SpanMark[] }
+  | { shape: 'strip'; w: number; /** Down the right edge instead of the left (the 3DS's). A curved `edge` is for the left side only. */ side?: 'left' | 'right'; fill: Paint; /** The strip's right edge when it isn't straight. */ edge?: StripEdge; marks: SpanMark[] }
   | { shape: 'none'; marks: FrontMark[] };
 
 export interface SpineBranding {
@@ -321,6 +321,16 @@ export const GAME_CASE_BRANDING: Record<string, Branding> = {
       cap: { length: 0.294, fill: W, corners: [-1.3, 1] },
       marks: [{ parts: [{ logo: 'ds' }], color: K, from: 0.029, to: 0.267, across: 0.415, dx: 0.019, rotate: 90 }],
     },
+  },
+  // Nintendo 3DS: the DS's dress turned round: a white strip down the RIGHT of the front with a soft grey shadow along
+  // its left edge and the logo reading upwards, and an all-white spine with the same logo small at the top.
+  '3ds': {
+    front: {
+      shape: 'strip', side: 'right', w: 0.103,
+      fill: { x: [[0, '#b1b1b1'], [0.037, '#b6b6b6'], [0.067, '#c2c2c2'], [0.096, '#d0d0d0'], [0.126, '#dfdfdf'], [0.156, '#eaeaea'], [0.185, '#f5f5f5'], [0.215, '#fcfcfc'], [0.245, '#fefefe'], [0.27, W]] },
+      marks: [{ parts: [{ logo: '3ds' }], color: K, from: 0.2325, to: 0.757, across: 0.54, dx: -0.01, rotate: -90 }],
+    },
+    spine: { fill: W, titleColor: '#333333', marks: [{ parts: [{ logo: '3ds' }], color: K, from: 0.0244, to: 0.2332, across: 0.8, dx: 0.017, rotate: 90 }] },
   },
   'wii-u': {
     front: {

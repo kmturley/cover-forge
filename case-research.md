@@ -421,3 +421,43 @@ The engine got two small features for this, both optional on existing branding d
 What is left: the template has no art, so the app's dark base colour shows where the template is transparent, and the
 border can't be told from it in the overlay. The edge is a polyline sampled 96 times (not a true curve), which is
 indistinguishable at print size.
+
+## 14. Nintendo 3DS
+
+Measured from three 300 dpi scans in `scans/3ds` (Kirby: Planet Robobot, Rayman 3D, Tetris Axis; git-ignored) and the
+fan-made `template.png`. The 3DS wrap is the DS's turned round: the white strip is on the **right** of the front.
+
+### Size
+
+| Measure | Value | How it was found |
+| :--- | :--- | :--- |
+| Wrap | 274 × 116.2 mm (scans), 276 × 116 mm (template) | the template is 2 mm wider than all three scans |
+| Front and back | 131 × 116 mm | the spine's white run is 131–143 mm on all three scans (130.7–131.2 mm at the left, 142.7–143.1 mm at the right), and the report's Mode is 130.9 back, 131.0 front |
+| Spine | 12 mm (12.0–12.4 measured) | 274 − 2 × 131; the template's spine is 12.1 mm |
+| Case outside (box, slipcover) | 135 × 123 mm, depth 12 mm | no 3DS-specific figures were found: it is the DS case's size with the insert's spine for depth, an assumption |
+
+The scans and the template disagree by about 1 mm on each side, so the app follows the scans (a real print), not the
+template (which is also why its overlay score is lower than the DS's, see below). The edge detector got Tetris Axis wrong
+(back 127.2, spine 15.7) because the game's own art has a white run near the spine.
+
+### Trade dress
+
+- **Strip.** White, down the **right** edge of the front, 13.5 mm wide on the scans (10.3 % of the front's width; the template has 14.3 mm). Its left edge is straight (260.1–261.1 mm on the three scans) with a **soft grey shadow** fading from about `#b1b1b1` at the edge to white over 3.5 mm (read from the template; the scans' shadow is a little shorter and lighter). Ours is a horizontal gradient from the strip's left edge.
+- **Logo** (`src/brands/svg/3ds.svg`, "NINTENDO 3DS" with a red 3 and grey squares): reads **bottom to top**, like the DS's. Ink 7.2 mm across and 26.8–87.8 mm down (23.1–75.7 % of H); its right edge is 3.2 mm in from the wrap's right edge.
+- **Spine.** All white, full length. The logo is at the top, reading top to bottom, 2.9 mm across and 2.8–27.0 mm down (2.4–23.3 % of L), centred a little right of the spine's middle. Below it the game's own icon and title (the app's spine title takes the dark-grey fallback on white, as the Wii does).
+- **No curve, border, cutout or rounded corners**: unlike the DS, the 3DS strip's edge is straight and its spine has square corners.
+
+The engine got one small feature for it: `side: 'right'` on a `strip` header (the curved `edge` is for the left side only).
+
+### How the match was checked
+
+`npm run compare:covers -- 3ds --scans` renders the app (`compare/3ds/app.png`, 300 dpi on the scans' pixel grid) and the same ink-bounding-box check as the DS, against the template and the scans:
+
+| | Front logo (x, y, mm) | Spine logo (x, y, mm) |
+| :--- | :--- | :--- |
+| App, first version | 264.2–271.5, 26.6–88.0 | 135.7–138.6, 2.4–26.1 |
+| Kirby / Rayman / Tetris scans | right edge 271.0 / 270.7 / 270.5, 26.7–87.5 / 26.8–87.8 / 27.3–88.2 | 135.8–138.7, 2.8–27.0 / 2.9–27.1 / 3.6–27.8 |
+| App, tuned to the scans | 263.6–270.8, 27.0–87.9 | 135.7–138.6, 3.0–27.0 |
+
+The overlay against the template is 90.0 %: it was 91.0 % before the logos were moved onto the scans, because the template
+is 2 mm wider and its logos sit about 0.7 mm differently, so this score understates how well it matches the scans.
