@@ -51,6 +51,8 @@ const GAME_OUTER: Record<string, { w: number; h: number; depth?: number }> = {
   ps5: TALL_CASE,
   'xbox-one': { w: 135, h: 170 },
   'xbox-series': { w: 135, h: 170 },
+  // Published figures run 134–136 × 122–125 mm; the insert is 130 × 116.
+  ds: { w: 135, h: 123 },
   switch: { w: 105, h: 170 },
   switch2: { w: 105, h: 170 },
   // A single manufacturer source; the case is 11 mm deep against the insert's 9 mm spine.

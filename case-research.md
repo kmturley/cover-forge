@@ -374,3 +374,12 @@ adds to its insert (5.5 × 7 mm), and is marked derived. Depth is the insert's s
 128 × 149 mm front); a retailer lists the 4-disc case at 171.5 × 136 × 15 mm
 ([desertcart](https://www.desertcart.nl/products/313337750-new-1-official-4-discs-4k-uhd-replacement-case-black.md)) and
 a distributor lists 129 mm panels with a 15 mm spine, which agree within 1 mm. Not measured on a physical case.
+
+## 13. Nintendo DS
+
+Measured from three 300 dpi scans in `scans/ds` (not committed) and the fan template: each wrap is 276 × 116 mm. The
+spine/front fold is at 145.9 mm, so with the front and back equal at 130 mm the spine is 16 mm. Published figures for
+the retail case disagree: about 135 × 122–125 mm outside, 13–20 mm deep (Q&A pages, retailers of replacement cases),
+so the box and slipcover use 135 × 123 mm and the insert's 16 mm depth. The insert's spine is the least certain
+number. The front's white strip has a slightly curved right edge (164–168 mm from the wrap's left); Branded draws it
+straight at 164 mm.

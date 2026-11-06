@@ -72,6 +72,7 @@ const LOGO_LABELS = {
   gamecube: 'GameCube',
   'playstation-mark-colour': 'PlayStation symbol (colour)',
   'playstation-wordmark': 'PlayStation wordmark',
+  ds: 'Nintendo DS',
   switch: 'Nintendo Switch',
   switch2: 'Nintendo Switch 2',
   wii: 'Wii',
@@ -128,7 +129,9 @@ function parseTransform(text) {
 const isTranslate = (m) => m[0] === 1 && m[1] === 0 && m[2] === 0 && m[3] === 1;
 
 function parseLogo(svg, id) {
-  const [vx, vy, vw, vh] = attr(svg.match(/<svg[^>]*>/)[0], 'viewBox').split(/[\s,]+/).map(Number);
+  const root = svg.match(/<svg[^>]*>/)[0];
+  // An Inkscape file may have only width and height: the viewBox is then the whole of it.
+  const [vx, vy, vw, vh] = (attr(root, 'viewBox') ?? `0 0 ${parseFloat(attr(root, 'width'))} ${parseFloat(attr(root, 'height'))}`).split(/[\s,]+/).map(Number);
   const rootFill = attr(svg.match(/<svg[^>]*>/)[0], 'fill');
   const classes = {};
   for (const m of svg.matchAll(/\.([\w-]+)\s*\{([^}]*)\}/g)) classes[m[1]] = m[2];

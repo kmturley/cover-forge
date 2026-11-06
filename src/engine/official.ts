@@ -292,6 +292,18 @@ export const GAME_CASE_BRANDING: Record<string, Branding> = {
     spine: { fill: SWITCH2_RED, marks: [{ parts: [{ stack: [{ logo: 'switch2', only: [1] }, { logo: 'switch2', only: [2] }] }], color: W, gap: 0.7, from: 0.0235, to: 0.112, across: 0.5, rotate: 0 }], titleFrom: 0.12 },
   },
   // Wii U: a cyan band with a convex lower edge and a yellow-green line, "Wii U" centred; a white spine.
+  // Nintendo DS: a white strip down the left of the front with the logo reading downwards, and a white spine cap with
+  // the same logo small. (The real strip's edge is a slight curve, 164–168 mm from the wrap's left; ours is straight.)
+  ds: {
+    front: {
+      shape: 'strip', w: 0.143, fill: W,
+      marks: [{ parts: [{ logo: 'ds' }], color: K, from: 0.226, to: 0.762, across: 0.52, dx: 0.04, rotate: 90 }],
+    },
+    spine: {
+      cap: { length: 0.29, fill: W },
+      marks: [{ parts: [{ logo: 'ds' }], color: K, from: 0.03, to: 0.26, across: 0.39, rotate: 90 }],
+    },
+  },
   'wii-u': {
     front: {
       shape: 'band', depth: arc(0.0346, 0.0941), fill: '#019fcc', line: { color: '#fcee38', size: 0.0078, taper: 0 },
