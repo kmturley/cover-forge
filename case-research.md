@@ -461,3 +461,23 @@ The engine got one small feature for it: `side: 'right'` on a `strip` header (th
 
 The overlay against the template is 90.0 %: it was 91.0 % before the logos were moved onto the scans, because the template
 is 2 mm wider and its logos sit about 0.7 mm differently, so this score understates how well it matches the scans.
+
+## 15. Nintendo DS and 3DS side by side
+
+The two wraps differ by 1 mm per panel and 2 mm overall, so they were measured the same way (the white run of the spine
+at three rows, on all three scans of each) to check that the difference is real and not a slip:
+
+| | DS | 3DS |
+| :--- | :--- | :--- |
+| Wrap (width × height) | 276.0 × 116.0 mm | 274.0 × 116.2 mm |
+| Back / spine fold | 129.8–130.3 mm | 130.7–131.2 mm |
+| Spine / front fold | 145.9 mm (all three scans) | 142.7–143.1 mm |
+| Back, spine, front | 130, 16, 130 | 131, 12, 131 |
+| Front strip | left, 18.9–21.7 mm, curved, bordered, with a cutout | right, 13.5 mm, straight, soft shadow |
+
+Both are consistent across their own three scans, to about 0.3 mm, so neither is a mistake in copying. What the
+measurements can't say is whether the printed cover really differs by 1 mm per panel between the two cases or the two
+sets of scans were trimmed differently: scans from different sources are cut to within about ±0.5 mm of the trim, the
+3DS scans are 0.2 mm taller than the DS ones, and the two cases are believed to share one outer shell (the app uses the
+same 135 × 123 mm for both). If a physical DS and 3DS case are to hand, measuring both insert pockets settles it; until
+then the app uses each platform's own measured sizes.
