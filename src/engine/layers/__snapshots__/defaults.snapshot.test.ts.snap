@@ -187,6 +187,7 @@ exports[`the default layers of every case > are frozen 1`] = `
     "front.code · generated:code · front",
     "branded.front · group · front",
     "branded.spine · group · spine",
+    "branded.front.strip-border · shape · front · in branded.front",
     "branded.front.strip · shape · front · in branded.front",
     "branded.front.mark-1 · image · front · in branded.front",
     "branded.spine.cap · shape · spine · in branded.spine",

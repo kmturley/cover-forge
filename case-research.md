@@ -377,9 +377,47 @@ a distributor lists 129 mm panels with a 15 mm spine, which agree within 1 mm. N
 
 ## 13. Nintendo DS
 
-Measured from three 300 dpi scans in `scans/ds` (not committed) and the fan template: each wrap is 276 × 116 mm. The
-spine/front fold is at 145.9 mm, so with the front and back equal at 130 mm the spine is 16 mm. Published figures for
-the retail case disagree: about 135 × 122–125 mm outside, 13–20 mm deep (Q&A pages, retailers of replacement cases),
-so the box and slipcover use 135 × 123 mm and the insert's 16 mm depth. The insert's spine is the least certain
-number. The front's white strip has a slightly curved right edge (164–168 mm from the wrap's left); Branded draws it
-straight at 164 mm.
+Measured from three 300 dpi scans in `scans/ds` (git-ignored, like the other scans) and the fan-made `template.png`.
+Every file is a 276 × 116 mm wrap laid out back | spine | front.
+
+### Size
+
+| Measure | Value | How it was found |
+| :--- | :--- | :--- |
+| Front and back | 130 × 116 mm | the spine/front fold is a sharp black-to-white step at 145.9 mm on all three scans; the front is 276 − 145.9 = 130.1 mm |
+| Spine | 16 mm (15.9 measured) | 276 − 2 × 130; the back/spine fold is hidden by the art, so it is taken as symmetric |
+| Case outside (box, slipcover) | 135 × 123 mm | published figures are about 134–136 × 122–125 mm (Q&A pages, retailers of replacement cases) |
+| Case depth | spine width (16 mm) | published figures run 13–20 mm, so this is the least certain number; measure a real case if it matters |
+
+`scripts/measure-covers.ts` locked onto the wrong edge on one scan (GTA: back 138, spine 8): the white strip beside the
+spine looks like a spine to an edge detector. The other rows and the Mode are right, and the known 16 mm spine is the
+fallback, as for the other cases.
+
+### Trade dress (what Branded draws)
+
+The DS front has no header band. It has a **white strip down the left**, 18.9 mm wide at the top and bottom and 21.7 mm in
+the middle (14.6–16.7 % of the front's width), and the cover art starts at its curved right edge. The edge was read from
+the template's alpha channel (opaque white where the strip is, transparent where the art goes):
+
+- **A gradual curve.** The edge reaches 18.93 mm from the front's left at the top and bottom and 21.72 mm at mid-height, and is symmetric about the middle (19.69 at 10 % and 90 %, 20.37 at 20 % and 80 %, 21.05 at 30 % and 70 %, 21.47 at 40 % and 60 %). It is nearly straight for the first third, then flattens.
+- **A black border**, a constant 1.27 mm, along that edge.
+- **An angular cutout** from 42.5 mm to 74.5 mm down (36.6 % to 64.2 % of H). The white pulls back to 18.25 mm from the front's left, slanting in over 3 mm (42.5 to 45.5 mm) and out over 4 mm (70.5 to 74.5 mm). The border is 3 mm thicker in between, which is the thumb notch the black wedge in the template shows.
+- **The logo** (`src/brands/svg/ds.svg`) reads **bottom to top** (rotate −90, N at the bottom, the DS and ™ at the top). Its ink spans 151.8–160.4 mm across and 26.3–88.2 mm down (22.6–76.1 % of H), 62 mm long. The first version had it reading top to bottom, 180° the wrong way round.
+- **The spine** has a white cap down to 34.1 mm (29.4 % of L), carrying a small copy of the logo reading top to bottom (136.3–140.2 mm across, 3.5–31.0 mm down). Below it the spine is the game's own colour. **Two subtle curves**: the top corners of that coloured area are rounded, about 0.4 mm on the left and 1 mm on the right, so the white cap runs down into the gaps.
+
+The engine got two small features for this, both optional on existing branding data (`src/engine/official.ts`):
+`edge` on a `strip` header (a curve, a border and a cutout, drawn as two ordinary layers) and `corners` on a spine cap.
+
+### How the match was checked
+
+`npm run compare:covers -- ds --scans` renders the app's cover with Branded on and no artwork (`compare/ds/app.png`, 300 dpi, on the same pixel grid as the scans) and writes an overlay of it against the template. The overlay score and the logo positions, from the ink bounding boxes of the app and the template:
+
+| Step | Overlay match | Logo error |
+| :--- | :--- | :--- |
+| Straight strip, logo the wrong way round | 84.6 % | n/a |
+| Curved edge, border, cutout, logo rotated, spine corners | 94.8 % | up to 0.4 mm and 7 % in size |
+| Logo and cap positions tuned to the template | 98.0 % | within 0.1 mm |
+
+What is left: the template has no art, so the app's dark base colour shows where the template is transparent, and the
+border can't be told from it in the overlay. The edge is a polyline sampled 96 times (not a true curve), which is
+indistinguishable at print size.
