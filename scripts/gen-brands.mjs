@@ -74,6 +74,7 @@ const LOGO_LABELS = {
   'playstation-wordmark': 'PlayStation wordmark',
   '3ds': 'Nintendo 3DS',
   gb: 'Game Boy',
+  color: 'Color',
   nintendo: 'Nintendo',
   ds: 'Nintendo DS',
   switch: 'Nintendo Switch',

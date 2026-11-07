@@ -340,6 +340,7 @@ const GAME_CASE: Record<string, { label: string; w: number; h: number; spine: nu
   // Nintendo DS case" with clips for the cartridge, and the Game Boy covers in scans/gb are 276 × 116 mm like the DS's.
   // So it is a DS-size case; the original retail box is a Box type round it (case-research.md §16).
   'gb':        { label: 'Game Boy',            w: 130,   h: 116, spine: 16,   color: '#c9ccd1' },
+  'gbc':       { label: 'Game Boy Color',      w: 130,   h: 116, spine: 16,   color: '#e4eaee' },
   // From the 276 × 116 mm covers in scans/ds: front 130 × 116, spine 16.
   'ds':        { label: 'Nintendo DS',         w: 130,   h: 116, spine: 16,   color: '#b9bcc2' },
   // The scans in scans/3ds measure 131 × 116 front, spine 12; the front is 130 like the DS, which shares its case's footprint (case-research.md §15).
