@@ -378,10 +378,10 @@ function drawDecor(s: Sink, decor: 'xbox-orb' | 'x360-swoosh', x0: number, y0: n
     // Fine horizontal ridges fading in towards the orb, a dark ring, then the glossy green-to-yellow orb with its X,
     // cropped by the band's bottom and right trims.
     const [r, cx, cy] = [W * 0.125, x0 + W * 0.9, y0 + depth * 0.47];
-    const ridge: Ink = { line: [x0 + W * 0.2, 0, x0 + W * 0.77, 0], stops: [[0, 'rgba(255,255,255,0)'], [0.35, 'rgba(255,255,255,0.08)'], [1, 'rgba(255,255,255,0.15)']] };
+    const ridge: Ink = { line: [x0 + W * 0.38, 0, x0 + W * 0.77, 0], stops: [[0, 'rgba(255,255,255,0)'], [0.35, 'rgba(255,255,255,0.08)'], [1, 'rgba(255,255,255,0.15)']] };
     const pitch = depth * 0.052;
     s.begin(`${key}.ridges`, 'Ridges', p);
-    for (let y = y0; y < y0 + depth; y += pitch) s.fillRect(x0 + W * 0.2, y, W * 0.57, pitch * 0.55, ridge);
+    for (let y = y0; y < y0 + depth; y += pitch) s.fillRect(x0 + W * 0.38, y, W * 0.39, pitch * 0.55, ridge);
 
     s.begin(`${key}.orb-ring`, 'Orb ring', p);
     s.fillCircle(cx, cy, r * 1.17, { line: [cx - r * 1.2, 0, cx - r * 0.8, 0], stops: [[0, '#1c1c1c'], [1, '#030303']] });
