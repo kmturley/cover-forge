@@ -200,21 +200,61 @@ function parseLogo(svg, id) {
     return { stops, radial: mul(gm, [r, 0, 0, r, cx, cy]).map((n) => Math.round(n * 1e4) / 1e4) };
   };
 
+  // Filters: the shadows a design tool exports as feOffset + feGaussianBlur chains (Figma's inner and drop shadows, or a
+  // plain feDropShadow) become effects on the shapes they apply to. Anything else (a layer blur) is left out.
+  const filterDefs = {};
+  for (const m of svg.matchAll(/<filter\b([^>]*)>([\s\S]*?)<\/filter>/g)) {
+    const effects = [];
+    let cur = null;
+    const colorOf = (values, fallbackAlpha = 1) => {
+      const v = (values ?? '').trim().split(/[\s,]+/).map(Number);
+      if (v.length < 20) return undefined;
+      const [r, g, b] = [v[4], v[9], v[14]].map((n) => Math.round(Math.min(1, Math.max(0, n)) * 255));
+      return `rgba(${r},${g},${b},${Math.round(v[18] * fallbackAlpha * 1000) / 1000})`;
+    };
+    for (const f of m[2].matchAll(/<(fe\w+)\b([^>]*?)\/?>/g)) {
+      const [, tag, at] = f;
+      if (tag === 'feDropShadow') {
+        const flood = attr(at, 'flood-color') ?? '#000';
+        const [fr, fg, fb] = [1, 3, 5].map((i) => parseInt(hexOf(flood).slice(i, i + 2), 16));
+        effects.push({ type: 'drop', dx: Number(attr(at, 'dx') ?? 0), dy: Number(attr(at, 'dy') ?? 0), blur: Number(attr(at, 'stdDeviation') ?? 0), color: `rgba(${fr},${fg},${fb},${Number(attr(at, 'flood-opacity') ?? 1)})` });
+      } else if (tag === 'feOffset') cur = { dx: Number(attr(at, 'dx') ?? 0), dy: Number(attr(at, 'dy') ?? 0), blur: 0 };
+      else if (tag === 'feGaussianBlur' && cur && !/foregroundBlur/.test(attr(at, 'result') ?? '') && !/BackgroundImage/.test(attr(at, 'in') ?? '')) cur.blur = Number(attr(at, 'stdDeviation') ?? 0);
+      else if (tag === 'feComposite' && cur) {
+        if (attr(at, 'operator') === 'out') cur.type = 'drop';
+        else if (attr(at, 'operator') === 'arithmetic' && Number(attr(at, 'k2')) === -1 && Number(attr(at, 'k3')) === 1) cur.type = 'inner';
+      } else if (tag === 'feColorMatrix' && cur?.type && !cur.color && attr(at, 'in') !== 'SourceAlpha') cur.color = colorOf(attr(at, 'values'));
+      else if (tag === 'feBlend' && cur?.type && cur.color) {
+        effects.push({ type: cur.type, dx: cur.dx, dy: cur.dy, blur: cur.blur, color: cur.color });
+        cur = null;
+      }
+    }
+    filterDefs[attr(m[1], 'id')] = effects;
+  }
+
   // Clip paths, masks and definitions hold shapes that are not drawn themselves.
   const body = svg.replace(/<(defs|clipPath|mask)\b[\s\S]*?<\/\1>/g, '');
   const stack = [IDENTITY];
+  const filters = [null];
   const layers = [];
   for (const m of body.matchAll(/<(\/?)(g|path|rect|circle|polygon|polyline)\b([^>]*?)(\/?)>/g)) {
     const [, close, name, rest] = m;
     if (name === 'g') {
-      if (close) stack.pop();
-      else stack.push(mul(stack[stack.length - 1], parseTransform(attr(rest, 'transform'))));
+      if (close) {
+        stack.pop();
+        filters.pop();
+      } else {
+        stack.push(mul(stack[stack.length - 1], parseTransform(attr(rest, 'transform'))));
+        filters.push(attr(rest, 'filter')?.match(/url\(#([^)]+)\)/)?.[1] ?? filters[filters.length - 1]);
+      }
       continue;
     }
     const style = parseStyle(attr(rest, 'style'));
     const prop = (key) => attr(rest, key) ?? style[key];
     // Blurred glows, invisible shapes and masked shapes can't be drawn flat; leave them out.
-    if (prop('filter') || prop('display') === 'none' || prop('opacity') === '0' || prop('fill-opacity') === '0') continue;
+    const ownFilter = prop('filter')?.match(/url\(#([^)]+)\)/)?.[1];
+    const effects = filterDefs[ownFilter ?? filters[filters.length - 1]] ?? [];
+    if ((prop('filter') && !effects.length) || prop('display') === 'none' || prop('opacity') === '0' || prop('fill-opacity') === '0') continue;
     let d = attr(rest, 'd');
     if (name === 'rect') {
       const [w, h] = [attr(rest, 'width'), attr(rest, 'height')].map(Number);
@@ -240,6 +280,8 @@ function parseLogo(svg, id) {
     const cssFill = css.match(/fill:\s*([^;]+)/)?.[1];
     const rawFill = prop('fill') ?? cssFill ?? rootFill;
     const fill = colour(rawFill);
+    const blend = (prop('mix-blend-mode') ?? '') !== 'normal' ? prop('mix-blend-mode') : undefined;
+    const opacity = Math.round(Number(prop('fill-opacity') ?? 1) * Number(prop('opacity') ?? 1) * 1000) / 1000;
     const gradient = gradientOf(rawFill, [x0, y0, x1, y1], shift ? IDENTITY : total);
     const stroke = prop('stroke') === 'none' ? undefined : prop('stroke');
     const reach = stroke ? Number(prop('stroke-width')?.replace('px', '') ?? 1) / 2 : 0;
@@ -247,6 +289,9 @@ function parseLogo(svg, id) {
       d,
       ...(fill !== null && { fill }),
       ...(gradient && { gradient }),
+      ...(effects.length && { effects }),
+      ...(blend && { blend }),
+      ...(opacity < 1 && { opacity }),
       ...(stroke && { stroke: colour(stroke), strokeWidth: Number(prop('stroke-width')?.replace('px', '') ?? 1), ...(prop('stroke-linecap') && prop('stroke-linecap') !== 'butt' && { strokeCap: prop('stroke-linecap') }) }),
       // A stroke reaches half its width past the path's own bounds.
       box: [x0 + ox - reach, y0 + oy - reach, x1 + ox + reach, y1 + oy + reach],

@@ -611,10 +611,7 @@ Game Boys. It is `gbc` in `GAME_CASE` and `GAME_OUTER` (136 × 124 × 19 mm).
 The layout is the Game Boy's: a silver strip down the left of the front (25.2 % of its width, 0.2519) and a silver cap on
 the top 28.6 % of the spine, nothing on the back. What differs:
 
-- **The silver is paler and cooler**, and shaded two ways at once: the left edge is darkest from 30 to 50 % down, the
-  right edge from 45 % to the foot, so there is a soft diagonal sheen that a single top-to-bottom gradient can only
-  average. It is the average of both edges (`#f1f5f7` at the top, a crease at `#c1ced4` half way down, `#c3d0d5` at the
-  foot). The scans are smooth, not streaked, so the Game Boy's `brushed` texture is **off** here.
+- **The silver is paler and cooler**, and shaded in two directions at once (see "The silver" below), so it is a near-white base with overlaid shades, not a gradient. The scans are smooth, not streaked, so the Game Boy's `brushed` texture is **off** here.
 - **No Nintendo oval.** The top of the strip holds the new multicolour **COLOR** logo, reading upwards, with GAME BOY in
   `#001497` below it: COLOR at 2.2–31.4 % of the strip's length, GAME BOY at 30.7–97.8 %, so the Y overlaps COLOR's C,
   as in the scans.
@@ -624,28 +621,47 @@ the top 28.6 % of the spine, nothing on the back. What differs:
 ### The logo
 
 `src/brands/svg/color.svg` is the COLOR word only (five letters in teal `#00938A`, purple `#4E4BA8`, green `#6EB122`,
-red `#B80A41` and yellow `#DAAC06`), drawn flat. The original has a soft inner shadow on every letter and the scans'
-colours are brighter (cyan R, yellow `#f5e100`), which the generator can't draw (it leaves out filters), so the letters
-are a little flatter and duller than the print. Both lockups reuse `gb.svg` instead of a combined SVG: the engine places
+red `#B80A41` and yellow `#DAAC06`), each with two inner shadows (see "SVG effects"), which give the puffy look. The
+scans' colours are still brighter (cyan R, yellow `#f5e100`). Both lockups reuse `gb.svg` instead of a combined SVG: the engine places
 the two logos as two marks, which lets each sit where the scans put it (the front has them in a row, the spine side by
 side, with different sizes). GAME BOY is the Game Boy's wordmark, a little narrower than the Color box art's (the
 scans' letters are about 20 % wider).
 
-### Effects the generator leaves out
+### SVG effects
 
-`color.svg` has Figma inner-shadow filters (a white highlight offset one way and a dark shade the other), and `gamecube.svg`
-paints four shapes with `mix-blend-mode: hue`. macOS Preview and VS Code draw those because they run a full SVG renderer.
-The logo generator turns each SVG into plain paths with a flat fill or a gradient, so that every logo can be a set of
-editable layers, drawn the same on every canvas and in the 3D preview. It therefore skips `filter` and ignores
-`mix-blend-mode`, and nothing in the SVG can fix that beforehand. A **drop shadow** is the exception: it needs no filter,
-so the engine got a `shadow` on a lockup (colour, dx, dy in mm): a flat copy of the lockup, faded in three offset
-steps, drawn first. As layers they stay editable. The Game Boy Color's letters use it (blue-black, 0.6 mm right and
-0.65 mm down). The inner shadows and the blend mode would each need engine support of their own.
+`color.svg` has Figma inner-shadow filters (a white highlight and a dark shade, offset opposite ways) and `gamecube.svg`
+paints four shapes with `mix-blend-mode: hue` at 0.4 opacity. macOS Preview and VS Code show them because they run a
+full SVG renderer; the logo generator used to flatten every shape to a plain path and drop them, which is why the
+letters were flat and the GameCube's cube was a flat blue-grey. It now carries three things per shape into
+`logos.generated.ts`, and `paintLogoLayers` draws them wherever a logo is drawn (canvas, layers, export, 3D):
 
-The strip and cap gradients were re-measured from the template's two edges, each stop leaning towards the darker edge,
-so the metal is darker in patches (`#b8c5cb` half way down, `#b9c8ce` at the foot) as in the reference.
+| From the SVG | Becomes | Drawn as |
+| :--- | :--- | :--- |
+| Figma drop or inner shadow (`feOffset` + `feGaussianBlur` + `feComposite` + `feColorMatrix`), or `feDropShadow` | `effects: [{ type, dx, dy, blur, color }]` | a drop shadow is the canvas shadow behind the shape. An inner shadow is a big frame round the shape, drawn out of sight with its shadow shifted back inside, clipped to the shape |
+| `mix-blend-mode` | `blend` | the layer's composite operation. Blending acts on the logo's own layers only, so such a logo is drawn on a scratch canvas first and placed on the page (otherwise `hue` would tint the art behind it) |
+| `fill-opacity` / `opacity` | `opacity` | the layer's alpha |
+
+A flat (`mono`) logo has none of them. Not carried over: layer blurs, masks and filters other than shadows. The 3DS,
+DS, Game Boy and other logos have no filters, so nothing else changed.
+
+Separately, a **lockup** can carry its own `shadow` (colour, dx, dy mm): a flat copy faded in three offset steps, drawn
+underneath, as editable layers. GAME BOY and COLOR use it (0.5 mm right, 0.55 mm down).
+
+### The silver
+
+One top-to-bottom gradient can't make this metal: the template is darker down the left edge in the top half and down the
+right edge in the bottom half, with a crease between. Measured in 16 rows by 6 columns with the logos left out (median
+of the unmarked pixels), the left edge goes from `#f1` to about `#c6` between 10 and 50 % down while the right stays
+white, and below the crease the right edge darkens to `#c0` while the left is white again.
+
+So the strip and cap are a pale base with **shades** laid over it (`shade` on a strip or cap: translucent gradients over
+part of its length and width, drawn in order). The strip has five: the top half's dark left edge, a white one over its
+lower end that fades the edge out through the crease, the bottom half's dark right edge, a white one over its upper end
+that fades it in, and the soft foot. The white shades are what make the hard edges of the others disappear. The cap
+mirrors it with its own four. The engine's radial gradients are circles, so a tall, narrow blob like the left shading
+can't be one; the overlay of linear gradients stands in for it.
 
 ### Match
 
-The app against the template is 89.0 % the same (the rest is the metal's shading and the letters' shadows). The
+The app against the template is 89.2 % the same (the rest is the metal's shading and the letters' shadows). The
 registered mark, the shadow under the letters and the ® next to GAME BOY are not drawn.

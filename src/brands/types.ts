@@ -27,6 +27,12 @@ export interface LogoLayer {
    * may be rgba() where the gradient fades out.
    */
   gradient?: { stops: [number, string][]; line?: [number, number, number, number]; radial?: [number, number, number, number, number, number] };
+  /** Shadows the source drew with filters: drop (behind the shape) or inner (inside its edge), blurred by `blur` (std deviation). */
+  effects?: { type: 'drop' | 'inner'; dx: number; dy: number; blur: number; color: string }[];
+  /** How the shape blends with what the logo has drawn so far (a CSS mix-blend-mode such as 'hue'). */
+  blend?: string;
+  /** 0 to 1, from the source's fill-opacity or opacity. Default 1. */
+  opacity?: number;
   /** Outline colour (null: the lockup's colour) and width, when the shape has one. */
   stroke?: string | null;
   strokeWidth?: number;

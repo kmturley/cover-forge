@@ -2,11 +2,14 @@ import { createCanvas, loadImage, Path2D, type Image } from '@napi-rs/canvas';
 import { renderCover, type ImageLookup } from '../CanvasRenderer';
 import { layerImageUrls } from '../layers/images';
 import { setTextMeasurer } from '../layers/branded';
+import { setScratchCanvas } from '../logoLayers';
 import { resolveLayers } from '../layers/resolve';
 import { IMAGES, type Fixture } from './fixtures';
 
 // Brand logos use Path2D, which Node doesn't have.
 (globalThis as { Path2D?: unknown }).Path2D = Path2D;
+// A blended logo is drawn on a scratch canvas first.
+setScratchCanvas((w, h) => createCanvas(w, h).getContext('2d') as unknown as CanvasRenderingContext2D);
 
 // The Branded dress is laid out by measuring its text; Node measures on a Skia canvas.
 const measuring = createCanvas(10, 10).getContext('2d');

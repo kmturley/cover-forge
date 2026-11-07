@@ -3,7 +3,7 @@ import { paintRect } from '../templates/geometry';
 import { brandHeight, brandPath2D, brandWidth, getBrand, getLogo, type Brand, type Logo } from '../brands';
 import { paintLogoLayers } from './logoLayers';
 import { X360_WAVES, X360_WAVES_SIZE } from './x360Waves.generated';
-import { brandingFor, type FrontHeader, type FrontMark, type Lockup, type Paint, type Part, type SpanMark, type SpineBranding } from './official';
+import { brandingFor, type FrontHeader, type FrontMark, type Lockup, type Paint, type Part, type Shade, type SpanMark, type SpineBranding } from './official';
 
 /**
  * Draws the "Branded" trade dress (the data is in official.ts). The drawing code doesn't touch a canvas itself: it
@@ -232,6 +232,17 @@ function drawFrontMark(s: Sink, m: FrontMark, area: { x: number; w: number }, p:
   box.draw(x, y);
 }
 
+/** Lays each shade over the rectangle: over its share of the length (down it for 'vertical', along it otherwise). */
+function drawShades(s: Sink, shades: Shade[] | undefined, id: string, x: number, y: number, w: number, h: number, dir: 'vertical' | 'horizontal', p: PanelRect) {
+  shades?.forEach((sh, i) => {
+    const [from, to] = [sh.from ?? 0, sh.to ?? 1];
+    const [a0, a1] = sh.across ?? [0, 1];
+    s.begin(`${id}-shade-${i + 1}`, 'Shading', p);
+    const [rx, ry, rw, rh] = dir === 'vertical' ? [x + a0 * w, y + from * h, (a1 - a0) * w, (to - from) * h] : [x + from * w, y + a0 * h, (to - from) * w, (a1 - a0) * h];
+    s.fillRect(rx, ry, rw, rh, ink(sh.fill, rx, ry, rw, rh));
+  });
+}
+
 /** Draws the header, spine caps and back logos. `px` is pixels per mm. */
 export function drawBranding(s: Sink, t: TemplateConfig, px: number): void {
   const b = brandingFor(t.kind, t.variantId);
@@ -355,6 +366,7 @@ function drawFront(s: Sink, t: TemplateConfig, p: PanelRect, h: FrontHeader, px:
       const sx = h.side === 'right' ? x0 + W - sw : ax;
       const rw = h.side === 'right' ? ax + aw - sx : x0 + sw - ax;
       s.fillRect(sx, sy, rw, sh, ink(h.fill, sx, sy, rw, sh));
+      drawShades(s, h.shade, key + '.strip', sx, sy, rw, sh, 'vertical', p);
       if (h.brushed) {
         s.begin(`${key}.strip-brush`, 'Brushed texture', p);
         s.fillRect(sx, sy, rw, sh, brushedInk(sx, rw, rw / px, 7));
@@ -478,6 +490,7 @@ function drawSpine(s: Sink, t: TemplateConfig, p: PanelRect, sp: SpineBranding, 
       const left: PathOp[] = rl >= 0 ? [['L', cx0 + rl, bottom], ['Q', cx0, bottom, cx0, bottom + rl]] : [['L', cx0 - rl, bottom], ['Q', cx0, bottom, cx0, bottom + rl]];
       s.fillPath([['M', cx0, cy0], ['L', cx0 + cw, cy0], ...right, ...left, ['Z']], capInk);
     } else s.fillRect(rect[0], rect[1], rect[2], rect[3], capInk);
+    drawShades(s, sp.cap.shade, `${key}.cap`, rect[0], rect[1], rect[2], rect[3], vertical ? 'vertical' : 'horizontal', p);
     if (sp.cap.brushed) {
       s.begin(`${key}.cap-brush`, 'Brushed texture', p);
       s.fillRect(rect[0], rect[1], rect[2], rect[3], brushedInk(rect[0], rect[2], rect[2] / px, 11));
