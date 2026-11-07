@@ -401,17 +401,17 @@ export const GAME_CASE_BRANDING: Record<string, Branding> = {
       shape: 'strip', w: 0.2274, fill: W, sheen: 'shade-gba-strip', brushed: GBA_BRUSH,
       edge: { depth: GBA_EDGE },
       marks: [
-        { parts: [{ logo: 'advance', mono: true, shadow: GBA_BLACK_SHADOW, bevel: GBA_BLACK_BEVEL }], color: GBA_INK, from: 0.0974, to: 0.53, across: 0.25, dx: -0.071, rotate: -90 },
-        { parts: [{ logo: 'gba', only: [0, 1], shadow: GBA_WHITE_SHADOW, bevel: GBA_WHITE_BEVEL }], color: W, from: 0.5375, to: 0.967, across: 0.35, dx: -0.071, rotate: -90 },
-        { parts: [{ logo: 'gba', only: [2, 3] }], color: GBA_INK, from: 0.5397, to: 0.557, across: 0.06, dx: 0.065, rotate: -90 },
+        { parts: [{ logo: 'advance', mono: true, shadow: GBA_BLACK_SHADOW, bevel: GBA_BLACK_BEVEL }], color: GBA_INK, from: 0.0652, to: 0.4978, across: 0.25, dx: -0.071, rotate: -90 },
+        { parts: [{ logo: 'gba', only: [0, 1], shadow: GBA_WHITE_SHADOW, bevel: GBA_WHITE_BEVEL }], color: W, from: 0.5053, to: 0.9348, across: 0.35, dx: -0.071, rotate: -90 },
+        { parts: [{ logo: 'gba', only: [2, 3] }], color: GBA_INK, from: 0.5075, to: 0.5248, across: 0.06, dx: 0.065, rotate: -90 },
       ],
     },
     spine: {
       cap: { length: 0.2828, fill: W, sheen: 'shade-gba-cap', brushed: { strength: 0.35, rows: 3 } },
       marks: [
-        { parts: [{ logo: 'advance', mono: true, shadow: GBA_BLACK_SHADOW, bevel: GBA_BLACK_BEVEL }], color: GBA_INK, from: 0.0159, to: 0.267, across: 0.3, dx: -0.128, rotate: 90 },
-        { parts: [{ logo: 'gba', only: [0, 1], shadow: GBA_WHITE_SHADOW, bevel: GBA_WHITE_BEVEL }], color: W, from: 0.0216, to: 0.1573, across: 0.25, dx: 0.15, rotate: 90 },
-        { parts: [{ logo: 'gba', only: [2, 3] }], color: GBA_INK, from: 0.151, to: 0.16, across: 0.08, dx: 0.075, rotate: 90 },
+        { parts: [{ logo: 'advance', mono: true, shadow: GBA_BLACK_SHADOW, bevel: GBA_BLACK_BEVEL }], color: GBA_INK, from: 0.026, to: 0.2568, across: 0.3, dx: -0.128, rotate: 90 },
+        { parts: [{ logo: 'gba', only: [0, 1], shadow: GBA_WHITE_SHADOW, bevel: GBA_WHITE_BEVEL }], color: W, from: 0.0312, to: 0.156, across: 0.25, dx: 0.15, rotate: 90 },
+        { parts: [{ logo: 'gba', only: [2, 3] }], color: GBA_INK, from: 0.1502, to: 0.1584, across: 0.08, dx: 0.075, rotate: 90 },
       ],
     },
   },

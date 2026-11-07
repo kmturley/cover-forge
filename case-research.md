@@ -716,9 +716,9 @@ real GBA case. Everything below is placed as fractions of each panel, so the tra
 - **Front strip.** Silver, with a **curved right edge**: 19.9 % of the front's width at the top, 22.7 % half way down
   and 19.8 % at the foot. The curve is a 6th-degree fit to the template's outline, within 1.4 px. Near-white at the top,
   falling to steel (about `#8a9196`) from half way down.
-- **ADVANCE and GAME BOY** read upwards as one line, the template's positions: ADVANCE at 9.7–53 % of the length in black,
-  GAME BOY at 53.8–96.7 % in white, and a dark ® beside the Y.
-- **Spine.** A silver cap 28.3 % of the length, with ADVANCE on the left and a shorter GAME BOY on the right, reading down.
+- **ADVANCE and GAME BOY** read upwards as one line: ADVANCE at 6.5–49.8 % of the length in black, GAME BOY at 50.5–93.5 % in white, and a
+  dark ® beside the Y. The template has them lower (9.7–96.7 %, 3.8 mm from the foot); here they are centred, 7.6 mm from each end.
+- **Spine.** A silver cap 28.3 % of the length, with ADVANCE on the left and a shorter GAME BOY on the right, reading down. ADVANCE has 3.0 mm above and below it (the template 1.8), so the pair is drawn 8 % smaller.
 - **No back band**, and no "ONLY FOR" corner. The scans print a blue corner at the top of the strip; the template has
   retouched it out, leaving a smudge. The smudge was left out of the fit.
 - **Logos.** `gba.svg` holds GAME BOY (layers 0–1, white) and the ® (layers 2–3, black); a lockup colours white and
@@ -756,7 +756,7 @@ a wider, softer shadow. These were matched by eye, not measured.
 
 ### Match
 
-The app against the template is 85.4 % by the compare script, which lowers the score because the template is wider and
-taller, as the 3DS's does (§15). Lined up on the fold they look almost identical. Checked in the app in Chromium, Firefox
+The app against the template is 80.4 % by the compare script (85.4 % before the logos were moved for spacing). The
+template being wider and taller also lowers it, as the 3DS's does (§15). Lined up on the fold they looked almost identical before the logos were moved for spacing (above). Checked in the app in Chromium, Firefox
 and WebKit (headless). Still different: ADVANCE's gloss and GAME BOY's bevel are simpler than the template's, and the
 brushing is regular where the template's has a few longer smears.

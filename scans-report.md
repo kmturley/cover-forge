@@ -67,8 +67,8 @@ Fold lines detected from the image in 2/4; estimated from a known spine width in
 | cheetahgirlsthe.jpg | 300 | 278.6 | 117.3 | 131.3 | 15.9 | — | 131.3 | estimated | 14.0 | gradient | #6d68ab | #f5f5f5 | — | Fold lines not detected; estimated from gba's known 16 mm spine, assuming equal front/back width. |
 | template.png | 300 | 278.6 | 117.3 | 131.3 | 15.9 | — | 131.3 | estimated | 13.9 | gradient | #e1e1e1 | #da3ad9 | 28.3 | No symmetric spine strip found; estimated from gba's known 16 mm spine, assuming equal front/back width. |
 | **Mode** | | **278.6** | **117.3** | **131.3** | **15.9** | **—** | **131.3** | | **14.0** | | **#6d68ab** | **#e898e7** | **28.3** | |
-| app (rendered) | 300 | 276.0 | 116.0 | 130.0 | 16.0 | — | 130.0 | known | 13.9 | gradient | #f6f7f7 | #707173 | 28.3 |  |
-| *app − Mode* | | -2.5 | -1.4 | -1.4 | +0.1 | — | -1.3 | | -0.0 | = | 212 | 171 | +0.0 | |
+| app (rendered) | 300 | 276.0 | 116.0 | 130.0 | 16.0 | — | 130.0 | known | 10.7 | gradient | #f6f7f7 | #707173 | 28.3 |  |
+| *app − Mode* | | -2.5 | -1.4 | -1.4 | +0.1 | — | -1.3 | | -3.2 | = | 212 | 171 | +0.0 | |
 
 Fold lines detected from the image in 1/4; estimated from a known spine width in 3/4.
 
