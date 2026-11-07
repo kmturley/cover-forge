@@ -78,8 +78,8 @@ Fold lines detected from the image in 1/3; estimated from a known spine width in
 | winniethepoo.jpg | 300 | 276.0 | 116.0 | 130.0 | 15.9 | — | 130.0 | estimated | 32.0 | flat | #f9faf9 | — | — | Fold lines not detected; estimated from gbc's known 16 mm spine, assuming equal front/back width. |
 | template.png | 300 | 276.0 | 116.0 | 130.0 | 15.9 | — | 130.0 | estimated | 32.0 | flat | #f8f9f9 | — | 28.6 | No symmetric spine strip found; estimated from gbc's known 16 mm spine, assuming equal front/back width. |
 | **Mode** | | **276.0** | **116.0** | **130.0** | **15.9** | **—** | **130.0** | | **32.0** | | **#f8f9fa** | **#59585b** | **28.6** | |
-| app (rendered) | 300 | 276.0 | 116.0 | 130.0 | 16.0 | — | 130.0 | known | 31.6 | gradient | #eff3f5 | #414142 | 28.6 |  |
-| *app − Mode* | | +0.0 | +0.0 | -0.1 | +0.1 | — | +0.0 | | -0.4 | ≠ | 12 | 42 | +0.0 | |
+| app (rendered) | 300 | 276.0 | 116.0 | 130.0 | 16.0 | — | 130.0 | known | 32.6 | gradient | #eff3f5 | #414142 | 28.6 |  |
+| *app − Mode* | | +0.0 | +0.0 | -0.1 | +0.1 | — | +0.0 | | +0.6 | ≠ | 12 | 42 | +0.0 | |
 
 Fold lines detected from the image in 2/4; estimated from a known spine width in 2/4.
 

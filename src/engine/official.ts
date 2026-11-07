@@ -366,16 +366,16 @@ export const GAME_CASE_BRANDING: Record<string, Branding> = {
       shape: 'strip', w: 0.2519,
       fill: '#f8fbfc', sheen: 'shade-gbc-strip',
       marks: [
-        { parts: [{ logo: 'gb', mono: true, shadow: GBC_WORD_SHADOW }], color: GBC_BLUE, from: 0.3066, to: 0.978, across: 0.5, dx: -0.005, rotate: -90 },
-        { parts: [{ logo: 'color', shadow: GBC_COLOR_SHADOW, emboss: GBC_EMBOSS }], color: GBC_BLUE, from: 0.022, to: 0.314, across: 0.4, dx: 0.008, rotate: -90 },
-        { parts: [{ text: '®', color: '#55595e', weight: 400 }], color: GBC_BLUE, from: 0.333, to: 0.35, across: 0.06, dx: 0.19, rotate: -90 },
+        { parts: [{ logo: 'gb', mono: true, shadow: GBC_WORD_SHADOW }], color: GBC_BLUE, from: 0.3147, to: 0.958, across: 0.5, dx: -0.005, rotate: -90 },
+        { parts: [{ logo: 'color', shadow: GBC_COLOR_SHADOW, emboss: GBC_EMBOSS }], color: GBC_BLUE, from: 0.042, to: 0.3217, across: 0.4, dx: 0.008, rotate: -90 },
+        { parts: [{ text: '®', color: '#55595e', weight: 400 }], color: GBC_BLUE, from: 0.3399, to: 0.3562, across: 0.06, dx: 0.18, rotate: -90 },
       ],
     },
     spine: {
       cap: { length: 0.286, fill: '#fafcfc', sheen: 'shade-gbc-cap' },
       marks: [
-        { parts: [{ logo: 'gb', mono: true, shadow: GBC_WORD_SHADOW }], color: GBC_BLUE, from: 0.0219, to: 0.157, across: 0.2, dx: 0.235, rotate: 90 },
-        { parts: [{ logo: 'color', shadow: GBC_COLOR_SHADOW, emboss: GBC_EMBOSS }], color: GBC_BLUE, from: 0.0547, to: 0.259, across: 0.45, dx: -0.116, rotate: 90 },
+        { parts: [{ logo: 'gb', mono: true, shadow: GBC_WORD_SHADOW }], color: GBC_BLUE, from: 0.0339, to: 0.169, across: 0.2, dx: 0.235, rotate: 90 },
+        { parts: [{ logo: 'color', shadow: GBC_COLOR_SHADOW, emboss: GBC_EMBOSS }], color: GBC_BLUE, from: 0.0607, to: 0.265, across: 0.45, dx: -0.116, rotate: 90 },
       ],
     },
   },

@@ -615,10 +615,10 @@ the top 28.6 % of the spine, nothing on the back. What differs:
 - **A brighter blue.** GAME BOY is `#0b25b0` (median of the template's letters), not the Game Boy's `#001497`.
 - **A ®** beside the Y, 1.9 mm across, as on the template.
 - **No Nintendo oval.** The top of the strip holds the new multicolour **COLOR** logo, reading upwards, with GAME BOY
-  below it: COLOR at 2.2–31.4 % of the strip's length, GAME BOY at 30.7–97.8 %, so the Y overlaps COLOR's C,
+  below it: COLOR at 4.2–32.2 % of the strip's length, GAME BOY at 31.5–95.8 %, so the Y overlaps COLOR's C,
   as in the scans.
-- **On the spine, GAME BOY and COLOR sit side by side**, both reading top to bottom: GAME BOY on the right at 2.2–15.7 %
-  of the length, COLOR on the left at 5.5–25.9 %.
+- **On the spine, GAME BOY and COLOR sit side by side**, both reading top to bottom: GAME BOY on the right at 3.4–16.9 %
+  of the length, COLOR on the left at 6.1–26.5 %.
 
 ### The logo
 
@@ -694,4 +694,4 @@ left out.
 
 ### Match
 
-The app against the template is 89.9 % the same by the compare script (it was 77 % at first). The rest is mostly COLOR's colours and GAME BOY's narrower letters, above.
+The logos were first placed on the template's positions (89.9 % the same by the compare script), then deliberately moved in from the edges: the front's lockup now has 4.9 mm at each end (the template 2.6) and the spine's GAME BOY 3.9 mm above it (the template 2.5). So the overlay is now 81.2 %. The rest of the difference is mostly COLOR's colours and GAME BOY's narrower letters, above.
