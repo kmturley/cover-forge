@@ -64,6 +64,8 @@ export interface MarkOptions {
   shadow?: MarkShadow;
   emboss?: MarkEmboss;
   bevel?: MarkShadow[];
+  /** Fill the box whatever its shape: shading, not a mark. */
+  stretch?: boolean;
 }
 
 /** The artwork a mark draws, in its own coordinates: its top-left corner and size, and which of a logo's layers. */
@@ -84,16 +86,18 @@ export const markAspect = (mark: Mark, o?: MarkOptions): number => (o && (o.only
 export function drawLogo(ctx: CanvasRenderingContext2D, t: TemplateConfig, panel: PanelRect, mark: Mark, logo: LogoSettings, px: number, o?: MarkOptions): void {
   const g = markGeometry(mark, o);
   const pl = computeLogoPlacement(t, panel, markAspect(mark, o), logo);
-  const k = (pl.widthMm * px) / g.w;
+  // Shading stretches to its box; a mark keeps its shape.
+  const r = o?.stretch && logo.box ? boxRect(panel, logo.box) : { xMm: pl.area.xMm + pl.xMm, yMm: pl.area.yMm + pl.yMm, widthMm: pl.widthMm, heightMm: pl.heightMm };
+  const [kx, ky] = [(r.widthMm * px) / g.w, (r.heightMm * px) / g.h];
   ctx.save();
   ctx.beginPath();
   ctx.rect(pl.area.xMm * px, pl.area.yMm * px, pl.area.widthMm * px, pl.area.heightMm * px);
   ctx.clip();
   ctx.globalAlpha = logo.opacity;
   ctx.fillStyle = logo.color;
-  ctx.translate((pl.area.xMm + pl.xMm + pl.widthMm / 2) * px, (pl.area.yMm + pl.yMm + pl.heightMm / 2) * px);
+  ctx.translate((r.xMm + r.widthMm / 2) * px, (r.yMm + r.heightMm / 2) * px);
   ctx.rotate((logo.rotationDeg * Math.PI) / 180);
-  ctx.scale(k, k);
+  ctx.scale(kx, ky);
   // Centre the artwork's tight bounds on the origin so position, size and rotation act on the visible mark.
   ctx.translate(-(g.x + g.w / 2), -(g.y + g.h / 2));
   if (o?.crop) {

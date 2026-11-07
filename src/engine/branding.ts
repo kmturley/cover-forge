@@ -34,6 +34,8 @@ export interface LogoPart {
   shadow?: MarkShadow;
   emboss?: MarkEmboss;
   bevel?: MarkShadow[];
+  /** Stretch the artwork to this width, whatever its shape: shading, not a mark. */
+  stretchWidthPx?: number;
 }
 
 export interface Sink {
@@ -217,12 +219,21 @@ function drawFrontMark(s: Sink, m: FrontMark, area: { x: number; w: number }, p:
   box.draw(x, y);
 }
 
-/** Stretches a shade-*.svg logo over a strip or cap: its artwork is exactly the shape of the area it shades. */
-function drawSheen(s: Sink, id: string | undefined, pieceId: string, x: number, y: number, h: number, p: PanelRect) {
+/** A shade-*.svg has 10 units to the mm and 3 mm of bleed past each end it has one at. */
+const SHEEN_BLEED_UNITS = 30;
+
+/**
+ * Stretches a shade-*.svg over a strip or cap. Its width becomes `w`, and its trim (not its bleed) lands on the `len`
+ * from `trimTop`, so it lines up on any panel: a Box's front is wider and has no bleed of its own. What overshoots is
+ * clipped to the panel. A strip's shading has bleed at both ends, a cap's only at the top.
+ */
+function drawSheen(s: Sink, id: string | undefined, pieceId: string, x: number, w: number, trimTop: number, len: number, bothEnds: boolean, p: PanelRect) {
   const l = id ? getLogo(id) : undefined;
   if (!l) return;
+  const bleed = SHEEN_BLEED_UNITS / (l.bbox[3] - l.bbox[1]);
+  const total = len / (1 - bleed * (bothEnds ? 2 : 1));
   s.begin(`${pieceId}-sheen`, 'Shading', p);
-  s.logo(l, {}, x, y, h, '#000');
+  s.logo(l, { stretchWidthPx: w }, x, trimTop - bleed * total, total, '#000');
 }
 
 /** Draws the header, spine caps and back logos. `px` is pixels per mm. */
@@ -344,7 +355,7 @@ function drawFront(s: Sink, t: TemplateConfig, p: PanelRect, h: FrontHeader, px:
       }
       s.begin(`${key}.strip`, 'Side strip', p);
       s.fillPath(shape(inner), ink(h.fill, ax, sy, sw, sh));
-      drawSheen(s, h.sheen, `${key}.strip`, ax, sy, sh, p);
+      drawSheen(s, h.sheen, `${key}.strip`, ax, sw, y0, H, true, p);
       if (h.brushed) drawBrushed(s, h.brushed, `${key}.strip`, ax, sw, top, bottom - top, sw / px, 7, p, (y0, y1, i) => s.fillPath(shape(inner, y0, y1), i));
     } else {
       s.begin(`${key}.strip`, 'Side strip', p);
@@ -352,7 +363,7 @@ function drawFront(s: Sink, t: TemplateConfig, p: PanelRect, h: FrontHeader, px:
       const sx = h.side === 'right' ? x0 + W - sw : ax;
       const rw = h.side === 'right' ? ax + aw - sx : x0 + sw - ax;
       s.fillRect(sx, sy, rw, sh, ink(h.fill, sx, sy, rw, sh));
-      drawSheen(s, h.sheen, `${key}.strip`, sx, sy, sh, p);
+      drawSheen(s, h.sheen, `${key}.strip`, sx, rw, y0, H, true, p);
       if (h.brushed) drawBrushed(s, h.brushed, `${key}.strip`, sx, rw, sy, sh, rw / px, 7, p, (y0, y1, i) => s.fillRect(sx, y0, rw, y1 - y0, i));
     }
     const stripX = h.side === 'right' ? x0 + W - sw : x0;
@@ -424,7 +435,7 @@ function drawSpan(s: Sink, m: SpanMark, frame: { x: number; y: number; across: n
   const vertical = orientation === 'vertical';
   const start = m.from * frame.along;
   const len = (m.to - m.from) * frame.along;
-  const shift = (m.dx ?? 0) * frame.across;
+  const shift = (m.dx ?? 0) * frame.across + (m.dxAlong ?? 0) * frame.along;
   const [cx, cy] = vertical ? [frame.x + frame.across / 2 + shift, frame.y + start + len / 2] : [frame.x + start + len / 2, frame.y + frame.across / 2 + shift];
   if (m.plate) {
     const pw = frame.across * (m.plateAcross ?? 1);
@@ -473,7 +484,7 @@ function drawSpine(s: Sink, t: TemplateConfig, p: PanelRect, sp: SpineBranding, 
       const left: PathOp[] = rl >= 0 ? [['L', cx0 + rl, bottom], ['Q', cx0, bottom, cx0, bottom + rl]] : [['L', cx0 - rl, bottom], ['Q', cx0, bottom, cx0, bottom + rl]];
       s.fillPath([['M', cx0, cy0], ['L', cx0 + cw, cy0], ...right, ...left, ['Z']], capInk);
     } else s.fillRect(rect[0], rect[1], rect[2], rect[3], capInk);
-    drawSheen(s, sp.cap.sheen, `${key}.cap`, rect[0], rect[1], rect[3], p);
+    drawSheen(s, sp.cap.sheen, `${key}.cap`, rect[0], rect[2], y0, len, false, p);
     if (sp.cap.brushed) drawBrushed(s, sp.cap.brushed, `${key}.cap`, rect[0], rect[2], rect[1], rect[3], rect[2] / px, 11, p, (y0, y1, i) => s.fillRect(rect[0], y0, rect[2], y1 - y0, i));
     if (sp.cap.line) {
       const t2 = sp.cap.line.size * along;
@@ -618,7 +629,7 @@ export class CanvasSink implements Sink {
     const k = heightPx / bh;
     ctx.save();
     ctx.translate(x, y);
-    ctx.scale(k, k);
+    ctx.scale(p.stretchWidthPx !== undefined ? p.stretchWidthPx / bw : k, k);
     if (p.crop) {
       ctx.beginPath();
       ctx.rect(0, 0, bw, bh);

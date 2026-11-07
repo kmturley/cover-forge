@@ -68,8 +68,9 @@ export type ImageSource =
   /**
    * A built-in vector mark from src/brands. `only` keeps some of a logo's layers, `crop` a share of its artwork
    * ([left, top, right, bottom], as fractions of its bounds) and `mono` paints every layer in the one colour.
+   * `stretch` fills the layer's box whatever its shape, for shading (a logo is never distorted otherwise).
    */
-  | { kind: 'vector'; id: string; only?: number[]; crop?: [number, number, number, number]; mono?: boolean; shadow?: MarkShadow; emboss?: MarkEmboss; bevel?: MarkShadow[] }
+  | { kind: 'vector'; id: string; only?: number[]; crop?: [number, number, number, number]; mono?: boolean; shadow?: MarkShadow; emboss?: MarkEmboss; bevel?: MarkShadow[]; stretch?: boolean }
   /** An uploaded or linked image kept in the session's asset library, the same on every item. */
   | { kind: 'asset'; id: string };
 

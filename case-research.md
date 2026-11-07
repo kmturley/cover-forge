@@ -747,6 +747,19 @@ of a whole column varies by only 0.2–0.5 levels here against about 3 for full-
 streaks. That gives 0.77–1.2 levels of change across (template 0.7–1.1) and 0.4–0.7 column spread. The streak pattern
 changes at each join; the brightness steps there are at most about 1.5 levels of 255. The Game Boy's brushing is unchanged.
 
+### On a Slipcover or Box
+
+The panels on these pieces are a different shape: a Box's front is 138 × 126 mm and its spine 21 mm wide, so the width grows
+more than the height. Two things had to follow it, on the Game Boy Color too:
+
+- **The shading.** A `shade-*.svg` first kept its own proportions, so it stopped short of the strip and the white base
+  showed as a border. It is now stretched to the strip's width (`stretch`, for shading only; a logo is never distorted),
+  and its trim, not its 3 mm of bleed, is lined up on the panel's trim. What overshoots is clipped to the panel.
+- **The spine's logos.** Their spacing was a share of the spine's width while their size followed its length, so on a Box
+  they drifted apart. It is now a share of the length too (`dxAlong`), which keeps the pair together.
+
+A Box's front has no bleed, so the dark foot is cut at the fold: what shows is its 3.5 mm within the trim.
+
 ### The letters
 
 The SVGs are flat, so the shading is added: a mark can have a `bevel`, a list of inner shadows in the same units as its

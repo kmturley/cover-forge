@@ -60,6 +60,8 @@ export interface SpanMark extends Lockup {
   plateAcross?: number;
   /** Shifts the mark across the strip by this fraction of its width (positive: right or down). */
   dx?: number;
+  /** The same shift as a fraction of the length: marks side by side keep their spacing when the strip is wider on another piece (a Box's spine). */
+  dxAlong?: number;
 }
 
 /** A line along a band's lower edge. `taper` makes it thinner towards both sides: that share of `size` at the edges. */
@@ -389,8 +391,8 @@ export const GAME_CASE_BRANDING: Record<string, Branding> = {
     spine: {
       cap: { length: 0.286, fill: '#fafcfc', sheen: 'shade-gbc-cap' },
       marks: [
-        { parts: [{ logo: 'gb', mono: true, shadow: GBC_WORD_SHADOW }], color: GBC_BLUE, from: 0.0339, to: 0.169, across: 0.2, dx: 0.235, rotate: 90 },
-        { parts: [{ logo: 'color', shadow: GBC_COLOR_SHADOW, emboss: GBC_EMBOSS }], color: GBC_BLUE, from: 0.0607, to: 0.265, across: 0.45, dx: -0.116, rotate: 90 },
+        { parts: [{ logo: 'gb', mono: true, shadow: GBC_WORD_SHADOW }], color: GBC_BLUE, from: 0.0339, to: 0.169, across: 0.2, dxAlong: 0.0324, rotate: 90 },
+        { parts: [{ logo: 'color', shadow: GBC_COLOR_SHADOW, emboss: GBC_EMBOSS }], color: GBC_BLUE, from: 0.0607, to: 0.265, across: 0.45, dxAlong: -0.016, rotate: 90 },
       ],
     },
   },
@@ -409,9 +411,9 @@ export const GAME_CASE_BRANDING: Record<string, Branding> = {
     spine: {
       cap: { length: 0.2828, fill: W, sheen: 'shade-gba-cap', brushed: { strength: 0.35, rows: 3 } },
       marks: [
-        { parts: [{ logo: 'advance', mono: true, shadow: GBA_BLACK_SHADOW, bevel: GBA_BLACK_BEVEL }], color: GBA_INK, from: 0.026, to: 0.2568, across: 0.3, dx: -0.128, rotate: 90 },
-        { parts: [{ logo: 'gba', only: [0, 1], shadow: GBA_WHITE_SHADOW, bevel: GBA_WHITE_BEVEL }], color: W, from: 0.0312, to: 0.156, across: 0.25, dx: 0.15, rotate: 90 },
-        { parts: [{ logo: 'gba', only: [2, 3] }], color: GBA_INK, from: 0.1502, to: 0.1584, across: 0.08, dx: 0.075, rotate: 90 },
+        { parts: [{ logo: 'advance', mono: true, shadow: GBA_BLACK_SHADOW, bevel: GBA_BLACK_BEVEL }], color: GBA_INK, from: 0.026, to: 0.2568, across: 0.3, dxAlong: -0.0177, rotate: 90 },
+        { parts: [{ logo: 'gba', only: [0, 1], shadow: GBA_WHITE_SHADOW, bevel: GBA_WHITE_BEVEL }], color: W, from: 0.0312, to: 0.156, across: 0.25, dxAlong: 0.0207, rotate: 90 },
+        { parts: [{ logo: 'gba', only: [2, 3] }], color: GBA_INK, from: 0.1502, to: 0.1584, across: 0.08, dxAlong: 0.0103, rotate: 90 },
       ],
     },
   },

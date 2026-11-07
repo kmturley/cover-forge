@@ -59,7 +59,7 @@ function source(v: unknown): ImageSource | null | undefined {
     const bevel = Array.isArray(v.bevel) ? v.bevel.map(shadowOf).filter((b): b is NonNullable<typeof b> => !!b).slice(0, 4) : undefined;
     const em = v.emboss as Record<string, unknown> | undefined;
     const emboss = em && fin(em.alpha, 0, 4) && fin(em.blur, 0.1, 4) ? { alpha: em.alpha, blur: em.blur } : undefined;
-    return { kind: 'vector', id: v.id as string, ...(only && only.length > 0 && { only }), ...(crop && { crop }), ...(v.mono === true && { mono: true }), ...(shadow && { shadow }), ...(emboss && { emboss }), ...(bevel && bevel.length > 0 && { bevel }) };
+    return { kind: 'vector', id: v.id as string, ...(only && only.length > 0 && { only }), ...(crop && { crop }), ...(v.mono === true && { mono: true }), ...(shadow && { shadow }), ...(emboss && { emboss }), ...(bevel && bevel.length > 0 && { bevel }), ...(v.stretch === true && { stretch: true }) };
   }
   if (v.kind === 'asset' && str(v.id, 80)) return { kind: 'asset', id: v.id as string };
   if (v.kind === 'role' && typeof v.ref === 'string' && /^(auto|cover|hero|logo|screenshot:\d{1,3})$/.test(v.ref)) return { kind: 'role', ref: v.ref as never };
