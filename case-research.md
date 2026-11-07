@@ -611,9 +611,11 @@ Game Boys. It is `gbc` in `GAME_CASE` and `GAME_OUTER` (136 × 124 × 19 mm).
 The layout is the Game Boy's: a silver strip down the left of the front (25.2 % of its width, 0.2519) and a silver cap on
 the top 28.6 % of the spine, nothing on the back. What differs:
 
-- **The silver is paler and cooler**, and shaded in two directions at once (see "The silver" below), so it is a near-white base with overlaid shades, not a gradient. The scans are smooth, not streaked, so the Game Boy's `brushed` texture is **off** here.
-- **No Nintendo oval.** The top of the strip holds the new multicolour **COLOR** logo, reading upwards, with GAME BOY in
-  `#001497` below it: COLOR at 2.2–31.4 % of the strip's length, GAME BOY at 30.7–97.8 %, so the Y overlaps COLOR's C,
+- **The silver is paler and cooler**, and shaded in two directions at once (see "The silver" below), so it is a near-white base with soft shading laid over it, not a gradient. The scans are smooth, not streaked, so the Game Boy's `brushed` texture is **off** here.
+- **A brighter blue.** GAME BOY is `#0b25b0` (median of the template's letters), not the Game Boy's `#001497`.
+- **A ®** beside the Y, 1.9 mm across, as on the template.
+- **No Nintendo oval.** The top of the strip holds the new multicolour **COLOR** logo, reading upwards, with GAME BOY
+  below it: COLOR at 2.2–31.4 % of the strip's length, GAME BOY at 30.7–97.8 %, so the Y overlaps COLOR's C,
   as in the scans.
 - **On the spine, GAME BOY and COLOR sit side by side**, both reading top to bottom: GAME BOY on the right at 2.2–15.7 %
   of the length, COLOR on the left at 5.5–25.9 %.
@@ -644,24 +646,52 @@ letters were flat and the GameCube's cube was a flat blue-grey. It now carries t
 A flat (`mono`) logo has none of them. Not carried over: layer blurs, masks and filters other than shadows. The 3DS,
 DS, Game Boy and other logos have no filters, so nothing else changed.
 
-Separately, a **lockup** can carry its own `shadow` (colour, dx, dy mm): a flat copy faded in three offset steps, drawn
-underneath, as editable layers. GAME BOY and COLOR use it (0.5 mm right, 0.55 mm down).
+### Inner shadows at cover size
+
+The inner shadows draw correctly in Chromium, Firefox and WebKit, in a test page and in the app, and nearly match the SVG
+beside them. At cover size, though, they read as faint: COLOR is about 34 mm long, so the SVG's 20-unit offset is under
+half a millimetre, and the on-screen copy shrinks it further. So a mark can scale them with `emboss`: `alpha` multiplies
+their strength and `blur` their reach. COLOR uses 1.3 and 0.8 (tighter and stronger). The SVG itself is unchanged.
+
+### The letters' shadow
+
+Measured across the letters' edges on the template, the shadow's middle is about 12 px (1 mm) right of and below them, it
+fades out about 24 px (2 mm) away, and it is properly blurred (standard deviation about 6.5 px) and dark, about half
+black. A mark can have a `shadow`: colour, offset and blur as fractions of its height, so the spine's small marks get a
+smaller shadow. Each layer is drawn off the canvas with its shadow brought back, so the shadows of all the letters lie
+under all of the letters, and the offset stays down and to the right however the mark is turned.
 
 ### The silver
 
-One top-to-bottom gradient can't make this metal: the template is darker down the left edge in the top half and down the
-right edge in the bottom half, with a crease between. Measured in 16 rows by 6 columns with the logos left out (median
-of the unmarked pixels), the left edge goes from `#f1` to about `#c6` between 10 and 50 % down while the right stays
-white, and below the crease the right edge darkens to `#c0` while the left is white again.
+One top-to-bottom gradient can't make this metal, nor can straight gradients overlaid (a first attempt left hard edges
+and too little contrast): the template is darker down the left in the top half and down the right in the bottom half,
+with a dark crease between that runs at an angle.
 
-So the strip and cap are a pale base with **shades** laid over it (`shade` on a strip or cap: translucent gradients over
-part of its length and width, drawn in order). The strip has five: the top half's dark left edge, a white one over its
-lower end that fades the edge out through the crease, the bottom half's dark right edge, a white one over its upper end
-that fades it in, and the soft foot. The white shades are what make the hard edges of the others disappear. The cap
-mirrors it with its own four. The engine's radial gradients are circles, so a tall, narrow blob like the left shading
-can't be one; the overlay of linear gradients stands in for it.
+So the shading is two SVGs, `src/brands/svg/shade-gbc-strip.svg` and `shade-gbc-cap.svg`, each a stack of soft rotated
+ellipses (radial gradients) over a pale base. A `shade-*.svg` is drawn stretched over the strip or cap as one layer
+(`sheen`), is left out of the logo picker, and can be opened and edited like any other SVG. Each ellipse is a Gaussian
+cut off at 3 standard deviations, in `#557684` grey or white.
+
+The ellipses were fitted to the template: logos and their shadows were masked out, what was left was reduced to a grid
+(6 px cells for the strip, 4 px for the cap), the holes filled by smoothing, then ellipses were added one by one and
+adjusted to reduce the error. 36 % of the strip and 40 % of the cap is measured; under the letters the shading is
+interpolated.
+
+| | Flat colour | Fitted ellipses |
+| :--- | :--- | :--- |
+| Strip (12 ellipses) | 25.8 levels of 255 (RMS) | 3.2 |
+| Cap (8 ellipses) | 21.0 | 3.2 |
+
+The front's left edge meets the spine, so a strip has bleed at the top and bottom only; a test checks that each SVG is the
+shape of the area it shades, so it cannot spill onto the art. The fan template's thin lighter frame round the strip is
+left out.
+
+### Still different from the template
+
+- **COLOR's colours.** `color.svg` is duller: its R is teal `#00938A` (template cyan), its O `#DAAC06` (template yellow),
+  and its C `#B80A41` (template red).
+- **GAME BOY is narrower.** `gb.svg` keeps its own proportions, about 160 px across against the template's 190.
 
 ### Match
 
-The app against the template is 89.2 % the same (the rest is the metal's shading and the letters' shadows). The
-registered mark, the shadow under the letters and the ® next to GAME BOY are not drawn.
+The app against the template is 89.9 % the same by the compare script (it was 77 % at first). The rest is mostly COLOR's colours and GAME BOY's narrower letters, above.

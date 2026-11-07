@@ -50,6 +50,8 @@ export interface Logo {
   label: string;
   /** Tight bounds of every layer, offsets included: [minX, minY, maxX, maxY]. */
   bbox: [number, number, number, number];
+  /** Not offered in the logo picker: shading used by a case's trade dress. */
+  hidden?: boolean;
   /** Fill with the even-odd rule (holes where shapes overlap) instead of nonzero. */
   evenodd?: boolean;
   layers: LogoLayer[];

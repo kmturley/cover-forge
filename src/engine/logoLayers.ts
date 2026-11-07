@@ -1,4 +1,5 @@
 import { logoPaths2D, type Logo, type LogoLayer } from "../brands";
+import type { MarkEmboss, MarkShadow } from "../types/layers";
 
 type Scratch = (w: number, h: number) => CanvasRenderingContext2D | null;
 let makeScratch: Scratch | null = null;
@@ -65,7 +66,47 @@ function innerShadow(ctx: CanvasRenderingContext2D, shape: Path2D, rule: CanvasF
   ctx.restore();
 }
 
-function paintLayer(ctx: CanvasRenderingContext2D, l: Logo, layer: LogoLayer, shape: Path2D, dx: number, dy: number, fill: string, mono: boolean): void {
+/** An effect's colour and softness under a mark's emboss: stronger, and tighter or softer. */
+function embossed(e: Effect, emboss?: MarkEmboss): Effect {
+  if (!emboss) return e;
+  return {
+    ...e,
+    dx: e.dx * emboss.blur,
+    dy: e.dy * emboss.blur,
+    blur: e.blur * emboss.blur,
+    color: e.color.replace(/,([\d.]+)\)$/, (_, a) => `,${Math.min(1, Number(a) * emboss.alpha)})`),
+  };
+}
+
+/**
+ * A mark's soft shadow, with no mark: each layer drawn off the canvas with its shadow brought back into place, so that
+ * letters' shadows lie under all of the letters. Its offset is in device pixels, so it stays down and to the right
+ * however the mark is turned.
+ */
+function paintMarkShadow(ctx: CanvasRenderingContext2D, l: Logo, used: number[], dx: number, dy: number, sh: MarkShadow): void {
+  const paths = logoPaths2D(l);
+  const m = ctx.getTransform();
+  const far = ctx.canvas.width + ctx.canvas.height + 1000;
+  // The mark's height on the canvas: what the shadow's offset and blur are fractions of.
+  const boxes = used.map((i) => l.layers[i].box);
+  const device = (Math.max(...boxes.map((b) => b[3])) - Math.min(...boxes.map((b) => b[1]))) * Math.sqrt(Math.abs(m.a * m.d - m.b * m.c));
+  for (const i of used) {
+    const layer = l.layers[i];
+    ctx.save();
+    ctx.shadowColor = sh.color;
+    ctx.shadowBlur = 2 * sh.blur * device;
+    ctx.shadowOffsetX = sh.dx * device + far;
+    ctx.shadowOffsetY = sh.dy * device;
+    ctx.translate(dx + layer.offset[0], dy + layer.offset[1]);
+    const t = ctx.getTransform();
+    ctx.setTransform(t.a, t.b, t.c, t.d, t.e - far, t.f);
+    ctx.fillStyle = "#000";
+    ctx.fill(paths[i], l.evenodd ? "evenodd" : "nonzero");
+    ctx.restore();
+  }
+}
+
+function paintLayer(ctx: CanvasRenderingContext2D, l: Logo, layer: LogoLayer, shape: Path2D, dx: number, dy: number, fill: string, mono: boolean, emboss?: MarkEmboss): void {
   const rule: CanvasFillRule = l.evenodd ? "evenodd" : "nonzero";
   ctx.save();
   ctx.translate(dx + layer.offset[0], dy + layer.offset[1]);
@@ -116,13 +157,13 @@ function paintLayer(ctx: CanvasRenderingContext2D, l: Logo, layer: LogoLayer, sh
     ctx.lineCap = layer.strokeCap ?? "butt";
     ctx.stroke(shape);
   }
-  for (const e of effects) if (e.type === "inner") innerShadow(ctx, shape, rule, layer, e);
+  for (const e of effects) if (e.type === "inner") innerShadow(ctx, shape, rule, layer, embossed(e, emboss));
   ctx.restore();
 }
 
-function paintAll(ctx: CanvasRenderingContext2D, l: Logo, used: number[], dx: number, dy: number, fill: string, mono: boolean): void {
+function paintAll(ctx: CanvasRenderingContext2D, l: Logo, used: number[], dx: number, dy: number, fill: string, mono: boolean, emboss?: MarkEmboss): void {
   const paths = logoPaths2D(l);
-  for (const i of used) paintLayer(ctx, l, l.layers[i], paths[i], dx, dy, fill, mono);
+  for (const i of used) paintLayer(ctx, l, l.layers[i], paths[i], dx, dy, fill, mono, emboss);
 }
 
 /**
@@ -139,7 +180,10 @@ export function paintLogoLayers(
   dy: number,
   fill: string,
   mono: boolean,
+  o: { shadow?: MarkShadow; emboss?: MarkEmboss } = {},
 ): void {
+  const emboss = mono ? undefined : o.emboss;
+  if (o.shadow) paintMarkShadow(ctx, l, used, dx, dy, o.shadow);
   if (!mono && used.some((i) => l.layers[i].blend)) {
     const m = ctx.getTransform();
     const xs: number[] = [];
@@ -157,7 +201,7 @@ export function paintLogoLayers(
     if (sc) {
       sc.setTransform(1, 0, 0, 1, -x0, -y0);
       sc.transform(m.a, m.b, m.c, m.d, m.e, m.f);
-      paintAll(sc, l, used, dx, dy, fill, mono);
+      paintAll(sc, l, used, dx, dy, fill, mono, emboss);
       ctx.save();
       ctx.setTransform(1, 0, 0, 1, 0, 0);
       ctx.drawImage(sc.canvas as unknown as CanvasImageSource, x0, y0);
@@ -165,5 +209,5 @@ export function paintLogoLayers(
       return;
     }
   }
-  paintAll(ctx, l, used, dx, dy, fill, mono);
+  paintAll(ctx, l, used, dx, dy, fill, mono, emboss);
 }

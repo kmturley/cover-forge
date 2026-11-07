@@ -1,6 +1,6 @@
 import { createCanvas } from '@napi-rs/canvas';
 import { describe, expect, it } from 'vitest';
-import { getLogo, type Logo } from '../brands';
+import { LOGOS, getLogo, type Logo } from '../brands';
 import '../engine/regression/render'; // installs Path2D and the scratch canvas for Node
 import { paintLogoLayers } from './logoLayers';
 
@@ -49,6 +49,60 @@ describe('logo effects from the source SVG', () => {
     const withBlend = draw(cube);
     expect(differing(withBlend, draw(stripped(cube)))).toBeGreaterThan(500);
     expect([withBlend[0], withBlend[1], withBlend[2]]).toEqual([255, 255, 255]);
+  });
+
+  it('casts a mark shadow down and right, clear of the artwork, however the mark is turned', () => {
+    const gb = getLogo('gb')!;
+    const shadow = { color: 'rgba(0,0,0,1)', dx: 0.2, dy: 0.2, blur: 0 };
+    const render = (rotate: number) => {
+      const c = createCanvas(300, 300);
+      const ctx = c.getContext('2d') as unknown as CanvasRenderingContext2D;
+      const k = 200 / (gb.bbox[2] - gb.bbox[0]);
+      ctx.translate(150, 150);
+      ctx.rotate(rotate);
+      ctx.scale(k, k);
+      ctx.translate(-(gb.bbox[0] + gb.bbox[2]) / 2, -(gb.bbox[1] + gb.bbox[3]) / 2);
+      const used = gb.layers.map((_, i) => i);
+      paintLogoLayers(ctx, gb, used, 0, 0, '#ff0000', true, { shadow });
+      const d = ctx.getImageData(0, 0, 300, 300).data;
+      const box = { black: [999, 999, -1, -1], red: [999, 999, -1, -1] };
+      for (let y = 0; y < 300; y++) for (let x = 0; x < 300; x++) {
+        const i = (x + y * 300) * 4;
+        if (d[i + 3] < 200) continue;
+        const b = d[i] > 200 ? box.red : d[i] < 50 ? box.black : null;
+        if (!b) continue;
+        b[0] = Math.min(b[0], x); b[1] = Math.min(b[1], y); b[2] = Math.max(b[2], x); b[3] = Math.max(b[3], y);
+      }
+      return box;
+    };
+    for (const turn of [0, -Math.PI / 2]) {
+      const { black, red } = render(turn);
+      expect(black[2]).toBeGreaterThan(red[2]);
+      expect(black[3]).toBeGreaterThan(red[3]);
+    }
+    // Nothing is left behind where the shadow's shape was drawn off the canvas.
+    const { black, red } = render(0);
+    expect(black[0]).toBeGreaterThan(red[0]);
+  });
+
+  it('makes a mark\'s inner shadows stronger with emboss, leaving the source data alone', () => {
+    const color = getLogo('color')!;
+    const before = JSON.stringify(color.layers[0].effects);
+    const render = (emboss?: { alpha: number; blur: number }) => {
+      const c = createCanvas(400, 200);
+      const ctx = c.getContext('2d') as unknown as CanvasRenderingContext2D;
+      ctx.scale(0.2, 0.2);
+      paintLogoLayers(ctx, color, color.layers.map((_, i) => i), 0, 0, '#000', false, { emboss });
+      return new Uint8ClampedArray(ctx.getImageData(0, 0, 400, 200).data);
+    };
+    expect(differing(render(), render({ alpha: 1.5, blur: 0.7 }))).toBeGreaterThan(200);
+    expect(JSON.stringify(color.layers[0].effects)).toBe(before);
+  });
+
+  it('keeps shading out of the logo picker', () => {
+    expect(LOGOS.filter((l) => l.hidden).map((l) => l.id).sort()).toEqual(['shade-gbc-cap', 'shade-gbc-strip']);
+    // A gradient filling the whole artwork is the point of a shade, not a background to drop.
+    expect(getLogo('shade-gbc-strip')!.layers.length).toBeGreaterThan(5);
   });
 
   it('leaves a flat (mono) logo flat', () => {

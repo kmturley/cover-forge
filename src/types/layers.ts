@@ -47,6 +47,11 @@ export type LayerPlacement = Placement | LegacyMm | null;
 /** Colour stops: [position 0–1, colour]. */
 export type Stops = [number, string][];
 
+/** A soft shadow behind a mark, its offset and blur (a Gaussian's standard deviation) as fractions of the mark's height. */
+export interface MarkShadow { color: string; dx: number; dy: number; blur: number }
+/** Scales a logo's inner shadows from its source file: `alpha` their strength, `blur` their softness. */
+export interface MarkEmboss { alpha: number; blur: number }
+
 /**
  * A gradient over a shape's box: linear, left to right (`x`) or top to bottom (`y`); or radial (`radial`), from a centre
  * (as fractions of the box's width and height) out to a radius (a fraction of its width).
@@ -63,7 +68,7 @@ export type ImageSource =
    * A built-in vector mark from src/brands. `only` keeps some of a logo's layers, `crop` a share of its artwork
    * ([left, top, right, bottom], as fractions of its bounds) and `mono` paints every layer in the one colour.
    */
-  | { kind: 'vector'; id: string; only?: number[]; crop?: [number, number, number, number]; mono?: boolean }
+  | { kind: 'vector'; id: string; only?: number[]; crop?: [number, number, number, number]; mono?: boolean; shadow?: MarkShadow; emboss?: MarkEmboss }
   /** An uploaded or linked image kept in the session's asset library, the same on every item. */
   | { kind: 'asset'; id: string };
 

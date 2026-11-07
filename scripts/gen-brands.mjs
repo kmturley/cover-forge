@@ -299,11 +299,12 @@ function parseLogo(svg, id) {
     });
   }
   // A plain rectangle covering the whole viewBox is a background (the red square behind the Switch logos), unless it is all there is.
-  const covers = (l) => /^[MmHhVvLlZz\d\s.,-]+$/.test(l.d) && l.box[2] - l.box[0] >= vw * 0.98 && l.box[3] - l.box[1] >= vh * 0.98;
+  const covers = (l) => !l.gradient && /^[MmHhVvLlZz\d\s.,-]+$/.test(l.d) && l.box[2] - l.box[0] >= vw * 0.98 && l.box[3] - l.box[1] >= vh * 0.98;
   if (layers.length > 1) for (let i = layers.length - 1; i >= 0; i--) if (covers(layers[i])) layers.splice(i, 1);
   const r3 = (n) => Math.round(n * 1000) / 1000;
   const bbox = [Math.min(...layers.map((l) => l.box[0])), Math.min(...layers.map((l) => l.box[1])), Math.max(...layers.map((l) => l.box[2])), Math.max(...layers.map((l) => l.box[3]))].map(r3);
-  return { id, label: LOGO_LABELS[id] ?? id, bbox, ...(/fill-rule(="|:\s*)evenodd/.test(svg) && { evenodd: true }), layers: layers.map((l) => ({ ...l, box: l.box.map(r3) })) };
+  // A shade-*.svg is shading for a case's trade dress, not a mark to offer in the logo picker.
+  return { id, label: LOGO_LABELS[id] ?? id, bbox, ...(id.startsWith('shade-') && { hidden: true }), ...(/fill-rule(="|:\s*)evenodd/.test(svg) && { evenodd: true }), layers: layers.map((l) => ({ ...l, box: l.box.map(r3) })) };
 }
 
 const svgDir = new URL('../src/brands/svg/', import.meta.url);

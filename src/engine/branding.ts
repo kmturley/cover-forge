@@ -1,9 +1,10 @@
+import type { MarkEmboss, MarkShadow } from '../types/layers';
 import type { PanelRect, TemplateConfig } from '../types/template';
 import { paintRect } from '../templates/geometry';
 import { brandHeight, brandPath2D, brandWidth, getBrand, getLogo, type Brand, type Logo } from '../brands';
 import { paintLogoLayers } from './logoLayers';
 import { X360_WAVES, X360_WAVES_SIZE } from './x360Waves.generated';
-import { brandingFor, type FrontHeader, type FrontMark, type Lockup, type Paint, type Part, type Shade, type SpanMark, type SpineBranding } from './official';
+import { brandingFor, type FrontHeader, type FrontMark, type Lockup, type Paint, type Part, type SpanMark, type SpineBranding } from './official';
 
 /**
  * Draws the "Branded" trade dress (the data is in official.ts). The drawing code doesn't touch a canvas itself: it
@@ -30,6 +31,8 @@ export interface LogoPart {
   only?: number[];
   crop?: [number, number, number, number];
   mono?: boolean;
+  shadow?: MarkShadow;
+  emboss?: MarkEmboss;
 }
 
 export interface Sink {
@@ -133,7 +136,7 @@ function part(s: Sink, p: Part, color: string, unit: number, gapUnits: number): 
   const l = getLogo(p.logo);
   if (!l) return { w: 0, h: 0, draw: () => {} };
   const g = logoPartGeometry(l, p);
-  return { w: g.bw * (h / g.bh), h, draw: (x, y) => s.logo(l, { only: p.only, crop: p.crop, mono: p.mono }, x, y, h, fill) };
+  return { w: g.bw * (h / g.bh), h, draw: (x, y) => s.logo(l, { only: p.only, crop: p.crop, mono: p.mono, shadow: p.shadow, emboss: p.emboss }, x, y, h, fill) };
 }
 
 /** The artwork a logo part draws, in the logo's own coordinates: its top-left, size and which of its layers. */
@@ -153,28 +156,6 @@ function lockup(s: Sink, m: Lockup, heightPx: number): Box {
   return layout(s, m.parts, m.color, 100 * k, m.gap ?? 0.25, 'row');
 }
 
-/** The same lockup as a flat silhouette in `color`, for a shadow. */
-function silhouette(parts: Part[], color: string): Part[] {
-  return parts.map((p): Part => ('row' in p ? { row: silhouette(p.row, color) } : 'stack' in p ? { stack: silhouette(p.stack, color) } : 'logo' in p ? { ...p, color, mono: true } : { ...p, color }));
-}
-
-/** Soft drop shadow steps: how far along the offset, and how opaque. Overlapping, they fade out towards the edge. */
-const SHADOW_STEPS: [number, number][] = [[0.35, 0.24], [0.7, 0.16], [1.1, 0.09]];
-
-/** Draws the lockup's shadow (page-space offset in px) before the lockup itself; `at` places a lockup of the given size. */
-function drawShadow(s: Sink, m: Lockup, px: number, size: (m: Lockup) => Box, at: (box: Box) => void) {
-  if (!m.shadow) return;
-  const flat: Lockup = { ...m, parts: silhouette(m.parts, m.shadow.color), frame: undefined };
-  const box = size(flat);
-  for (const [k, alpha] of SHADOW_STEPS) {
-    s.save();
-    s.translate(m.shadow.dx * px * k, m.shadow.dy * px * k);
-    s.setAlpha(alpha);
-    at(box);
-    s.restore();
-  }
-}
-
 /** Draws a lockup fitted inside `w` × `h` (px, centred on cx, cy), rotated by `rotate` degrees. */
 function drawFitted(s: Sink, m: Lockup, cx: number, cy: number, w: number, h: number, rotate: number, px: number) {
   const sideways = rotate !== 0;
@@ -185,11 +166,6 @@ function drawFitted(s: Sink, m: Lockup, cx: number, cy: number, w: number, h: nu
   const pad = m.frame ? Math.min(bw, bh) * 0.08 : 0;
   const heightPx = Math.min(bh - 2 * pad, ((bw - 2 * pad) * probe.h) / probe.w);
   const box = lockup(s, m, heightPx);
-  drawShadow(s, m, px, (f) => lockup(s, f, heightPx), (sh) => {
-    s.translate(cx, cy);
-    s.rotate((rotate * Math.PI) / 180);
-    sh.draw(-sh.w / 2, -sh.h / 2);
-  });
   s.save();
   s.translate(cx, cy);
   s.rotate((rotate * Math.PI) / 180);
@@ -228,19 +204,15 @@ function drawFrontMark(s: Sink, m: FrontMark, area: { x: number; w: number }, p:
     const pad = box.h * 0.35;
     s.fillRect(x - pad, y - pad, box.w + pad * 2, box.h + pad * 2, m.plate);
   }
-  drawShadow(s, m, px, (f) => lockup(s, f, box.h), (sh) => sh.draw(x, y));
   box.draw(x, y);
 }
 
-/** Lays each shade over the rectangle: over its share of the length (down it for 'vertical', along it otherwise). */
-function drawShades(s: Sink, shades: Shade[] | undefined, id: string, x: number, y: number, w: number, h: number, dir: 'vertical' | 'horizontal', p: PanelRect) {
-  shades?.forEach((sh, i) => {
-    const [from, to] = [sh.from ?? 0, sh.to ?? 1];
-    const [a0, a1] = sh.across ?? [0, 1];
-    s.begin(`${id}-shade-${i + 1}`, 'Shading', p);
-    const [rx, ry, rw, rh] = dir === 'vertical' ? [x + a0 * w, y + from * h, (a1 - a0) * w, (to - from) * h] : [x + from * w, y + a0 * h, (to - from) * w, (a1 - a0) * h];
-    s.fillRect(rx, ry, rw, rh, ink(sh.fill, rx, ry, rw, rh));
-  });
+/** Stretches a shade-*.svg logo over a strip or cap: its artwork is exactly the shape of the area it shades. */
+function drawSheen(s: Sink, id: string | undefined, pieceId: string, x: number, y: number, h: number, p: PanelRect) {
+  const l = id ? getLogo(id) : undefined;
+  if (!l) return;
+  s.begin(`${pieceId}-sheen`, 'Shading', p);
+  s.logo(l, {}, x, y, h, '#000');
 }
 
 /** Draws the header, spine caps and back logos. `px` is pixels per mm. */
@@ -366,7 +338,7 @@ function drawFront(s: Sink, t: TemplateConfig, p: PanelRect, h: FrontHeader, px:
       const sx = h.side === 'right' ? x0 + W - sw : ax;
       const rw = h.side === 'right' ? ax + aw - sx : x0 + sw - ax;
       s.fillRect(sx, sy, rw, sh, ink(h.fill, sx, sy, rw, sh));
-      drawShades(s, h.shade, key + '.strip', sx, sy, rw, sh, 'vertical', p);
+      drawSheen(s, h.sheen, `${key}.strip`, sx, sy, sh, p);
       if (h.brushed) {
         s.begin(`${key}.strip-brush`, 'Brushed texture', p);
         s.fillRect(sx, sy, rw, sh, brushedInk(sx, rw, rw / px, 7));
@@ -490,7 +462,7 @@ function drawSpine(s: Sink, t: TemplateConfig, p: PanelRect, sp: SpineBranding, 
       const left: PathOp[] = rl >= 0 ? [['L', cx0 + rl, bottom], ['Q', cx0, bottom, cx0, bottom + rl]] : [['L', cx0 - rl, bottom], ['Q', cx0, bottom, cx0, bottom + rl]];
       s.fillPath([['M', cx0, cy0], ['L', cx0 + cw, cy0], ...right, ...left, ['Z']], capInk);
     } else s.fillRect(rect[0], rect[1], rect[2], rect[3], capInk);
-    drawShades(s, sp.cap.shade, `${key}.cap`, rect[0], rect[1], rect[2], rect[3], vertical ? 'vertical' : 'horizontal', p);
+    drawSheen(s, sp.cap.sheen, `${key}.cap`, rect[0], rect[1], rect[3], p);
     if (sp.cap.brushed) {
       s.begin(`${key}.cap-brush`, 'Brushed texture', p);
       s.fillRect(rect[0], rect[1], rect[2], rect[3], brushedInk(rect[0], rect[2], rect[2] / px, 11));
@@ -644,7 +616,7 @@ export class CanvasSink implements Sink {
       ctx.rect(0, 0, bw, bh);
       ctx.clip();
     }
-    paintLogoLayers(ctx, l, used, -bx, -by, color, !!p.mono);
+    paintLogoLayers(ctx, l, used, -bx, -by, color, !!p.mono, { shadow: p.shadow, emboss: p.emboss });
     ctx.restore();
   }
 }

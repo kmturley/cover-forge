@@ -6,13 +6,15 @@ import type { TemplateKind } from '../types/template';
  * fractions of the spine's length `L`, and its marks' widths fractions of the spine's width `S`.
  */
 
+import type { MarkEmboss, MarkShadow } from '../types/layers';
+
 /** A flat colour, or a gradient across the shape (`x`: left to right, `y`: top to bottom) as [offset, colour] stops. */
 export type Paint = string | { x: [number, string][] } | { y: [number, string][] };
 
 /** One piece of a lockup. `h` is its height relative to the others (default 1); `color` overrides the lockup's. */
 export type Part =
   | { brand: string; h?: number; color?: string }
-  | { logo: string; h?: number; color?: string; mono?: boolean; only?: number[]; crop?: [number, number, number, number] }
+  | { logo: string; h?: number; color?: string; mono?: boolean; only?: number[]; crop?: [number, number, number, number]; shadow?: MarkShadow; emboss?: MarkEmboss }
   | { text: string; h?: number; color?: string; weight?: number; italic?: boolean; spacing?: number }
   | { row: Part[] }
   | { stack: Part[] };
@@ -25,8 +27,6 @@ export interface Lockup {
   frame?: { color: string; mm?: number };
   /** Gap between parts as a fraction of the lockup's height. Default 0.25. */
   gap?: number;
-  /** A soft drop shadow in that colour, offset by dx, dy mm (positive: right, down): the shape of the lockup, faded in steps. */
-  shadow?: { color: string; dx: number; dy: number };
 }
 
 export interface FrontMark extends Lockup {
@@ -65,14 +65,6 @@ export interface SpanMark extends Lockup {
 /** A line along a band's lower edge. `taper` makes it thinner towards both sides: that share of `size` at the edges. */
 export interface Line { color: string; size: number; taper?: number; shadow?: { color: string; size: number } }
 
-/**
- * A translucent layer of shading over a strip or spine cap, over `from` to `to` of its length (default all of it): stops
- * may be rgba(). Several, drawn in order, build a surface that no single gradient can (light falling off one edge in
- * one half and the other edge in the other half). A translucent white shade over the end of another one fades its hard
- * edge out.
- */
-export interface Shade { from?: number; to?: number; /** Only this share of the width (from the left), default all. */ across?: [number, number]; fill: Paint }
-
 /** The lower edge of a band: its depth (fraction of H) at `x` (fraction of W from the left). */
 export type Depth = (x: number) => number;
 
@@ -109,14 +101,14 @@ export type FrontHeader =
   /** A block in the top-left corner, `w` × `h`; with `wBottom` its right edge is a diagonal. */
   | { shape: 'tab'; w: number; h: number; wBottom?: number; /** Also paints the top bleed this far across (a share of W), so a logo flush with the top edge has none showing above it. */ lip?: number; fill: Paint; plate?: { top: number; bottom: number; fill: string; line: string }; marks: FrontMark[] }
   /** Full height down the left edge, `w` wide. Its marks run along it. */
-  | { shape: 'strip'; w: number; /** Down the right edge instead of the left (the 3DS's). A curved `edge` is for the left side only. */ side?: 'left' | 'right'; fill: Paint; /** Fine vertical streaks over the fill: brushed metal. */ brushed?: boolean; /** Shading laid over the fill, under the brushing. */ shade?: Shade[]; /** The strip's right edge when it isn't straight. */ edge?: StripEdge; marks: SpanMark[] }
+  | { shape: 'strip'; w: number; /** Down the right edge instead of the left (the 3DS's). A curved `edge` is for the left side only. */ side?: 'left' | 'right'; fill: Paint; /** Fine vertical streaks over the fill: brushed metal. */ brushed?: boolean; /** A shade-*.svg logo stretched over the fill, under the brushing: soft 2D shading no gradient can make. */ sheen?: string; /** The strip's right edge when it isn't straight. */ edge?: StripEdge; marks: SpanMark[] }
   | { shape: 'none'; marks: FrontMark[] };
 
 export interface SpineBranding {
   /** Colours the whole spine (Switch red, Wii white). */
   fill?: Paint;
   /** A block at the top of the spine, `length` of L, closed by an optional line. `dome` curves its lower edge up in the middle by that share of L. */
-  cap?: { length: number; fill: Paint; line?: { color: string; size: number; gap?: number }; dome?: number; /** Fine vertical streaks over the fill: brushed metal. */ brushed?: boolean; /** Shading laid over the fill, under the brushing. */ shade?: Shade[]; /** Rounds a corner at the cap's lower edge, left then right, radius in mm. Positive rounds what lies below (the cap's colour fills the gap); negative rounds the cap's own corner. */ corners?: [number, number] };
+  cap?: { length: number; fill: Paint; line?: { color: string; size: number; gap?: number }; dome?: number; /** Fine vertical streaks over the fill: brushed metal. */ brushed?: boolean; /** A shade-*.svg logo stretched over the fill, under the brushing: soft 2D shading no gradient can make. */ sheen?: string; /** Rounds a corner at the cap's lower edge, left then right, radius in mm. Positive rounds what lies below (the cap's colour fills the gap); negative rounds the cap's own corner. */ corners?: [number, number] };
   /** A thin outline round the whole spine (or its cap), `mm` thick. `top: false` leaves the top edge off, and `rightFrom`
    * starts the right edge that far down (fraction of L) so it doesn't run along a header that meets it. */
   outline?: { color: string; mm: number; top?: boolean; right?: boolean; rightFrom?: number };
@@ -156,32 +148,13 @@ const X360_WHITE = '#ffffff';
 const GB_SILVER: Paint = { y: [[0, '#f4fcfd'], [0.15, '#eff7f9'], [0.25, '#ebf5f7'], [0.35, '#e4eff1'], [0.45, '#e0ebed'], [0.55, '#dbe7ea'], [0.65, '#d3e2e5'], [0.75, '#cadbde'], [0.85, '#bcced2'], [0.95, '#b2c4c8'], [1, '#b0c2c6']] };
 /** The spine cap's silver is a little lighter and flatter than the strip's. Both are 2.6 % lighter than the scans' medians, which the brushed texture darkens by that much. */
 const GB_CAP_SILVER: Paint = { y: [[0, '#f5fdfe'], [0.38, '#f2f9fc'], [0.62, '#edf6f8'], [1, '#ebf4f6']] };
-// Game Boy Color: a paler, cooler silver than the original's, darker in patches where the scans' sheen falls away (each
-// stop leans towards the darker of the two edges). The letters cast a soft shadow down and to the right.
-const GBC_SHADOW = { color: '#2a3140', dx: 0.5, dy: 0.55 };
-const GBC_SILVER: Paint = '#f8fafb';
-// Shading from the template, measured in 16 rows by 6 columns with the logos left out: the left edge darkens down the
-// top half and the right edge down the bottom half, with a dark crease between and a soft foot.
-const SHADE = (a: number) => `rgba(150,168,178,${a})`;
-const WH = (a: number) => `rgba(248,250,251,${a})`;
-const GBC_STRIP_SHADE: Shade[] = [
-  // The top half's dark left edge (the left 55 % of the strip), fading out through the crease at 50-58 %.
-  { to: 0.6, across: [0, 0.55], fill: { x: [[0, SHADE(0.55)], [0.31, SHADE(0.5)], [0.6, SHADE(0.35)], [0.91, SHADE(0.1)], [1, SHADE(0)]] } },
-  { to: 0.6, across: [0, 0.55], fill: { y: [[0, WH(0.85)], [0.37, WH(0.5)], [0.57, WH(0.1)], [0.75, WH(0)], [0.83, WH(0)], [0.92, WH(0.95)], [1, WH(1)]] } },
-  // The bottom half's dark right edge (the right 45 %), fading in over 44-50 %.
-  { from: 0.44, across: [0.55, 1], fill: { x: [[0, SHADE(0)], [0.1, SHADE(0.12)], [0.27, SHADE(0.4)], [0.62, SHADE(0.58)], [1, SHADE(0.65)]] } },
-  { from: 0.44, to: 0.5, across: [0.55, 1], fill: { y: [[0, WH(1)], [1, WH(0)]] } },
-  // The soft foot.
-  { from: 0.85, fill: { y: [[0, SHADE(0)], [1, SHADE(0.3)]] } },
-];
-const GBC_CAP_SILVER: Paint = '#f8fafb';
-const GBC_CAP_SHADE: Shade[] = [
-  { to: 0.62, across: [0.4, 1], fill: { x: [[0, SHADE(0)], [0.5, SHADE(0.25)], [1, SHADE(0.5)]] } },
-  { from: 0.5, to: 0.62, across: [0.4, 1], fill: { y: [[0, WH(0)], [1, WH(1)]] } },
-  { from: 0.35, across: [0, 0.4], fill: { x: [[0, SHADE(0.3)], [1, SHADE(0)]] } },
-  { from: 0.35, to: 0.45, across: [0, 0.4], fill: { y: [[0, WH(1)], [1, WH(0)]] } },
-  { from: 0.8, fill: { y: [[0, SHADE(0)], [1, SHADE(0.2)]] } },
-];
+// Game Boy Color: a near-white silver with soft shading (src/brands/svg/shade-gbc-*.svg), and a brighter blue than the
+// Game Boy's. The letters cast a blurred shadow about 1 mm away, measured on the fan template.
+const GBC_BLUE = '#0b25b0';
+const GBC_WORD_SHADOW: MarkShadow = { color: 'rgba(20,28,38,0.55)', dx: 0.075, dy: 0.075, blur: 0.04 };
+const GBC_COLOR_SHADOW: MarkShadow = { color: 'rgba(20,28,38,0.5)', dx: 0.06, dy: 0.06, blur: 0.035 };
+// The SVG's inner shadows are drawn as authored, then made tighter and stronger so they still read at cover size.
+const GBC_EMBOSS: MarkEmboss = { alpha: 1.3, blur: 0.8 };
 const GB_BLUE = '#001497';
 
 /** A format's small spine cap and back logo (DVD, CD, VHS…), which have no front header. */
@@ -391,17 +364,18 @@ export const GAME_CASE_BRANDING: Record<string, Branding> = {
   gbc: {
     front: {
       shape: 'strip', w: 0.2519,
-      fill: GBC_SILVER, shade: GBC_STRIP_SHADE,
+      fill: '#f8fbfc', sheen: 'shade-gbc-strip',
       marks: [
-        { parts: [{ logo: 'gb', mono: true }], color: GB_BLUE, shadow: GBC_SHADOW, from: 0.3066, to: 0.978, across: 0.5, dx: -0.005, rotate: -90 },
-        { parts: [{ logo: 'color' }], color: GB_BLUE, shadow: GBC_SHADOW, from: 0.022, to: 0.314, across: 0.4, dx: 0.008, rotate: -90 },
+        { parts: [{ logo: 'gb', mono: true, shadow: GBC_WORD_SHADOW }], color: GBC_BLUE, from: 0.3066, to: 0.978, across: 0.5, dx: -0.005, rotate: -90 },
+        { parts: [{ logo: 'color', shadow: GBC_COLOR_SHADOW, emboss: GBC_EMBOSS }], color: GBC_BLUE, from: 0.022, to: 0.314, across: 0.4, dx: 0.008, rotate: -90 },
+        { parts: [{ text: '®', color: '#55595e', weight: 400 }], color: GBC_BLUE, from: 0.333, to: 0.35, across: 0.06, dx: 0.19, rotate: -90 },
       ],
     },
     spine: {
-      cap: { length: 0.286, fill: GBC_CAP_SILVER, shade: GBC_CAP_SHADE },
+      cap: { length: 0.286, fill: '#fafcfc', sheen: 'shade-gbc-cap' },
       marks: [
-        { parts: [{ logo: 'gb', mono: true }], color: GB_BLUE, shadow: GBC_SHADOW, from: 0.0219, to: 0.157, across: 0.2, dx: 0.235, rotate: 90 },
-        { parts: [{ logo: 'color' }], color: GB_BLUE, shadow: GBC_SHADOW, from: 0.0547, to: 0.259, across: 0.45, dx: -0.116, rotate: 90 },
+        { parts: [{ logo: 'gb', mono: true, shadow: GBC_WORD_SHADOW }], color: GBC_BLUE, from: 0.0219, to: 0.157, across: 0.2, dx: 0.235, rotate: 90 },
+        { parts: [{ logo: 'color', shadow: GBC_COLOR_SHADOW, emboss: GBC_EMBOSS }], color: GBC_BLUE, from: 0.0547, to: 0.259, across: 0.45, dx: -0.116, rotate: 90 },
       ],
     },
   },
