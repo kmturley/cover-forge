@@ -1,5 +1,6 @@
 import type { PanelRect, TemplateConfig } from '../types/template';
 import type { LogoSettings } from '../types/editor';
+import type { MarkEmboss, MarkShadow } from '../types/layers';
 import { brandHeight, brandPath2D, brandWidth, type Mark } from '../brands';
 import { paintLogoLayers } from './logoLayers';
 import { paintRect } from './placement';
@@ -60,6 +61,8 @@ export interface MarkOptions {
   only?: number[];
   crop?: [number, number, number, number];
   mono?: boolean;
+  shadow?: MarkShadow;
+  emboss?: MarkEmboss;
 }
 
 /** The artwork a mark draws, in its own coordinates: its top-left corner and size, and which of a logo's layers. */
@@ -98,6 +101,6 @@ export function drawLogo(ctx: CanvasRenderingContext2D, t: TemplateConfig, panel
     ctx.clip();
   }
   if (mark.kind === 'brand') ctx.fill(brandPath2D(mark.brand));
-  else paintLogoLayers(ctx, mark.logo, g.used, 0, 0, logo.color, g.mono);
+  else paintLogoLayers(ctx, mark.logo, g.used, 0, 0, logo.color, g.mono, { shadow: o?.shadow, emboss: o?.emboss });
   ctx.restore();
 }

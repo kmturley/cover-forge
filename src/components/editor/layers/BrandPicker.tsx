@@ -40,7 +40,7 @@ export function BrandPicker({ value, onPick }: { value: string | null; onPick: (
       <div>
         <p className="group-label">Template logos</p>
         <div className="brands">
-          {LOGOS.map((l) => (
+          {LOGOS.filter((l) => !l.hidden).map((l) => (
             <button key={l.id} className={`brand-option logo-option ${l.id === value ? 'selected' : ''}`} title={l.label} aria-label={l.label} aria-pressed={l.id === value} onClick={() => onPick(l.id)}>
               <LogoIcon logo={l} />
             </button>

@@ -274,7 +274,7 @@ class LayerSink implements Sink {
     const layer: ImageLayer = {
       ...this.base(rect, rotationDeg),
       type: 'image',
-      source: { kind: 'vector', id, ...(part.only && { only: part.only }), ...(part.crop && { crop: part.crop }), ...(part.mono && { mono: true }) },
+      source: { kind: 'vector', id, ...(part.only && { only: part.only }), ...(part.crop && { crop: part.crop }), ...(part.mono && { mono: true }), ...(part.shadow && { shadow: part.shadow }), ...(part.emboss && { emboss: part.emboss }) },
       fit: 'fit',
       focus: { x: 50, y: 50 },
       tint: color,

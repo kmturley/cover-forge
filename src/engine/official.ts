@@ -6,13 +6,15 @@ import type { TemplateKind } from '../types/template';
  * fractions of the spine's length `L`, and its marks' widths fractions of the spine's width `S`.
  */
 
+import type { MarkEmboss, MarkShadow } from '../types/layers';
+
 /** A flat colour, or a gradient across the shape (`x`: left to right, `y`: top to bottom) as [offset, colour] stops. */
 export type Paint = string | { x: [number, string][] } | { y: [number, string][] };
 
 /** One piece of a lockup. `h` is its height relative to the others (default 1); `color` overrides the lockup's. */
 export type Part =
   | { brand: string; h?: number; color?: string }
-  | { logo: string; h?: number; color?: string; mono?: boolean; only?: number[]; crop?: [number, number, number, number] }
+  | { logo: string; h?: number; color?: string; mono?: boolean; only?: number[]; crop?: [number, number, number, number]; shadow?: MarkShadow; emboss?: MarkEmboss }
   | { text: string; h?: number; color?: string; weight?: number; italic?: boolean; spacing?: number }
   | { row: Part[] }
   | { stack: Part[] };
@@ -99,14 +101,14 @@ export type FrontHeader =
   /** A block in the top-left corner, `w` × `h`; with `wBottom` its right edge is a diagonal. */
   | { shape: 'tab'; w: number; h: number; wBottom?: number; /** Also paints the top bleed this far across (a share of W), so a logo flush with the top edge has none showing above it. */ lip?: number; fill: Paint; plate?: { top: number; bottom: number; fill: string; line: string }; marks: FrontMark[] }
   /** Full height down the left edge, `w` wide. Its marks run along it. */
-  | { shape: 'strip'; w: number; /** Down the right edge instead of the left (the 3DS's). A curved `edge` is for the left side only. */ side?: 'left' | 'right'; fill: Paint; /** Fine vertical streaks over the fill: brushed metal. */ brushed?: boolean; /** The strip's right edge when it isn't straight. */ edge?: StripEdge; marks: SpanMark[] }
+  | { shape: 'strip'; w: number; /** Down the right edge instead of the left (the 3DS's). A curved `edge` is for the left side only. */ side?: 'left' | 'right'; fill: Paint; /** Fine vertical streaks over the fill: brushed metal. */ brushed?: boolean; /** A shade-*.svg logo stretched over the fill, under the brushing: soft 2D shading no gradient can make. */ sheen?: string; /** The strip's right edge when it isn't straight. */ edge?: StripEdge; marks: SpanMark[] }
   | { shape: 'none'; marks: FrontMark[] };
 
 export interface SpineBranding {
   /** Colours the whole spine (Switch red, Wii white). */
   fill?: Paint;
   /** A block at the top of the spine, `length` of L, closed by an optional line. `dome` curves its lower edge up in the middle by that share of L. */
-  cap?: { length: number; fill: Paint; line?: { color: string; size: number; gap?: number }; dome?: number; /** Fine vertical streaks over the fill: brushed metal. */ brushed?: boolean; /** Rounds a corner at the cap's lower edge, left then right, radius in mm. Positive rounds what lies below (the cap's colour fills the gap); negative rounds the cap's own corner. */ corners?: [number, number] };
+  cap?: { length: number; fill: Paint; line?: { color: string; size: number; gap?: number }; dome?: number; /** Fine vertical streaks over the fill: brushed metal. */ brushed?: boolean; /** A shade-*.svg logo stretched over the fill, under the brushing: soft 2D shading no gradient can make. */ sheen?: string; /** Rounds a corner at the cap's lower edge, left then right, radius in mm. Positive rounds what lies below (the cap's colour fills the gap); negative rounds the cap's own corner. */ corners?: [number, number] };
   /** A thin outline round the whole spine (or its cap), `mm` thick. `top: false` leaves the top edge off, and `rightFrom`
    * starts the right edge that far down (fraction of L) so it doesn't run along a header that meets it. */
   outline?: { color: string; mm: number; top?: boolean; right?: boolean; rightFrom?: number };
@@ -146,6 +148,13 @@ const X360_WHITE = '#ffffff';
 const GB_SILVER: Paint = { y: [[0, '#f4fcfd'], [0.15, '#eff7f9'], [0.25, '#ebf5f7'], [0.35, '#e4eff1'], [0.45, '#e0ebed'], [0.55, '#dbe7ea'], [0.65, '#d3e2e5'], [0.75, '#cadbde'], [0.85, '#bcced2'], [0.95, '#b2c4c8'], [1, '#b0c2c6']] };
 /** The spine cap's silver is a little lighter and flatter than the strip's. Both are 2.6 % lighter than the scans' medians, which the brushed texture darkens by that much. */
 const GB_CAP_SILVER: Paint = { y: [[0, '#f5fdfe'], [0.38, '#f2f9fc'], [0.62, '#edf6f8'], [1, '#ebf4f6']] };
+// Game Boy Color: a near-white silver with soft shading (src/brands/svg/shade-gbc-*.svg), and a brighter blue than the
+// Game Boy's. The letters cast a blurred shadow about 1 mm away, measured on the fan template.
+const GBC_BLUE = '#0b25b0';
+const GBC_WORD_SHADOW: MarkShadow = { color: 'rgba(20,28,38,0.55)', dx: 0.075, dy: 0.075, blur: 0.04 };
+const GBC_COLOR_SHADOW: MarkShadow = { color: 'rgba(20,28,38,0.5)', dx: 0.06, dy: 0.06, blur: 0.035 };
+// The SVG's inner shadows are drawn as authored, then made tighter and stronger so they still read at cover size.
+const GBC_EMBOSS: MarkEmboss = { alpha: 1.3, blur: 0.8 };
 const GB_BLUE = '#001497';
 
 /** A format's small spine cap and back logo (DVD, CD, VHS…), which have no front header. */
@@ -349,6 +358,26 @@ export const GAME_CASE_BRANDING: Record<string, Branding> = {
       ],
     },
     spine: { cap: { length: 0.286, fill: GB_CAP_SILVER, brushed: true }, marks: [{ parts: [{ logo: 'gb', mono: true }], color: GB_BLUE, from: 0.0345, to: 0.2647, across: 0.4, dx: 0.018, rotate: 90 }] },
+  },
+  // Game Boy Color: the Game Boy's strip and cap in paler silver, with GAME BOY and the multicolour COLOR as one lockup:
+  // in a row up the strip, stacked on the spine.
+  gbc: {
+    front: {
+      shape: 'strip', w: 0.2519,
+      fill: '#f8fbfc', sheen: 'shade-gbc-strip',
+      marks: [
+        { parts: [{ logo: 'gb', mono: true, shadow: GBC_WORD_SHADOW }], color: GBC_BLUE, from: 0.3147, to: 0.958, across: 0.5, dx: -0.005, rotate: -90 },
+        { parts: [{ logo: 'color', shadow: GBC_COLOR_SHADOW, emboss: GBC_EMBOSS }], color: GBC_BLUE, from: 0.042, to: 0.3217, across: 0.4, dx: 0.008, rotate: -90 },
+        { parts: [{ text: '®', color: '#55595e', weight: 400 }], color: GBC_BLUE, from: 0.3399, to: 0.3562, across: 0.06, dx: 0.18, rotate: -90 },
+      ],
+    },
+    spine: {
+      cap: { length: 0.286, fill: '#fafcfc', sheen: 'shade-gbc-cap' },
+      marks: [
+        { parts: [{ logo: 'gb', mono: true, shadow: GBC_WORD_SHADOW }], color: GBC_BLUE, from: 0.0339, to: 0.169, across: 0.2, dx: 0.235, rotate: 90 },
+        { parts: [{ logo: 'color', shadow: GBC_COLOR_SHADOW, emboss: GBC_EMBOSS }], color: GBC_BLUE, from: 0.0607, to: 0.265, across: 0.45, dx: -0.116, rotate: 90 },
+      ],
+    },
   },
   'wii-u': {
     front: {

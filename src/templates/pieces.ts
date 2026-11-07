@@ -56,6 +56,7 @@ const GAME_OUTER: Record<string, { w: number; h: number; depth?: number }> = {
   ds: { w: 136, h: 124, depth: 19 },
   // A Game Boy case is sold as the same size as the DS case.
   gb: { w: 136, h: 124, depth: 19 },
+  gbc: { w: 136, h: 124, depth: 19 },
   '3ds': { w: 136, h: 124, depth: 12.5 },
   switch: { w: 105, h: 170 },
   switch2: { w: 105, h: 170 },

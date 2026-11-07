@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { getLogo } from '../brands';
 import { TEMPLATE_DEFS, buildTemplate } from '../templates';
 import { FORMAT_BRANDING, GAME_CASE_BRANDING, arc, brandingFor, contrast, ease, slope, spineTitleCase, spineTitleColor, spineTitleStartMm, type FrontHeader } from './official';
 
@@ -103,5 +104,20 @@ describe('spine title case', () => {
     expect(spineTitleCase('game-case', 'ps1', true, 'Crash Bandicoot')).toBe('CRASH BANDICOOT');
     expect(spineTitleCase('game-case', 'ps1', false, 'Crash Bandicoot')).toBe('Crash Bandicoot');
     expect(spineTitleCase('game-case', 'ps4', true, 'Crash Bandicoot')).toBe('Crash Bandicoot');
+  });
+
+  it('stretches a sheen over exactly the strip or cap it shades, so it never spills onto the art', () => {
+    const tpl = buildTemplate('game-case', 'gbc');
+    const front = tpl.panels.find((p) => p.id === 'front')!;
+    const spine = tpl.panels.find((p) => p.id === 'spine')!;
+    const b = GAME_CASE_BRANDING.gbc;
+    const aspect = (id: string | undefined) => {
+      const box = getLogo(id)!.bbox;
+      return (box[2] - box[0]) / (box[3] - box[1]);
+    };
+    const strip = b.front as Extract<FrontHeader, { shape: 'strip' }>;
+    // The front's left edge meets the spine, so a strip has bleed at the top and bottom only.
+    expect(aspect(strip.sheen)).toBeCloseTo((strip.w * front.widthMm) / (front.heightMm + 6), 2);
+    expect(aspect(b.spine!.cap!.sheen)).toBeCloseTo(spine.widthMm / (b.spine!.cap!.length * spine.heightMm + 3), 2);
   });
 });

@@ -1,3 +1,4 @@
+import type { MarkEmboss, MarkShadow } from '../types/layers';
 import type { PanelRect, TemplateConfig } from '../types/template';
 import { paintRect } from '../templates/geometry';
 import { brandHeight, brandPath2D, brandWidth, getBrand, getLogo, type Brand, type Logo } from '../brands';
@@ -30,6 +31,8 @@ export interface LogoPart {
   only?: number[];
   crop?: [number, number, number, number];
   mono?: boolean;
+  shadow?: MarkShadow;
+  emboss?: MarkEmboss;
 }
 
 export interface Sink {
@@ -133,7 +136,7 @@ function part(s: Sink, p: Part, color: string, unit: number, gapUnits: number): 
   const l = getLogo(p.logo);
   if (!l) return { w: 0, h: 0, draw: () => {} };
   const g = logoPartGeometry(l, p);
-  return { w: g.bw * (h / g.bh), h, draw: (x, y) => s.logo(l, { only: p.only, crop: p.crop, mono: p.mono }, x, y, h, fill) };
+  return { w: g.bw * (h / g.bh), h, draw: (x, y) => s.logo(l, { only: p.only, crop: p.crop, mono: p.mono, shadow: p.shadow, emboss: p.emboss }, x, y, h, fill) };
 }
 
 /** The artwork a logo part draws, in the logo's own coordinates: its top-left, size and which of its layers. */
@@ -202,6 +205,14 @@ function drawFrontMark(s: Sink, m: FrontMark, area: { x: number; w: number }, p:
     s.fillRect(x - pad, y - pad, box.w + pad * 2, box.h + pad * 2, m.plate);
   }
   box.draw(x, y);
+}
+
+/** Stretches a shade-*.svg logo over a strip or cap: its artwork is exactly the shape of the area it shades. */
+function drawSheen(s: Sink, id: string | undefined, pieceId: string, x: number, y: number, h: number, p: PanelRect) {
+  const l = id ? getLogo(id) : undefined;
+  if (!l) return;
+  s.begin(`${pieceId}-sheen`, 'Shading', p);
+  s.logo(l, {}, x, y, h, '#000');
 }
 
 /** Draws the header, spine caps and back logos. `px` is pixels per mm. */
@@ -327,6 +338,7 @@ function drawFront(s: Sink, t: TemplateConfig, p: PanelRect, h: FrontHeader, px:
       const sx = h.side === 'right' ? x0 + W - sw : ax;
       const rw = h.side === 'right' ? ax + aw - sx : x0 + sw - ax;
       s.fillRect(sx, sy, rw, sh, ink(h.fill, sx, sy, rw, sh));
+      drawSheen(s, h.sheen, `${key}.strip`, sx, sy, sh, p);
       if (h.brushed) {
         s.begin(`${key}.strip-brush`, 'Brushed texture', p);
         s.fillRect(sx, sy, rw, sh, brushedInk(sx, rw, rw / px, 7));
@@ -450,6 +462,7 @@ function drawSpine(s: Sink, t: TemplateConfig, p: PanelRect, sp: SpineBranding, 
       const left: PathOp[] = rl >= 0 ? [['L', cx0 + rl, bottom], ['Q', cx0, bottom, cx0, bottom + rl]] : [['L', cx0 - rl, bottom], ['Q', cx0, bottom, cx0, bottom + rl]];
       s.fillPath([['M', cx0, cy0], ['L', cx0 + cw, cy0], ...right, ...left, ['Z']], capInk);
     } else s.fillRect(rect[0], rect[1], rect[2], rect[3], capInk);
+    drawSheen(s, sp.cap.sheen, `${key}.cap`, rect[0], rect[1], rect[3], p);
     if (sp.cap.brushed) {
       s.begin(`${key}.cap-brush`, 'Brushed texture', p);
       s.fillRect(rect[0], rect[1], rect[2], rect[3], brushedInk(rect[0], rect[2], rect[2] / px, 11));
@@ -603,7 +616,7 @@ export class CanvasSink implements Sink {
       ctx.rect(0, 0, bw, bh);
       ctx.clip();
     }
-    paintLogoLayers(ctx, l, used, -bx, -by, color, !!p.mono);
+    paintLogoLayers(ctx, l, used, -bx, -by, color, !!p.mono, { shadow: p.shadow, emboss: p.emboss });
     ctx.restore();
   }
 }

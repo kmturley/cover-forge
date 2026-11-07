@@ -597,3 +597,101 @@ to 0.9789 for the front wordmark and 0.0197 to 0.2657 for the spine wordmark.
 | App | 153.1–170.7, 11.3–112.0 (indented, see below) | 136.0–140.6, 4.1–30.7 (indented) | 152.5–171.1, 4.1–8.6 (indented) |
 
 The three logos were first placed within 0.4 mm of the scans, then deliberately moved in from the edges (below), so they no longer match them. The overlay against the template is 74.3 % (95.7 % before that move) (it was 72.6 % with the back band, and the cap white); what is left is the app's dark base colour where the template is transparent, and the streaks, which are not the template's own.
+
+## 17. Nintendo Game Boy Color
+
+Measured from four 300 dpi images in `scans/gbc` (Mario Golf, Space Invaders, Winnie the Pooh; git-ignored) and the
+fan-made `template.png`, all 276.0 × 116.0 mm. The case is the Game Boy's: the same DS-size case and the same wrap
+(130 + 16 + 130 mm), so see §16 for why it is a case and not a box. The cartridge is the same 65.5 × 57 × 7.5 mm, and
+[Retro Game Cases](https://www.retrogamecases.com/gameboy-gameboy-color-gameboy-advance/) sells one case for all three
+Game Boys. It is `gbc` in `GAME_CASE` and `GAME_OUTER` (136 × 124 × 19 mm).
+
+### Trade dress
+
+The layout is the Game Boy's: a silver strip down the left of the front (25.2 % of its width, 0.2519) and a silver cap on
+the top 28.6 % of the spine, nothing on the back. What differs:
+
+- **The silver is paler and cooler**, and shaded in two directions at once (see "The silver" below), so it is a near-white base with soft shading laid over it, not a gradient. The scans are smooth, not streaked, so the Game Boy's `brushed` texture is **off** here.
+- **A brighter blue.** GAME BOY is `#0b25b0` (median of the template's letters), not the Game Boy's `#001497`.
+- **A ®** beside the Y, 1.9 mm across, as on the template.
+- **No Nintendo oval.** The top of the strip holds the new multicolour **COLOR** logo, reading upwards, with GAME BOY
+  below it: COLOR at 4.2–32.2 % of the strip's length, GAME BOY at 31.5–95.8 %, so the Y overlaps COLOR's C,
+  as in the scans.
+- **On the spine, GAME BOY and COLOR sit side by side**, both reading top to bottom: GAME BOY on the right at 3.4–16.9 %
+  of the length, COLOR on the left at 6.1–26.5 %.
+
+### The logo
+
+`src/brands/svg/color.svg` is the COLOR word only (five letters in teal `#00938A`, purple `#4E4BA8`, green `#6EB122`,
+red `#B80A41` and yellow `#DAAC06`), each with two inner shadows (see "SVG effects"), which give the puffy look. The
+scans' colours are still brighter (cyan R, yellow `#f5e100`). Both lockups reuse `gb.svg` instead of a combined SVG: the engine places
+the two logos as two marks, which lets each sit where the scans put it (the front has them in a row, the spine side by
+side, with different sizes). GAME BOY is the Game Boy's wordmark, a little narrower than the Color box art's (the
+scans' letters are about 20 % wider).
+
+### SVG effects
+
+`color.svg` has Figma inner-shadow filters (a white highlight and a dark shade, offset opposite ways) and `gamecube.svg`
+paints four shapes with `mix-blend-mode: hue` at 0.4 opacity. macOS Preview and VS Code show them because they run a
+full SVG renderer; the logo generator used to flatten every shape to a plain path and drop them, which is why the
+letters were flat and the GameCube's cube was a flat blue-grey. It now carries three things per shape into
+`logos.generated.ts`, and `paintLogoLayers` draws them wherever a logo is drawn (canvas, layers, export, 3D):
+
+| From the SVG | Becomes | Drawn as |
+| :--- | :--- | :--- |
+| Figma drop or inner shadow (`feOffset` + `feGaussianBlur` + `feComposite` + `feColorMatrix`), or `feDropShadow` | `effects: [{ type, dx, dy, blur, color }]` | a drop shadow is the canvas shadow behind the shape. An inner shadow is a big frame round the shape, drawn out of sight with its shadow shifted back inside, clipped to the shape |
+| `mix-blend-mode` | `blend` | the layer's composite operation. Blending acts on the logo's own layers only, so such a logo is drawn on a scratch canvas first and placed on the page (otherwise `hue` would tint the art behind it) |
+| `fill-opacity` / `opacity` | `opacity` | the layer's alpha |
+
+A flat (`mono`) logo has none of them. Not carried over: layer blurs, masks and filters other than shadows. The 3DS,
+DS, Game Boy and other logos have no filters, so nothing else changed.
+
+### Inner shadows at cover size
+
+The inner shadows draw correctly in Chromium, Firefox and WebKit, in a test page and in the app, and nearly match the SVG
+beside them. At cover size, though, they read as faint: COLOR is about 34 mm long, so the SVG's 20-unit offset is under
+half a millimetre, and the on-screen copy shrinks it further. So a mark can scale them with `emboss`: `alpha` multiplies
+their strength and `blur` their reach. COLOR uses 1.3 and 0.8 (tighter and stronger). The SVG itself is unchanged.
+
+### The letters' shadow
+
+Measured across the letters' edges on the template, the shadow's middle is about 12 px (1 mm) right of and below them, it
+fades out about 24 px (2 mm) away, and it is properly blurred (standard deviation about 6.5 px) and dark, about half
+black. A mark can have a `shadow`: colour, offset and blur as fractions of its height, so the spine's small marks get a
+smaller shadow. Each layer is drawn off the canvas with its shadow brought back, so the shadows of all the letters lie
+under all of the letters, and the offset stays down and to the right however the mark is turned.
+
+### The silver
+
+One top-to-bottom gradient can't make this metal, nor can straight gradients overlaid (a first attempt left hard edges
+and too little contrast): the template is darker down the left in the top half and down the right in the bottom half,
+with a dark crease between that runs at an angle.
+
+So the shading is two SVGs, `src/brands/svg/shade-gbc-strip.svg` and `shade-gbc-cap.svg`, each a stack of soft rotated
+ellipses (radial gradients) over a pale base. A `shade-*.svg` is drawn stretched over the strip or cap as one layer
+(`sheen`), is left out of the logo picker, and can be opened and edited like any other SVG. Each ellipse is a Gaussian
+cut off at 3 standard deviations, in `#557684` grey or white.
+
+The ellipses were fitted to the template: logos and their shadows were masked out, what was left was reduced to a grid
+(6 px cells for the strip, 4 px for the cap), the holes filled by smoothing, then ellipses were added one by one and
+adjusted to reduce the error. 36 % of the strip and 40 % of the cap is measured; under the letters the shading is
+interpolated.
+
+| | Flat colour | Fitted ellipses |
+| :--- | :--- | :--- |
+| Strip (12 ellipses) | 25.8 levels of 255 (RMS) | 3.2 |
+| Cap (8 ellipses) | 21.0 | 3.2 |
+
+The front's left edge meets the spine, so a strip has bleed at the top and bottom only; a test checks that each SVG is the
+shape of the area it shades, so it cannot spill onto the art. The fan template's thin lighter frame round the strip is
+left out.
+
+### Still different from the template
+
+- **COLOR's colours.** `color.svg` is duller: its R is teal `#00938A` (template cyan), its O `#DAAC06` (template yellow),
+  and its C `#B80A41` (template red).
+- **GAME BOY is narrower.** `gb.svg` keeps its own proportions, about 160 px across against the template's 190.
+
+### Match
+
+The logos were first placed on the template's positions (89.9 % the same by the compare script), then deliberately moved in from the edges: the front's lockup now has 4.9 mm at each end (the template 2.6) and the spine's GAME BOY 3.9 mm above it (the template 2.5). So the overlay is now 81.2 %. The rest of the difference is mostly COLOR's colours and GAME BOY's narrower letters, above.
