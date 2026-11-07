@@ -1,8 +1,8 @@
 import { BRANDS } from './brands.generated';
 import { LOGOS } from './logos.generated';
-import type { Brand, BrandCategory, Logo } from './types';
+import type { Brand, BrandCategory, Logo, LogoLayer } from './types';
 
-export type { Brand, BrandCategory, Logo };
+export type { Brand, BrandCategory, Logo, LogoLayer };
 export { BRANDS, LOGOS };
 
 const byId = new Map(BRANDS.map((b) => [b.id, b]));
