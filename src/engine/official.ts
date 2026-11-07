@@ -348,7 +348,7 @@ export const GAME_CASE_BRANDING: Record<string, Branding> = {
         { parts: [{ logo: 'gb', mono: true }], color: GB_BLUE, from: 0.0957, to: 0.9655, across: 0.62, dx: -0.011, rotate: -90 },
       ],
     },
-    spine: { cap: { length: 0.286, fill: GB_CAP_SILVER, brushed: true }, marks: [{ parts: [{ logo: 'gb', mono: true }], color: GB_BLUE, from: 0.0197, to: 0.2657, across: 0.4, dx: 0.018, rotate: 90 }] },
+    spine: { cap: { length: 0.286, fill: GB_CAP_SILVER, brushed: true }, marks: [{ parts: [{ logo: 'gb', mono: true }], color: GB_BLUE, from: 0.0345, to: 0.2647, across: 0.4, dx: 0.018, rotate: 90 }] },
   },
   'wii-u': {
     front: {

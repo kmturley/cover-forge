@@ -576,9 +576,9 @@ scan in brackets):
 The texture is generated, so it has hundreds of stops: the layer editor shows a note for a gradient with more than 16
 stops instead of a row each, and saved designs keep up to 600.
 
-### Space around the front logos
+### Space around the logos
 
-On the scans the front logos nearly touch the edges: the Nintendo oval is 1.35 mm from the top and the wordmark 2.4 mm
+On the scans the logos nearly touch the edges (the spine wordmark is 2.4 mm from the top of the spine, 2.4 mm short of the cap's foot): the Nintendo oval is 1.35 mm from the top and the wordmark 2.4 mm
 from the bottom. The app indents them: the oval is 4.1 mm from the top (4.6 mm tall, down to 8.6 mm), then 2.6 mm of
 space, then the wordmark from 11.3 to 112.0 mm, 4.0 mm from the bottom. The wordmark shrinks to fit (100.7 mm long, 17.6 mm
 across, from 107.4 and 19.1), keeping its shape, and sits 7.1 mm and 8.0 mm in from the strip's two edges. The
@@ -593,6 +593,6 @@ to 0.9789 for the wordmark.
 | | Front wordmark (x, y mm) | Spine wordmark | Nintendo oval |
 | :--- | :--- | :--- | :--- |
 | Scans | 152.1–171.4, 6.2–113.6 | 135.6–140.7, 2.3–30.8 | 152.7–171.3, 1.35–5.9 |
-| App | 153.1–170.7, 11.3–112.0 (indented, see below) | 135.8–140.7, 2.4–30.8 | 152.5–171.1, 4.1–8.6 (indented) |
+| App | 153.1–170.7, 11.3–112.0 (indented, see below) | 136.0–140.6, 4.1–30.7 (indented) | 152.5–171.1, 4.1–8.6 (indented) |
 
-The spine wordmark is within 0.4 mm. The two front logos were first placed within 0.4 mm of the scans, and then deliberately moved in from the edges (below), so they no longer match them. The overlay against the template is 76.9 % (95.7 % before that move) (it was 72.6 % with the back band, and the cap white); what is left is the app's dark base colour where the template is transparent, and the streaks, which are not the template's own.
+The three logos were first placed within 0.4 mm of the scans, then deliberately moved in from the edges (below), so they no longer match them. The overlay against the template is 74.3 % (95.7 % before that move) (it was 72.6 % with the back band, and the cap white); what is left is the app's dark base colour where the template is transparent, and the streaks, which are not the template's own.
