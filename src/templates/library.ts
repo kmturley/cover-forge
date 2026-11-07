@@ -46,7 +46,7 @@ const GROUP_OF: Record<TemplateKind, LibraryGroup> = {
 };
 
 /** Extra search words per game platform, so "sony", "nintendo" or "microsoft" find them. */
-const MAKER: Record<string, string> = { ps: 'sony playstation', switch: 'nintendo', ds: 'nintendo', '3ds': 'nintendo', wii: 'nintendo', gamecube: 'nintendo gcn', xbox: 'microsoft', pc: 'windows steam computer dvd' };
+const MAKER: Record<string, string> = { ps: 'sony playstation', switch: 'nintendo', ds: 'nintendo', gb: 'nintendo gameboy game boy', '3ds': 'nintendo', wii: 'nintendo', gamecube: 'nintendo gcn', xbox: 'microsoft', pc: 'windows steam computer dvd' };
 
 const mm = (n: number) => `${Math.round(n * 10) / 10}`;
 

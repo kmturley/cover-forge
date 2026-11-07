@@ -14,6 +14,11 @@ describe('sanitizePatch', () => {
     expect(sanitizePatch({ fill: '#123456' }).fill).toBe('#123456');
   });
 
+  it('keeps a long generated texture whole (brushed metal has hundreds of stops)', () => {
+    const stops = Array.from({ length: 330 }, (_, i) => [i / 329, 'rgba(0,0,0,0.03)']);
+    expect((sanitizePatch({ fill: { axis: 'x', stops } }).fill as { stops: unknown[] }).stops).toHaveLength(330);
+  });
+
   it('accepts path data and nothing but', () => {
     expect(sanitizePatch({ path: 'M0 0L100 0 100 100Z' }).path).toBe('M0 0L100 0 100 100Z');
     expect(sanitizePatch({ path: 'M0 0 <script>' }).path).toBeUndefined();

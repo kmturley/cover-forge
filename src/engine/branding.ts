@@ -67,6 +67,31 @@ function ink(fill: Paint, x: number, y: number, w: number, h: number): Ink {
   return 'x' in fill ? { line: [x, 0, x + w, 0], stops: fill.x } : { line: [0, y, 0, y + h], stops: fill.y };
 }
 
+/**
+ * Brushed metal: fine vertical streaks across a width, as one gradient of black stops of varying, mostly low opacity,
+ * about 0.1 mm apart and drawn over a lighter base. The streak strength follows a smoothed random walk, so neighbouring
+ * streaks are alike (the Game Boy strip's measure 0.67 correlation at one pixel, with a spread of about 5 of 255).
+ * The same seed gives the same streaks every time.
+ */
+function brushedInk(x: number, w: number, widthMm: number, seed: number): Ink {
+  const n = Math.max(8, Math.round(widthMm / 0.1));
+  let a = seed >>> 0;
+  const rand = () => {
+    a = (a + 0x6d2b79f5) >>> 0;
+    let t = Math.imul(a ^ (a >>> 15), 1 | a);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+  const gauss = () => Math.sqrt(-2 * Math.log(1 - rand())) * Math.cos(2 * Math.PI * rand());
+  let v = 0;
+  const stops: [number, string][] = [];
+  for (let i = 0; i <= n; i++) {
+    v = 0.55 * v + 0.835 * gauss();
+    stops.push([i / n, `rgba(0,0,0,${Math.min(0.08, Math.max(0, 0.025 + 0.022 * v)).toFixed(3)})`]);
+  }
+  return { line: [x, 0, x + w, 0], stops };
+}
+
 const partH = (p: Part) => ('h' in p && p.h) || 1;
 
 interface Box {
@@ -302,6 +327,10 @@ function drawFront(s: Sink, t: TemplateConfig, p: PanelRect, h: FrontHeader, px:
       const sx = h.side === 'right' ? x0 + W - sw : ax;
       const rw = h.side === 'right' ? ax + aw - sx : x0 + sw - ax;
       s.fillRect(sx, sy, rw, sh, ink(h.fill, sx, sy, rw, sh));
+      if (h.brushed) {
+        s.begin(`${key}.strip-brush`, 'Brushed texture', p);
+        s.fillRect(sx, sy, rw, sh, brushedInk(sx, rw, rw / px, 7));
+      }
     }
     const stripX = h.side === 'right' ? x0 + W - sw : x0;
     h.marks.forEach((m, i) => drawSpan(s, m, { x: stripX, y: y0, across: sw, along: H }, 'vertical', px, p, `${key}.mark-${i + 1}`));
@@ -421,6 +450,10 @@ function drawSpine(s: Sink, t: TemplateConfig, p: PanelRect, sp: SpineBranding, 
       const left: PathOp[] = rl >= 0 ? [['L', cx0 + rl, bottom], ['Q', cx0, bottom, cx0, bottom + rl]] : [['L', cx0 - rl, bottom], ['Q', cx0, bottom, cx0, bottom + rl]];
       s.fillPath([['M', cx0, cy0], ['L', cx0 + cw, cy0], ...right, ...left, ['Z']], capInk);
     } else s.fillRect(rect[0], rect[1], rect[2], rect[3], capInk);
+    if (sp.cap.brushed) {
+      s.begin(`${key}.cap-brush`, 'Brushed texture', p);
+      s.fillRect(rect[0], rect[1], rect[2], rect[3], brushedInk(rect[0], rect[2], rect[2] / px, 11));
+    }
     if (sp.cap.line) {
       const t2 = sp.cap.line.size * along;
       const gap = (sp.cap.line.gap ?? 0) * along;

@@ -71,7 +71,7 @@ describe('template library', () => {
 
   it('searches every word, by name, maker or group', () => {
     // By name within a group.
-    expect(searchLibrary('nintendo').map((e) => e.name)).toEqual(['GameCube', 'Nintendo 3DS', 'Nintendo DS', 'Nintendo Switch', 'Nintendo Switch 2', 'Wii', 'Wii U']);
+    expect(searchLibrary('nintendo').map((e) => e.name)).toEqual(['Game Boy', 'GameCube', 'Nintendo 3DS', 'Nintendo DS', 'Nintendo Switch', 'Nintendo Switch 2', 'Wii', 'Wii U']);
     // The standard case counts too: Xbox One and Series X|S covers fit a Blu-ray case, as does the Blu-ray 4K UHD one.
     expect(searchLibrary('blu ray').map((e) => e.id)).toEqual(['game-case-xbox-one', 'game-case-xbox-series', 'bluray-us-11', 'uhd-us-11', 'uhd-multi4-15', 'uhd-elite-12.5', 'bluray-slim-7']);
     expect(searchLibrary('')).toHaveLength(LIBRARY.length);

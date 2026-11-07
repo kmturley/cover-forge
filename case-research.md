@@ -505,3 +505,95 @@ taller, and the cases have one footprint, so it may not be a real difference bet
 
 Insert: 130 × 116 mm front for both, with each platform's own spine (DS 16 mm, 3DS 12 mm). The 3DS scans measure 131 mm; it was set to 130 because the cases share one 136 × 124 mm footprint, the usual shell-to-cover gap on every other case here is 5.5–7 mm (so 130 on 136), and 1 mm is inside scan trimming tolerance. The 3DS strip and logos are anchored to the right edge and the spine logo to the spine's fold, so they sit where the scans have them (3.3 mm in from the right edge; 4.8 mm in from the fold). Box and slipcover: the
 shared 136 × 124 mm footprint with each case's own depth, DS 19 mm and 3DS 12.5 mm (`src/templates/pieces.ts`).
+
+## 16. Nintendo Game Boy
+
+Measured from three 300 dpi scans in `scans/gb` (Kirby's Dream Land, Super Mario Land 2, Wario Land: Super Mario Land 3;
+git-ignored) and the fan-made `template.png`. The Game Boy is normally a cardboard box, so the first question was what
+to default to.
+
+### Case or box?
+
+**The app defaults to a DS-size case**, and the original box is a Box type round it. Three things point there:
+
+| Evidence | What it says |
+| :--- | :--- |
+| The scans | all three are 276.0 × 116.0 mm (the template 275.8), the same 130 + 16 + 130 mm wrap as the DS. People print Game Boy covers for a DS-size case, not a box |
+| [Retro Game Cases](https://www.retrogamecases.com/gameboy-gameboy-color-gameboy-advance/) | sells Game Boy, Game Boy Color and Game Boy Advance cases and says they are "the same size as the Nintendo DS case", with clips that hold the cartridge. The page gives no millimetres |
+| The cartridge ([Wikipedia](https://en.wikipedia.org/wiki/Game_Boy_Game_Pak)) | 65.5 × 57 × 7.5 mm for the Game Boy and Game Boy Color, 35 × 57 × 7.5 mm for the Game Boy Advance. A DS *card* is 33–35 × 35 mm, so a DS case's tray won't hold a Game Boy cartridge as it is: it takes a case made for it, at the DS case's outside size |
+
+No source gives the original retail box's size, so the Box type is not that box: it is a tuck-end box round the DS-size
+case, like the Box type of every other case here. A true retail Game Boy box would need its own template once someone
+has a box to measure.
+
+The case outside is the DS's, 136 × 124 mm and 19 mm deep (§15), on the strength of that one seller's statement; it is not
+a measurement of a Game Boy case.
+
+### Size
+
+| Measure | Value | How it was found |
+| :--- | :--- | :--- |
+| Wrap | 276.0 × 116.0 mm | all three scans (275.7 for Super Mario Land 2) |
+| Spine / front fold | 145.7–145.9 mm | the silver strip starts where the blue spine ends |
+| Front and back | 130 × 116 mm | 276 − 145.9 = 130.1; the template's back is 130.0 |
+| Spine | 16 mm (15.7 on the template) | 276 − 2 × 130 |
+
+### Trade dress
+
+- **Front strip.** Brushed silver, down the left of the front, 32.7 mm wide (25.2 % of its width), from 145.8 to 178.5 mm on all three scans and the template. The colour runs from `#eef5f6` at the top to `#adbfc3` at the foot (median of the two scans' text-free pixels per tenth of its height), with fine vertical brushing: see "The metal effect" below. The wordmark GAME BOY is in `#001497` and reads bottom to top: 19.1 mm across and 6.2–113.6 mm down (5.3–97.9 % of H).
+- **Spine.** A silver cap 33.2 mm long (28.6 % of L; 33.1 on the template), the same brushed metal as the strip but lighter and flatter (`#eff6f7` at the top to `#e5eef0` at the foot), with the wordmark small, reading top to bottom: 5.1 mm across and 2.3–30.8 mm down. Below it the game's own colour. It was first drawn plain white; the scans and template have it metal.
+- **No back band.** Two of the three scans print a 14.0 mm silver band down the left of the back (Wario Land 3's has none, and the template has none), but the app draws nothing there: the back is left to the game's own art.
+- **The Nintendo oval** at the top of the front strip, from `src/brands/svg/nintendo.svg`: 18.6 × 4.6 mm at 152.5–171.1 mm across and 1.35–5.9 mm down, in the scans' red `#ed1c24` (the SVG's own `#cc2131` is drawn flat in that red, `mono`). Its inside is clear, as on the template, so the silver shows through. The app's mark sits exactly on the template's (152.5, 1.35 to 171.1, 5.9) and 0.2 mm left of the scans'.
+- **The wordmark colour.** `gb.svg` bakes in `#393c9f`, but the template and scans print `#001497`, so the wordmark is drawn flat in `#001497` (`mono`).
+
+The engine got one small feature, `brushed`, on a strip or a spine cap (the metal texture below). The logo generator also gained `<polyline>` and `<polygon>`: `gb.svg` draws its E and Y as polylines, which it
+ignored, so the first render read "GAM BO".
+
+### The metal effect
+
+A plain top-to-bottom gradient gets the colour right but looks like painted plastic. Measured on the scans, what makes the
+strip read as metal is **fine vertical brushing**: a column-by-column average of the strip's pixels (text left out) has a
+spread of about 5 levels out of 255, and neighbouring pixels are alike (correlation 0.68 at one pixel, so streaks are
+about 1–3 px, 0.1–0.25 mm, wide). The template has the same, a little noisier (5.5 spread, 0.54).
+
+So the metal is two layers in the Branded folder, not one:
+
+1. **The base**, a vertical gradient fitted to the scans: ten stops from `#f4fcfd` to `#b2c4c8`, each 2.6 % lighter than the measured medians, because the texture darkens by that much on average.
+2. **A brushed texture** (`branded.front.strip-brush`, `branded.spine.cap-brush`) over the base: one left-to-right gradient of black, mostly transparent stops about 0.1 mm apart (327 across the strip, 160 on the cap), each opacity 0.026 ± 0.022 following a smoothed random walk (`0.55 × the last + noise`). Opaque black at varying strength rather than white and black mixed, because gradients between a white and a black stop pass through a muddy grey. The same seed gives the same streaks every time, so exports and goldens are stable.
+
+What else was considered and why it was left out: a *specular sheen* (a bright band across the strip, as on polished
+metal) isn't in the scans, whose columns vary by under 2 % across the strip; *noise from an image* would need a texture
+file or asset per piece; and a *gradient with a few stops* can't carry streaks this fine. Measured on the render (Kirby
+scan in brackets):
+
+| | Strip | Spine cap |
+| :--- | :--- | :--- |
+| Mean level | 207.3 (205.9) | 232.9 (232.2) |
+| Column spread | 4.3 (5.2) | 4.2 (3.8) |
+| Correlation at 1 px | 0.74 (0.68) | 0.69 (0.52) |
+| Level down the strip, every 20 mm | 236, 230, 221, 213, 200, 180 (238, 231, 220, 213, 200, 177) | 239, 236, 232, 231, 230 (240, 237, 232, 229, 228) |
+
+The texture is generated, so it has hundreds of stops: the layer editor shows a note for a gradient with more than 16
+stops instead of a row each, and saved designs keep up to 600.
+
+### Space around the logos
+
+On the scans the logos nearly touch the edges (the spine wordmark is 2.4 mm from the top of the spine, 2.4 mm short of the cap's foot): the Nintendo oval is 1.35 mm from the top and the wordmark 2.4 mm
+from the bottom. The app indents them: the oval is 4.1 mm from the top (4.6 mm tall, down to 8.6 mm), then 2.6 mm of
+space, then the wordmark from 11.3 to 112.0 mm, 4.0 mm from the bottom. The wordmark shrinks to fit (100.7 mm long, 17.6 mm
+across, from 107.4 and 19.1), keeping its shape, and sits 7.1 mm and 8.0 mm in from the strip's two edges. The
+spine wordmark is moved down to 4.1 mm from the top and shrinks to end 2.6 mm above the cap's foot (26.6 mm long, from
+28.5). The trade-off is a less faithful reprint for a cover that doesn't look cramped, and a print that is less likely to lose the
+oval to the trim. To put them back, `from`/`to` in `src/engine/official.ts` are 0.0116 to 0.0511 for the oval, 0.0533
+to 0.9789 for the front wordmark and 0.0197 to 0.2657 for the spine wordmark.
+
+### How the match was checked
+
+`npm run compare:covers -- gb --scans`, and the ink bounding box of the blue wordmark on the app's render against the scans:
+
+| | Front wordmark (x, y mm) | Spine wordmark | Nintendo oval |
+| :--- | :--- | :--- | :--- |
+| Scans | 152.1–171.4, 6.2–113.6 | 135.6–140.7, 2.3–30.8 | 152.7–171.3, 1.35–5.9 |
+| App | 153.1–170.7, 11.3–112.0 (indented, see below) | 136.0–140.6, 4.1–30.7 (indented) | 152.5–171.1, 4.1–8.6 (indented) |
+
+The three logos were first placed within 0.4 mm of the scans, then deliberately moved in from the edges (below), so they no longer match them. The overlay against the template is 74.3 % (95.7 % before that move) (it was 72.6 % with the back band, and the cap white); what is left is the app's dark base colour where the template is transparent, and the streaks, which are not the template's own.

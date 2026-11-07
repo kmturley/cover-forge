@@ -73,6 +73,8 @@ const LOGO_LABELS = {
   'playstation-mark-colour': 'PlayStation symbol (colour)',
   'playstation-wordmark': 'PlayStation wordmark',
   '3ds': 'Nintendo 3DS',
+  gb: 'Game Boy',
+  nintendo: 'Nintendo',
   ds: 'Nintendo DS',
   switch: 'Nintendo Switch',
   switch2: 'Nintendo Switch 2',
@@ -201,7 +203,7 @@ function parseLogo(svg, id) {
   const body = svg.replace(/<(defs|clipPath|mask)\b[\s\S]*?<\/\1>/g, '');
   const stack = [IDENTITY];
   const layers = [];
-  for (const m of body.matchAll(/<(\/?)(g|path|rect|circle)\b([^>]*?)(\/?)>/g)) {
+  for (const m of body.matchAll(/<(\/?)(g|path|rect|circle|polygon|polyline)\b([^>]*?)(\/?)>/g)) {
     const [, close, name, rest] = m;
     if (name === 'g') {
       if (close) stack.pop();
@@ -220,6 +222,11 @@ function parseLogo(svg, id) {
     if (name === 'circle') {
       const [cx, cy, r] = ['cx', 'cy', 'r'].map((k) => Number(attr(rest, k)));
       d = `M${cx - r} ${cy}a${r} ${r} 0 1 0 ${2 * r} 0a${r} ${r} 0 1 0 ${-2 * r} 0Z`;
+    }
+    if (name === 'polygon' || name === 'polyline') {
+      // A filled polyline closes itself, so both are a closed path through their points.
+      const pts = (attr(rest, 'points') ?? '').trim().split(/[\s,]+/).map(Number);
+      if (pts.length >= 4) d = `M${pts[0]},${pts[1]}${pts.slice(2).reduce((acc, n, i) => acc + (i % 2 ? `,${n}` : `L${n}`), '')}Z`;
     }
     if (!d) continue;
     const total = mul(stack[stack.length - 1], parseTransform(attr(rest, 'transform')));
