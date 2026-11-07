@@ -99,8 +99,29 @@ describe('logo effects from the source SVG', () => {
     expect(JSON.stringify(color.layers[0].effects)).toBe(before);
   });
 
+  it('draws a bevel inside the mark only, even on a one-colour mark', () => {
+    const gb = getLogo('gba')!;
+    const used = [0, 1];
+    const render = (bevel?: { color: string; dx: number; dy: number; blur: number }[]) => {
+      const c = createCanvas(600, 120);
+      const ctx = c.getContext('2d') as unknown as CanvasRenderingContext2D;
+      ctx.scale(0.38, 0.38);
+      paintLogoLayers(ctx, gb, used, 0, 0, '#ffffff', true, { bevel });
+      return new Uint8ClampedArray(ctx.getImageData(0, 0, 600, 120).data);
+    };
+    const [plain, bevelled] = [render(), render([{ color: 'rgba(0,0,0,0.9)', dx: -0.05, dy: -0.05, blur: 0.02 }])];
+    let shaded = 0;
+    let outside = 0;
+    for (let i = 0; i < plain.length; i += 4) {
+      if (plain[i + 3] === 0 && bevelled[i + 3] > 8) outside++;
+      if (plain[i + 3] === 255 && bevelled[i] < 200) shaded++;
+    }
+    expect(shaded).toBeGreaterThan(200);
+    expect(outside).toBe(0);
+  });
+
   it('keeps shading out of the logo picker', () => {
-    expect(LOGOS.filter((l) => l.hidden).map((l) => l.id).sort()).toEqual(['shade-gbc-cap', 'shade-gbc-strip']);
+    expect(LOGOS.filter((l) => l.hidden).map((l) => l.id).sort()).toEqual(['shade-gba-cap', 'shade-gba-strip', 'shade-gbc-cap', 'shade-gbc-strip']);
     // A gradient filling the whole artwork is the point of a shade, not a background to drop.
     expect(getLogo('shade-gbc-strip')!.layers.length).toBeGreaterThan(5);
   });

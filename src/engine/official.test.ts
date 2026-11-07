@@ -120,4 +120,18 @@ describe('spine title case', () => {
     expect(aspect(strip.sheen)).toBeCloseTo((strip.w * front.widthMm) / (front.heightMm + 6), 2);
     expect(aspect(b.spine!.cap!.sheen)).toBeCloseTo(spine.widthMm / (b.spine!.cap!.length * spine.heightMm + 3), 2);
   });
+
+  it('keeps the Game Boy Advance shading inside the strip\'s curve', () => {
+    const tpl = buildTemplate('game-case', 'gba');
+    const [front, spine] = [tpl.panels.find((p) => p.id === 'front')!, tpl.panels.find((p) => p.id === 'spine')!];
+    const b = GAME_CASE_BRANDING.gba;
+    const strip = b.front as Extract<FrontHeader, { shape: 'strip' }>;
+    const box = getLogo(strip.sheen)!.bbox;
+    // The sheen's width is the curve's widest point, and the strip's width is too.
+    const widest = Math.max(...Array.from({ length: 101 }, (_, i) => strip.edge!.depth(i / 100)));
+    expect(strip.w).toBeCloseTo(widest, 3);
+    expect((box[2] - box[0]) / (box[3] - box[1])).toBeCloseTo((widest * front.widthMm) / (front.heightMm + 6), 2);
+    const cap = getLogo(b.spine!.cap!.sheen)!.bbox;
+    expect((cap[2] - cap[0]) / (cap[3] - cap[1])).toBeCloseTo(spine.widthMm / (b.spine!.cap!.length * spine.heightMm + 3), 2);
+  });
 });

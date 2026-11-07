@@ -14,7 +14,7 @@ export type Paint = string | { x: [number, string][] } | { y: [number, string][]
 /** One piece of a lockup. `h` is its height relative to the others (default 1); `color` overrides the lockup's. */
 export type Part =
   | { brand: string; h?: number; color?: string }
-  | { logo: string; h?: number; color?: string; mono?: boolean; only?: number[]; crop?: [number, number, number, number]; shadow?: MarkShadow; emboss?: MarkEmboss }
+  | { logo: string; h?: number; color?: string; mono?: boolean; only?: number[]; crop?: [number, number, number, number]; shadow?: MarkShadow; emboss?: MarkEmboss; bevel?: MarkShadow[] }
   | { text: string; h?: number; color?: string; weight?: number; italic?: boolean; spacing?: number }
   | { row: Part[] }
   | { stack: Part[] };
@@ -85,13 +85,19 @@ export const arc = (edge: number, centre: number): Depth => (x) => edge + (centr
 export const ease = (left: number, right: number): Depth => (x) => left + (right - left) * x * x;
 
 /**
+ * Brushed metal: `true`, or faint and broken up: `strength` scales the streaks (1 is the Game Boy's), and `rows` cuts them
+ * into that many lengths down the area, each with its own streaks, so that none runs the full height.
+ */
+export type Brushed = boolean | { strength: number; rows: number };
+
+/**
  * A curved right edge for a front strip (the Nintendo DS's): `depth` is how far the edge reaches from the panel's left
  * (fraction of W) at a height `y` (fraction of H), and a `border` of that thickness runs along it. In a `cut` the
  * strip's white pulls back to `inset` (fraction of W) with straight slants, leaving the border thick there.
  */
 export interface StripEdge {
   depth: Depth;
-  border: { color: string; mm: number };
+  border?: { color: string; mm: number };
   cut?: { from: number; hold: [number, number]; to: number; inset: number };
 }
 
@@ -101,14 +107,14 @@ export type FrontHeader =
   /** A block in the top-left corner, `w` × `h`; with `wBottom` its right edge is a diagonal. */
   | { shape: 'tab'; w: number; h: number; wBottom?: number; /** Also paints the top bleed this far across (a share of W), so a logo flush with the top edge has none showing above it. */ lip?: number; fill: Paint; plate?: { top: number; bottom: number; fill: string; line: string }; marks: FrontMark[] }
   /** Full height down the left edge, `w` wide. Its marks run along it. */
-  | { shape: 'strip'; w: number; /** Down the right edge instead of the left (the 3DS's). A curved `edge` is for the left side only. */ side?: 'left' | 'right'; fill: Paint; /** Fine vertical streaks over the fill: brushed metal. */ brushed?: boolean; /** A shade-*.svg logo stretched over the fill, under the brushing: soft 2D shading no gradient can make. */ sheen?: string; /** The strip's right edge when it isn't straight. */ edge?: StripEdge; marks: SpanMark[] }
+  | { shape: 'strip'; w: number; /** Down the right edge instead of the left (the 3DS's). A curved `edge` is for the left side only. */ side?: 'left' | 'right'; fill: Paint; /** Fine vertical streaks over the fill: brushed metal. */ brushed?: Brushed; /** A shade-*.svg logo stretched over the fill, under the brushing: soft 2D shading no gradient can make. */ sheen?: string; /** The strip's right edge when it isn't straight. */ edge?: StripEdge; marks: SpanMark[] }
   | { shape: 'none'; marks: FrontMark[] };
 
 export interface SpineBranding {
   /** Colours the whole spine (Switch red, Wii white). */
   fill?: Paint;
   /** A block at the top of the spine, `length` of L, closed by an optional line. `dome` curves its lower edge up in the middle by that share of L. */
-  cap?: { length: number; fill: Paint; line?: { color: string; size: number; gap?: number }; dome?: number; /** Fine vertical streaks over the fill: brushed metal. */ brushed?: boolean; /** A shade-*.svg logo stretched over the fill, under the brushing: soft 2D shading no gradient can make. */ sheen?: string; /** Rounds a corner at the cap's lower edge, left then right, radius in mm. Positive rounds what lies below (the cap's colour fills the gap); negative rounds the cap's own corner. */ corners?: [number, number] };
+  cap?: { length: number; fill: Paint; line?: { color: string; size: number; gap?: number }; dome?: number; /** Fine vertical streaks over the fill: brushed metal. */ brushed?: Brushed; /** A shade-*.svg logo stretched over the fill, under the brushing: soft 2D shading no gradient can make. */ sheen?: string; /** Rounds a corner at the cap's lower edge, left then right, radius in mm. Positive rounds what lies below (the cap's colour fills the gap); negative rounds the cap's own corner. */ corners?: [number, number] };
   /** A thin outline round the whole spine (or its cap), `mm` thick. `top: false` leaves the top edge off, and `rightFrom`
    * starts the right edge that far down (fraction of L) so it doesn't run along a header that meets it. */
   outline?: { color: string; mm: number; top?: boolean; right?: boolean; rightFrom?: number };
@@ -150,6 +156,15 @@ const GB_SILVER: Paint = { y: [[0, '#f4fcfd'], [0.15, '#eff7f9'], [0.25, '#ebf5f
 const GB_CAP_SILVER: Paint = { y: [[0, '#f5fdfe'], [0.38, '#f2f9fc'], [0.62, '#edf6f8'], [1, '#ebf4f6']] };
 // Game Boy Color: a near-white silver with soft shading (src/brands/svg/shade-gbc-*.svg), and a brighter blue than the
 // Game Boy's. The letters cast a blurred shadow about 1 mm away, measured on the fan template.
+// Game Boy Advance: the strip's curved right edge, from the fan template's outline (a 6th-degree fit, within 1.4 px). The
+// letters' shading is not in the SVGs, so it is added here: a bevel inside them and a blurred shadow behind.
+const GBA_EDGE = slope([[0, 0.1992], [0.0417, 0.2041], [0.0833, 0.2082], [0.125, 0.2117], [0.1667, 0.2149], [0.2083, 0.2176], [0.25, 0.2201], [0.2917, 0.2223], [0.3333, 0.2241], [0.375, 0.2256], [0.4167, 0.2266], [0.4583, 0.2273], [0.5, 0.2274], [0.5417, 0.2271], [0.5833, 0.2264], [0.625, 0.2252], [0.6667, 0.2236], [0.7083, 0.2216], [0.75, 0.2192], [0.7917, 0.2166], [0.8333, 0.2137], [0.875, 0.2104], [0.9167, 0.2067], [0.9583, 0.2025], [1, 0.1975]]);
+const GBA_INK = '#060606';
+const GBA_BRUSH: Brushed = { strength: 0.35, rows: 10 };
+const GBA_WHITE_SHADOW: MarkShadow = { color: 'rgba(25,30,34,0.65)', dx: 0.065, dy: 0.065, blur: 0.04 };
+const GBA_WHITE_BEVEL: MarkShadow[] = [{ color: 'rgba(110,118,122,0.95)', dx: -0.04, dy: -0.04, blur: 0.03 }];
+const GBA_BLACK_SHADOW: MarkShadow = { color: 'rgba(0,0,0,0.55)', dx: 0.07, dy: 0.07, blur: 0.09 };
+const GBA_BLACK_BEVEL: MarkShadow[] = [{ color: 'rgba(215,220,224,0.6)', dx: 0.04, dy: 0.04, blur: 0.04 }];
 const GBC_BLUE = '#0b25b0';
 const GBC_WORD_SHADOW: MarkShadow = { color: 'rgba(20,28,38,0.55)', dx: 0.075, dy: 0.075, blur: 0.04 };
 const GBC_COLOR_SHADOW: MarkShadow = { color: 'rgba(20,28,38,0.5)', dx: 0.06, dy: 0.06, blur: 0.035 };
@@ -376,6 +391,27 @@ export const GAME_CASE_BRANDING: Record<string, Branding> = {
       marks: [
         { parts: [{ logo: 'gb', mono: true, shadow: GBC_WORD_SHADOW }], color: GBC_BLUE, from: 0.0339, to: 0.169, across: 0.2, dx: 0.235, rotate: 90 },
         { parts: [{ logo: 'color', shadow: GBC_COLOR_SHADOW, emboss: GBC_EMBOSS }], color: GBC_BLUE, from: 0.0607, to: 0.265, across: 0.45, dx: -0.116, rotate: 90 },
+      ],
+    },
+  },
+  // Game Boy Advance: a brushed-silver strip with a curved right edge, white at the top and steel at the foot, with ADVANCE
+  // in glossy black above GAME BOY in bevelled white, reading upwards; the two stacked small on a silver spine cap.
+  gba: {
+    front: {
+      shape: 'strip', w: 0.2274, fill: W, sheen: 'shade-gba-strip', brushed: GBA_BRUSH,
+      edge: { depth: GBA_EDGE },
+      marks: [
+        { parts: [{ logo: 'advance', mono: true, shadow: GBA_BLACK_SHADOW, bevel: GBA_BLACK_BEVEL }], color: GBA_INK, from: 0.0974, to: 0.53, across: 0.25, dx: -0.071, rotate: -90 },
+        { parts: [{ logo: 'gba', only: [0, 1], shadow: GBA_WHITE_SHADOW, bevel: GBA_WHITE_BEVEL }], color: W, from: 0.5375, to: 0.967, across: 0.35, dx: -0.071, rotate: -90 },
+        { parts: [{ logo: 'gba', only: [2, 3] }], color: GBA_INK, from: 0.5397, to: 0.557, across: 0.06, dx: 0.065, rotate: -90 },
+      ],
+    },
+    spine: {
+      cap: { length: 0.2828, fill: W, sheen: 'shade-gba-cap', brushed: { strength: 0.35, rows: 3 } },
+      marks: [
+        { parts: [{ logo: 'advance', mono: true, shadow: GBA_BLACK_SHADOW, bevel: GBA_BLACK_BEVEL }], color: GBA_INK, from: 0.0159, to: 0.267, across: 0.3, dx: -0.128, rotate: 90 },
+        { parts: [{ logo: 'gba', only: [0, 1], shadow: GBA_WHITE_SHADOW, bevel: GBA_WHITE_BEVEL }], color: W, from: 0.0216, to: 0.1573, across: 0.25, dx: 0.15, rotate: 90 },
+        { parts: [{ logo: 'gba', only: [2, 3] }], color: GBA_INK, from: 0.151, to: 0.16, across: 0.08, dx: 0.075, rotate: 90 },
       ],
     },
   },

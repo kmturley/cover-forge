@@ -75,6 +75,8 @@ const LOGO_LABELS = {
   '3ds': 'Nintendo 3DS',
   gb: 'Game Boy',
   color: 'Color',
+  gba: 'Game Boy Advance',
+  advance: 'Advance',
   nintendo: 'Nintendo',
   ds: 'Nintendo DS',
   switch: 'Nintendo Switch',

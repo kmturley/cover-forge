@@ -63,6 +63,7 @@ export interface MarkOptions {
   mono?: boolean;
   shadow?: MarkShadow;
   emboss?: MarkEmboss;
+  bevel?: MarkShadow[];
 }
 
 /** The artwork a mark draws, in its own coordinates: its top-left corner and size, and which of a logo's layers. */
@@ -101,6 +102,6 @@ export function drawLogo(ctx: CanvasRenderingContext2D, t: TemplateConfig, panel
     ctx.clip();
   }
   if (mark.kind === 'brand') ctx.fill(brandPath2D(mark.brand));
-  else paintLogoLayers(ctx, mark.logo, g.used, 0, 0, logo.color, g.mono, { shadow: o?.shadow, emboss: o?.emboss });
+  else paintLogoLayers(ctx, mark.logo, g.used, 0, 0, logo.color, g.mono, { shadow: o?.shadow, emboss: o?.emboss, bevel: o?.bevel });
   ctx.restore();
 }

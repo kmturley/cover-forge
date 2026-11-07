@@ -695,3 +695,68 @@ left out.
 ### Match
 
 The logos were first placed on the template's positions (89.9 % the same by the compare script), then deliberately moved in from the edges: the front's lockup now has 4.9 mm at each end (the template 2.6) and the spine's GAME BOY 3.9 mm above it (the template 2.5). So the overlay is now 81.2 %. The rest of the difference is mostly COLOR's colours and GAME BOY's narrower letters, above.
+
+## 18. Nintendo Game Boy Advance
+
+Measured from three 300 dpi scans in `scans/gba` (Battle B-Daman, Candy Land, The Cheetah Girls; git-ignored) and the
+fan-made `template.png`. All four are exactly 3290 × 1386 px, and the strip's pixels are identical across the scans, so
+they share one master image.
+
+### Size
+
+The scans measure 131.7 + 15.2 + 131.7 × 117.3 mm: 2.6 mm wider and 1.3 mm taller than the Game Boy's 276 × 116 mm, with
+a spine 0.8 mm narrower. The app uses **130 + 16 + 130 × 116 mm**, the same DS-size case and shell (136 × 124 × 19 mm) as
+the Game Boy and Game Boy Color, for two reasons: [Retro Game Cases](https://www.retrogamecases.com/gameboy-gameboy-color-gameboy-advance/)
+sells one case for all three, and a GBA cartridge (35 × 57 × 7.5 mm) is smaller than a Game Boy's, so the case has room
+either way. The scans' extra size looks like a fan's scaling rather than a different case, but nothing here measures a
+real GBA case. Everything below is placed as fractions of each panel, so the trade dress is unaffected.
+
+### Trade dress
+
+- **Front strip.** Silver, with a **curved right edge**: 19.9 % of the front's width at the top, 22.7 % half way down
+  and 19.8 % at the foot. The curve is a 6th-degree fit to the template's outline, within 1.4 px. Near-white at the top,
+  falling to steel (about `#8a9196`) from half way down.
+- **ADVANCE and GAME BOY** read upwards as one line, the template's positions: ADVANCE at 9.7–53 % of the length in black,
+  GAME BOY at 53.8–96.7 % in white, and a dark ® beside the Y.
+- **Spine.** A silver cap 28.3 % of the length, with ADVANCE on the left and a shorter GAME BOY on the right, reading down.
+- **No back band**, and no "ONLY FOR" corner. The scans print a blue corner at the top of the strip; the template has
+  retouched it out, leaving a smudge. The smudge was left out of the fit.
+- **Logos.** `gba.svg` holds GAME BOY (layers 0–1, white) and the ® (layers 2–3, black); a lockup colours white and
+  black layers alike, so they are separate marks with `only`. `advance.svg` is ADVANCE.
+
+### The brushed metal
+
+Four layers build the strip, and the curve is why the shading had to change shape. A `shade-*.svg` that fills a rectangle
+would spill past a curved edge onto the art, so `shade-gba-strip.svg` draws every piece of its shading through the strip's
+own curved path.
+
+| Layer | From | What it is |
+| :--- | :--- | :--- |
+| Base | | white, inside the curve |
+| Shading | `shade-gba-strip.svg` | 14 soft ellipses fitted to the template as in §17 (error 66 levels of 255 for a flat colour, 2.2 fitted; 36 % of the strip was clear to measure) |
+| Foot and rim | the same SVG | a dark gradient over the last 3 % of the height; 12 nested bands 2.4 mm deep along the curve; and a dark hairline on the edge. The foot and rim are real: they are in all the scans |
+| Brushing | `brushed` | see below |
+
+Each is a fit or measurement of the template, except the rim's depth and strength, which were set from profiles across the
+edge (it is about 45 % dark at the edge, a little less near the top).
+
+The brushing runs up and down, like the Game Boy's (pixel-to-pixel change 1.3 across, 0.6 along), but the first attempt
+with the Game Boy's streaks looked like a ruled stripe. Measured, the difference is that these are **short**: the average
+of a whole column varies by only 0.2–0.5 levels here against about 3 for full-height streaks. So `brushed` can now take
+`{ strength, rows }`: `strength` 0.35 scales the streaks, and `rows` 10 cuts them into ten lengths, each with its own
+streaks. That gives 0.77–1.2 levels of change across (template 0.7–1.1) and 0.4–0.7 column spread. The streak pattern
+changes at each join; the brightness steps there are at most about 1.5 levels of 255. The Game Boy's brushing is unchanged.
+
+### The letters
+
+The SVGs are flat, so the shading is added: a mark can have a `bevel`, a list of inner shadows in the same units as its
+`shadow` (fractions of its height, and in page directions, so they stay down and to the right however the mark is turned).
+White GAME BOY has a grey bevel on its lower right and a tight blurred shadow; black ADVANCE has a pale inner highlight and
+a wider, softer shadow. These were matched by eye, not measured.
+
+### Match
+
+The app against the template is 85.4 % by the compare script, which lowers the score because the template is wider and
+taller, as the 3DS's does (§15). Lined up on the fold they look almost identical. Checked in the app in Chromium, Firefox
+and WebKit (headless). Still different: ADVANCE's gloss and GAME BOY's bevel are simpler than the template's, and the
+brushing is regular where the template's has a few longer smears.

@@ -29,6 +29,7 @@ describe('sanitizePatch', () => {
   it('checks a mark’s parts and a spine title’s fit', () => {
     const look = { shadow: { color: 'rgba(0,0,0,0.5)', dx: 0.1, dy: 0.1, blur: 0.04 }, emboss: { alpha: 1.3, blur: 0.8 } };
     expect(sanitizePatch({ source: { kind: 'vector', id: 'color', ...look } }).source).toEqual({ kind: 'vector', id: 'color', ...look });
+    expect(sanitizePatch({ source: { kind: 'vector', id: 'gba', bevel: [{ color: '#000', dx: 0, dy: 0, blur: 0.1 }, { color: 'url(evil)', dx: 0, dy: 0, blur: 0 }] } }).source).toEqual({ kind: 'vector', id: 'gba', bevel: [{ color: '#000', dx: 0, dy: 0, blur: 0.1 }] });
     expect(sanitizePatch({ source: { kind: 'vector', id: 'color', shadow: { color: 'url(evil)', dx: 0, dy: 0, blur: 0 }, emboss: { alpha: 99, blur: 1 } } }).source).toEqual({ kind: 'vector', id: 'color' });
     expect(sanitizePatch({ source: { kind: 'vector', id: 'xbox', crop: [0, 0, 0.5, 1], only: [0, 2, -1, 1.5], mono: true } }).source).toEqual({ kind: 'vector', id: 'xbox', only: [0, 2], crop: [0, 0, 0.5, 1], mono: true });
     expect((sanitizePatch({ source: { kind: 'vector', id: 'xbox', crop: [0.5, 0, 0.2, 1] } }).source as { crop?: unknown }).crop).toBeUndefined();

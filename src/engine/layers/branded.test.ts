@@ -65,6 +65,17 @@ describe('the dress as layers', () => {
     expect(a.some((l) => l.target === 'back' && l.type !== 'group')).toBe(false);
   });
 
+  it('breaks the Game Boy Advance brushing into faint short lengths inside the curve', () => {
+    const { layers } = brandedLayers(buildTemplateById('game-case-gba'));
+    const lengths = layers.filter((l) => l.id.startsWith('branded.front.strip-brush-'));
+    expect(lengths).toHaveLength(10);
+    const stops = (l: (typeof lengths)[number]) => (l as unknown as { fill: { stops: [number, string][] } }).fill.stops;
+    // Each length has its own streaks, and none is as strong as the Game Boy's.
+    expect(stops(lengths[0])).not.toEqual(stops(lengths[1]));
+    for (const l of lengths) for (const [, c] of stops(l)) expect(Number(c.match(/,([\d.]+)\)$/)![1])).toBeLessThan(0.03);
+    expect(layers.some((l) => l.id === 'branded.front.strip-sheen')).toBe(true);
+  });
+
   const report: string[] = [];
   it.each(LIBRARY.map((e) => [e.id] as const))('%s draws what the canvas drawing does', (id) => {
     const t = buildTemplateById(id);
