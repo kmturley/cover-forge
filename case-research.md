@@ -773,3 +773,26 @@ The app against the template is 80.4 % by the compare script (85.4 % before the 
 template being wider and taller also lowers it, as the 3DS's does (§15). Lined up on the fold they looked almost identical before the logos were moved for spacing (above). Checked in the app in Chromium, Firefox
 and WebKit (headless). Still different: ADVANCE's gloss and GAME BOY's bevel are simpler than the template's, and the
 brushing is regular where the template's has a few longer smears.
+
+## 19. A refinement pass across the covers
+
+Every cover with scans was compared with its template and a scan, and how far each logo sits from the trim was measured.
+**Scans are often cropped slightly**, so a logo can look closer to the edge than it really is on the case. Where the
+template's logo sits under about 3 mm from the top, it is deliberately padded here even though that moves it from the
+template: PS3, PS4 and PS Vita (whose band is 1 mm deeper) on the front, and PS3, PS4, PS Vita and Switch on the spine.
+
+| Cover | Change |
+| :--- | :--- |
+| PS1 | strip marks moved to the template's position; the wordmark's own ® is twice the scans' size, so it is cropped off and a smaller one set |
+| PS2 | spine symbol fills its white square a little more |
+| PS3, PS4, PS5, PS Vita, Wii U | ® and ™ added as text marks: the simple-icons logos don't have them |
+| GameCube | logo position; thinner line, closer to the scans |
+| Wii | curve re-traced from the template, so it is smooth |
+| Wii U | logo size and position; line `#ffe70e` with its grey shadow |
+| Xbox | spine X rotated 90°, as on the scans; wordmark position; ridges start further right |
+| Xbox 360 | front logo's ® removed: the scans don't have it |
+| Xbox Series X | green `#107c10`, Xbox green in Microsoft's brand book; the template's `#0e7a0d` is almost the same, while the scans print far brighter (`#53b626`, `#63b210`, `#46a918`) |
+
+Left alone: Switch 2, DS, 3DS, Game Boy, Game Boy Color, Game Boy Advance and Xbox One. PS Vita's scans show a spine about
+11 mm wide where the app has 9 mm (from one reported size), and Xbox One's and Series X's look about 1.3 mm wider than the app's
+11 mm. Those are the case's sizes, not its dress, and need checking against a real case.
