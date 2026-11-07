@@ -542,22 +542,21 @@ a measurement of a Game Boy case.
 
 - **Front strip.** Brushed silver, down the left of the front, 32.7 mm wide (25.2 % of its width), from 145.8 to 178.5 mm on all three scans and the template. The colour runs from about `#eef5f6` at the top to `#b7c9cd` at the foot (median of the template's pixels per tenth of its height), with fine vertical brushing the app doesn't draw. The wordmark GAME BOY is in `#001497` and reads bottom to top: 19.1 mm across and 6.2–113.6 mm down (5.3–97.9 % of H).
 - **Spine.** A white cap 33.2 mm long (28.6 % of L; 33.1 on the template) with the wordmark small, reading top to bottom: 5.1 mm across and 2.3–30.8 mm down. Below it the game's own colour.
-- **Back strip** (not on the template): a 14.0 mm silver band down the left of the back with the wordmark reading bottom to top (9.9 mm across, 29.9–85.3 mm down), on two of the three scans. Wario Land 3's back has none. It is drawn by default and can be hidden with the Branded back eye.
-- **Not drawn: the red Nintendo oval** at the top of the front strip (4.6 mm tall, centred at 1.4–5.9 mm down). `gb.svg` holds only the wordmark, and the app has no Nintendo logo for it, as for the other platforms' marks that aren't supplied.
-- **The logo colour.** `gb.svg` bakes in `#393c9f`, but the template and scans print `#001497`, so the wordmark is drawn flat in `#001497` (`mono`).
+- **Back strip** (not on the template): a 14.0 mm silver band down the left of the back, on two of the three scans; Wario Land 3's back has none. The scans print the wordmark on it, reading bottom to top (9.9 mm across, 29.9–85.3 mm down), but the app leaves that off and draws the plain band. It is drawn by default and can be hidden with the Branded back eye.
+- **The Nintendo oval** at the top of the front strip, from `src/brands/svg/nintendo.svg`: 18.6 × 4.6 mm at 152.5–171.1 mm across and 1.35–5.9 mm down, in the scans' red `#ed1c24` (the SVG's own `#cc2131` is drawn flat in that red, `mono`). Its inside is clear, as on the template, so the silver shows through. The app's mark sits exactly on the template's (152.5, 1.35 to 171.1, 5.9) and 0.2 mm left of the scans'.
+- **The wordmark colour.** `gb.svg` bakes in `#393c9f`, but the template and scans print `#001497`, so the wordmark is drawn flat in `#001497` (`mono`).
 
 The engine got one small feature: a `backStrip` on a branding (a strip down the back's left edge, drawn like a front
-`strip`). The logo generator also gained `<polyline>` and `<polygon>`: `gb.svg` draws its E and Y as polylines, which it
+`strip`, with its own marks if it has any). The logo generator also gained `<polyline>` and `<polygon>`: `gb.svg` draws its E and Y as polylines, which it
 ignored, so the first render read "GAM BO".
 
 ### How the match was checked
 
 `npm run compare:covers -- gb --scans`, and the ink bounding box of the blue wordmark on the app's render against the scans:
 
-| | Back (x, y mm) | Front | Spine |
+| | Front wordmark (x, y mm) | Spine wordmark | Nintendo oval |
 | :--- | :--- | :--- | :--- |
-| Scans | 2.0–11.9, 29.9–85.3 | 152.1–171.4, 6.2–113.6 | 135.6–140.7, 2.3–30.8 |
-| App | 2.2–11.9, 30.0–85.3 | 152.6–171.3, 6.3–113.5 | 135.8–140.7, 2.4–30.8 |
+| Scans | 152.1–171.4, 6.2–113.6 | 135.6–140.7, 2.3–30.8 | 152.7–171.3, 1.35–5.9 |
+| App | 152.6–171.3, 6.3–113.5 | 135.8–140.7, 2.4–30.8 | 152.5–171.1, 1.35–5.9 |
 
-Within 0.4 mm. The overlay against the template is only 71.7 %, because the template has the Nintendo oval and no back
-strip, and the app's dark base colour shows where the template is transparent; the wordmarks themselves overlay exactly.
+Within 0.4 mm. The overlay against the template is 72.6 %: the template has no back strip, and the app's dark base colour shows where the template is transparent; the logos themselves overlay exactly.

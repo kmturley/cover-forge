@@ -337,18 +337,20 @@ export const GAME_CASE_BRANDING: Record<string, Branding> = {
     },
     spine: { fill: W, titleColor: '#333333', marks: [{ parts: [{ logo: '3ds' }], color: K, from: 0.0344, to: 0.2432, across: 0.8, dx: 0.017, rotate: 90 }] },
   },
-  // Game Boy (in a DS-size case): a brushed-silver strip down the left of the front with GAME BOY in blue reading
-  // upwards, a matching narrower band down the left of the back, and a white spine cap with the wordmark small.
+  // Game Boy (in a DS-size case): a brushed-silver strip down the left of the front with the Nintendo oval at the top and
+  // GAME BOY in blue reading upwards, a matching narrower band down the left of the back, and a white spine cap with the
+  // wordmark small.
   gb: {
     front: {
       shape: 'strip', w: 0.2515,
       fill: GB_SILVER,
-      marks: [{ parts: [{ logo: 'gb', mono: true }], color: GB_BLUE, from: 0.0533, to: 0.9789, across: 0.62, dx: -0.011, rotate: -90 }],
+      marks: [
+        { parts: [{ logo: 'nintendo', mono: true }], color: '#ed1c24', from: 0.0116, to: 0.0511, across: 0.6, dx: -0.015, rotate: 0 },
+        { parts: [{ logo: 'gb', mono: true }], color: GB_BLUE, from: 0.0533, to: 0.9789, across: 0.62, dx: -0.011, rotate: -90 },
+      ],
     },
-    backStrip: {
-      w: 0.1077, fill: GB_SILVER,
-      marks: [{ parts: [{ logo: 'gb', mono: true }], color: GB_BLUE, from: 0.2577, to: 0.7357, across: 0.75, rotate: -90 }],
-    },
+    // The scans' back has a plain silver band here too (the template has none); its wordmark is left off.
+    backStrip: { w: 0.1077, fill: GB_SILVER, marks: [] },
     spine: { cap: { length: 0.286, fill: W }, marks: [{ parts: [{ logo: 'gb', mono: true }], color: GB_BLUE, from: 0.0197, to: 0.2657, across: 0.4, dx: 0.018, rotate: 90 }] },
   },
   'wii-u': {
