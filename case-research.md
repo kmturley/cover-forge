@@ -582,9 +582,10 @@ On the scans the logos nearly touch the edges (the spine wordmark is 2.4 mm from
 from the bottom. The app indents them: the oval is 4.1 mm from the top (4.6 mm tall, down to 8.6 mm), then 2.6 mm of
 space, then the wordmark from 11.3 to 112.0 mm, 4.0 mm from the bottom. The wordmark shrinks to fit (100.7 mm long, 17.6 mm
 across, from 107.4 and 19.1), keeping its shape, and sits 7.1 mm and 8.0 mm in from the strip's two edges. The
-trade-off is a less faithful reprint for a cover that doesn't look cramped, and a print that is less likely to lose the
-oval to the trim. To put them back, `from`/`to` in `src/engine/official.ts` are 0.0116 to 0.0511 for the oval and 0.0533
-to 0.9789 for the wordmark.
+spine wordmark is moved down to 4.1 mm from the top and shrinks to end 2.6 mm above the cap's foot (26.6 mm long, from
+28.5). The trade-off is a less faithful reprint for a cover that doesn't look cramped, and a print that is less likely to lose the
+oval to the trim. To put them back, `from`/`to` in `src/engine/official.ts` are 0.0116 to 0.0511 for the oval, 0.0533
+to 0.9789 for the front wordmark and 0.0197 to 0.2657 for the spine wordmark.
 
 ### How the match was checked
 
