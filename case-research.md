@@ -631,7 +631,21 @@ the two logos as two marks, which lets each sit where the scans put it (the fron
 side, with different sizes). GAME BOY is the Game Boy's wordmark, a little narrower than the Color box art's (the
 scans' letters are about 20 % wider).
 
+### Effects the generator leaves out
+
+`color.svg` has Figma inner-shadow filters (a white highlight offset one way and a dark shade the other), and `gamecube.svg`
+paints four shapes with `mix-blend-mode: hue`. macOS Preview and VS Code draw those because they run a full SVG renderer.
+The logo generator turns each SVG into plain paths with a flat fill or a gradient, so that every logo can be a set of
+editable layers, drawn the same on every canvas and in the 3D preview. It therefore skips `filter` and ignores
+`mix-blend-mode`, and nothing in the SVG can fix that beforehand. A **drop shadow** is the exception: it needs no filter,
+so the engine got a `shadow` on a lockup (colour, dx, dy in mm): a flat copy of the lockup, faded in three offset
+steps, drawn first. As layers they stay editable. The Game Boy Color's letters use it (blue-black, 0.6 mm right and
+0.65 mm down). The inner shadows and the blend mode would each need engine support of their own.
+
+The strip and cap gradients were re-measured from the template's two edges, each stop leaning towards the darker edge,
+so the metal is darker in patches (`#b8c5cb` half way down, `#b9c8ce` at the foot) as in the reference.
+
 ### Match
 
-The app against the template is 88.3 % the same (the rest is the metal's shading and the letters' shadows). The
+The app against the template is 89.0 % the same (the rest is the metal's shading and the letters' shadows). The
 registered mark, the shadow under the letters and the ® next to GAME BOY are not drawn.

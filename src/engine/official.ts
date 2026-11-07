@@ -25,6 +25,8 @@ export interface Lockup {
   frame?: { color: string; mm?: number };
   /** Gap between parts as a fraction of the lockup's height. Default 0.25. */
   gap?: number;
+  /** A soft drop shadow in that colour, offset by dx, dy mm (positive: right, down): the shape of the lockup, faded in steps. */
+  shadow?: { color: string; dx: number; dy: number };
 }
 
 export interface FrontMark extends Lockup {
@@ -146,9 +148,11 @@ const X360_WHITE = '#ffffff';
 const GB_SILVER: Paint = { y: [[0, '#f4fcfd'], [0.15, '#eff7f9'], [0.25, '#ebf5f7'], [0.35, '#e4eff1'], [0.45, '#e0ebed'], [0.55, '#dbe7ea'], [0.65, '#d3e2e5'], [0.75, '#cadbde'], [0.85, '#bcced2'], [0.95, '#b2c4c8'], [1, '#b0c2c6']] };
 /** The spine cap's silver is a little lighter and flatter than the strip's. Both are 2.6 % lighter than the scans' medians, which the brushed texture darkens by that much. */
 const GB_CAP_SILVER: Paint = { y: [[0, '#f5fdfe'], [0.38, '#f2f9fc'], [0.62, '#edf6f8'], [1, '#ebf4f6']] };
-// Game Boy Color: a paler, cooler silver than the original's, with a soft grey crease about half way down.
-const GBC_SILVER: Paint = { y: [[0, '#f1f5f7'], [0.1, '#eff4f6'], [0.2, '#e9f0f2'], [0.3, '#e1e9ec'], [0.4, '#dbe4e8'], [0.45, '#cdd9de'], [0.5, '#c1ced4'], [0.55, '#cad6dc'], [0.6, '#dae3e7'], [0.7, '#d8e1e5'], [0.8, '#d0dbe0'], [0.9, '#c8d4d9'], [1, '#c3d0d5']] };
-const GBC_CAP_SILVER: Paint = { y: [[0, '#eaf1f4'], [0.15, '#e6eef0'], [0.3, '#e3eaed'], [0.45, '#c2d0d6'], [0.6, '#d3dfe3'], [0.75, '#e0e9ec'], [1, '#e8eff1']] };
+// Game Boy Color: a paler, cooler silver than the original's, darker in patches where the scans' sheen falls away (each
+// stop leans towards the darker of the two edges). The letters cast a soft shadow down and to the right.
+const GBC_SHADOW = { color: '#1d2a5c', dx: 0.6, dy: 0.65 };
+const GBC_SILVER: Paint = { y: [[0, '#f5f9fa'], [0.1, '#ecf1f3'], [0.2, '#e4ecee'], [0.3, '#d4dfe2'], [0.4, '#d5dfe3'], [0.45, '#c9d6db'], [0.5, '#b8c5cb'], [0.55, '#bbc8ce'], [0.6, '#d3dee4'], [0.7, '#c7d3d8'], [0.8, '#bcc9cf'], [0.9, '#b7c5cc'], [1, '#b9c8ce']] };
+const GBC_CAP_SILVER: Paint = { y: [[0, '#e5edef'], [0.15, '#d9e3e6'], [0.3, '#d7e1e5'], [0.45, '#becbd1'], [0.6, '#c5d1d8'], [0.75, '#cedae0'], [1, '#d1dce0']] };
 const GB_BLUE = '#001497';
 
 /** A format's small spine cap and back logo (DVD, CD, VHS…), which have no front header. */
@@ -360,15 +364,15 @@ export const GAME_CASE_BRANDING: Record<string, Branding> = {
       shape: 'strip', w: 0.2519,
       fill: GBC_SILVER,
       marks: [
-        { parts: [{ logo: 'gb', mono: true }], color: GB_BLUE, from: 0.3066, to: 0.978, across: 0.5, dx: -0.005, rotate: -90 },
-        { parts: [{ logo: 'color' }], color: GB_BLUE, from: 0.022, to: 0.314, across: 0.4, dx: 0.008, rotate: -90 },
+        { parts: [{ logo: 'gb', mono: true }], color: GB_BLUE, shadow: GBC_SHADOW, from: 0.3066, to: 0.978, across: 0.5, dx: -0.005, rotate: -90 },
+        { parts: [{ logo: 'color' }], color: GB_BLUE, shadow: GBC_SHADOW, from: 0.022, to: 0.314, across: 0.4, dx: 0.008, rotate: -90 },
       ],
     },
     spine: {
       cap: { length: 0.286, fill: GBC_CAP_SILVER },
       marks: [
-        { parts: [{ logo: 'gb', mono: true }], color: GB_BLUE, from: 0.0219, to: 0.157, across: 0.2, dx: 0.235, rotate: 90 },
-        { parts: [{ logo: 'color' }], color: GB_BLUE, from: 0.0547, to: 0.259, across: 0.45, dx: -0.116, rotate: 90 },
+        { parts: [{ logo: 'gb', mono: true }], color: GB_BLUE, shadow: GBC_SHADOW, from: 0.0219, to: 0.157, across: 0.2, dx: 0.235, rotate: 90 },
+        { parts: [{ logo: 'color' }], color: GB_BLUE, shadow: GBC_SHADOW, from: 0.0547, to: 0.259, across: 0.45, dx: -0.116, rotate: 90 },
       ],
     },
   },

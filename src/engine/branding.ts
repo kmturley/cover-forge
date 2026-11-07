@@ -153,6 +153,28 @@ function lockup(s: Sink, m: Lockup, heightPx: number): Box {
   return layout(s, m.parts, m.color, 100 * k, m.gap ?? 0.25, 'row');
 }
 
+/** The same lockup as a flat silhouette in `color`, for a shadow. */
+function silhouette(parts: Part[], color: string): Part[] {
+  return parts.map((p): Part => ('row' in p ? { row: silhouette(p.row, color) } : 'stack' in p ? { stack: silhouette(p.stack, color) } : 'logo' in p ? { ...p, color, mono: true } : { ...p, color }));
+}
+
+/** Soft drop shadow steps: how far along the offset, and how opaque. Overlapping, they fade out towards the edge. */
+const SHADOW_STEPS: [number, number][] = [[0.35, 0.24], [0.7, 0.16], [1.1, 0.09]];
+
+/** Draws the lockup's shadow (page-space offset in px) before the lockup itself; `at` places a lockup of the given size. */
+function drawShadow(s: Sink, m: Lockup, px: number, size: (m: Lockup) => Box, at: (box: Box) => void) {
+  if (!m.shadow) return;
+  const flat: Lockup = { ...m, parts: silhouette(m.parts, m.shadow.color), frame: undefined };
+  const box = size(flat);
+  for (const [k, alpha] of SHADOW_STEPS) {
+    s.save();
+    s.translate(m.shadow.dx * px * k, m.shadow.dy * px * k);
+    s.setAlpha(alpha);
+    at(box);
+    s.restore();
+  }
+}
+
 /** Draws a lockup fitted inside `w` × `h` (px, centred on cx, cy), rotated by `rotate` degrees. */
 function drawFitted(s: Sink, m: Lockup, cx: number, cy: number, w: number, h: number, rotate: number, px: number) {
   const sideways = rotate !== 0;
@@ -163,6 +185,11 @@ function drawFitted(s: Sink, m: Lockup, cx: number, cy: number, w: number, h: nu
   const pad = m.frame ? Math.min(bw, bh) * 0.08 : 0;
   const heightPx = Math.min(bh - 2 * pad, ((bw - 2 * pad) * probe.h) / probe.w);
   const box = lockup(s, m, heightPx);
+  drawShadow(s, m, px, (f) => lockup(s, f, heightPx), (sh) => {
+    s.translate(cx, cy);
+    s.rotate((rotate * Math.PI) / 180);
+    sh.draw(-sh.w / 2, -sh.h / 2);
+  });
   s.save();
   s.translate(cx, cy);
   s.rotate((rotate * Math.PI) / 180);
@@ -201,6 +228,7 @@ function drawFrontMark(s: Sink, m: FrontMark, area: { x: number; w: number }, p:
     const pad = box.h * 0.35;
     s.fillRect(x - pad, y - pad, box.w + pad * 2, box.h + pad * 2, m.plate);
   }
+  drawShadow(s, m, px, (f) => lockup(s, f, box.h), (sh) => sh.draw(x, y));
   box.draw(x, y);
 }
 
