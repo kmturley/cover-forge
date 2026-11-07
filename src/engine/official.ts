@@ -344,8 +344,8 @@ export const GAME_CASE_BRANDING: Record<string, Branding> = {
       shape: 'strip', w: 0.2515,
       fill: GB_SILVER, brushed: true,
       marks: [
-        { parts: [{ logo: 'nintendo', mono: true }], color: '#ed1c24', from: 0.0116, to: 0.0511, across: 0.6, dx: -0.015, rotate: 0 },
-        { parts: [{ logo: 'gb', mono: true }], color: GB_BLUE, from: 0.0533, to: 0.9789, across: 0.62, dx: -0.011, rotate: -90 },
+        { parts: [{ logo: 'nintendo', mono: true }], color: '#ed1c24', from: 0.0345, to: 0.0741, across: 0.6, dx: -0.015, rotate: 0 },
+        { parts: [{ logo: 'gb', mono: true }], color: GB_BLUE, from: 0.0957, to: 0.9655, across: 0.62, dx: -0.011, rotate: -90 },
       ],
     },
     spine: { cap: { length: 0.286, fill: GB_CAP_SILVER, brushed: true }, marks: [{ parts: [{ logo: 'gb', mono: true }], color: GB_BLUE, from: 0.0197, to: 0.2657, across: 0.4, dx: 0.018, rotate: 90 }] },

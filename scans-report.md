@@ -53,8 +53,8 @@ Fold lines detected from the image in 3/4; estimated from a known spine width in
 | wariolandsupermarioland3.jpg | 300 | 276.0 | 116.0 | 124.0 | 21.9 | — | 130.1 | detected | 11.8 | flat | #2d69bf | — | — |  |
 | template.png | 300 | 275.8 | 116.0 | 129.9 | 16.0 | — | 129.9 | estimated | 4.1 | flat | #f2f8f8 | — | 28.6 | No symmetric spine strip found; estimated from gb's known 16 mm spine, assuming equal front/back width. |
 | **Mode** | | **275.9** | **116.0** | **126.9** | **19.0** | **—** | **130.0** | | **9.8** | | **#8fb0dc** | **#397d85** | **28.6** | |
-| app (rendered) | 300 | 276.0 | 116.0 | 130.0 | 16.0 | — | 130.0 | known | 3.7 | flat | #f1f9fa | — | 28.6 |  |
-| *app − Mode* | | +0.1 | +0.0 | +3.0 | -3.0 | — | +0.1 | | -6.1 | ≠ | 126 | — | +0.0 | |
+| app (rendered) | 300 | 276.0 | 116.0 | 130.0 | 16.0 | — | 130.0 | known | 5.9 | flat | #f1f9fa | — | 28.6 |  |
+| *app − Mode* | | +0.1 | +0.0 | +3.0 | -3.0 | — | +0.1 | | -3.9 | ≠ | 126 | — | +0.0 | |
 
 Fold lines detected from the image in 2/4; estimated from a known spine width in 2/4.
 
