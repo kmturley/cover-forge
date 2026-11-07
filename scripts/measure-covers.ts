@@ -78,6 +78,7 @@ const KNOWN_SPINE_MM: Record<string, number> = {
   'ps-vita': 9,
   psvita: 9,
   ds: 16,
+  gb: 16,
   '3ds': 12,
   switch: 10,
   switch2: 10,

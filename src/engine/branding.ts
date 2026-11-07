@@ -187,6 +187,7 @@ export function drawBranding(s: Sink, t: TemplateConfig, px: number): void {
   if (front) drawFront(s, t, front, b.front, px, 'front');
   const back = t.panels.find((p) => p.id === 'back');
   if (back && b.backBand && b.front.shape === 'band') drawFront(s, t, back, { ...b.front, marks: [] }, px, 'back');
+  if (back && b.backStrip) drawFront(s, t, back, { shape: 'strip', ...b.backStrip }, px, 'back');
   if (back && b.back) b.back.forEach((m, i) => drawFrontMark(s, m, { x: back.xMm * px, w: back.widthMm * px }, back, px, () => 0, `back.mark-${i + 1}`));
   if (b.spine) for (const p of t.panels) if (p.text) drawSpine(s, t, p, b.spine, px);
   s.restore();

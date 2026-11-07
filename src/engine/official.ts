@@ -126,6 +126,8 @@ export interface Branding {
   spine?: SpineBranding;
   /** Small format logos on the back (DVD, CD). */
   back?: FrontMark[];
+  /** A strip down the back cover's left edge (the Game Boy's silver band), drawn like a front `strip`. */
+  backStrip?: { w: number; fill: Paint; marks: SpanMark[] };
   /** Continues the front's band (fill and line, no marks) across the back cover. */
   backBand?: boolean;
 }
@@ -142,6 +144,9 @@ export const XBOX_GREEN = '#0c7a1f';
 
 const PS4_BLUE: Paint = { x: [[0, '#2e4a8e'], [0.5, '#2063a4'], [1, '#1381c0']] };
 const X360_WHITE = '#ffffff';
+/** The Game Boy's brushed-silver strip (light at the top, darker at the foot, from the fan template) and its blue. */
+const GB_SILVER: Paint = { y: [[0, '#eef5f6'], [0.25, '#e5eff1'], [0.5, '#dae5e7'], [0.75, '#cddcdf'], [1, '#b7c9cd']] };
+const GB_BLUE = '#001497';
 
 /** A format's small spine cap and back logo (DVD, CD, VHS…), which have no front header. */
 function format(label: Part[], color: string, bg: string, cap: number, spineLabel: Part[] = label, opts: { across?: number; titleScale?: number; rotate?: 0 | 90 | -90; inset?: number; from?: number; to?: number; backH?: number } = {}): Branding {
@@ -331,6 +336,20 @@ export const GAME_CASE_BRANDING: Record<string, Branding> = {
       marks: [{ parts: [{ logo: '3ds' }], color: K, from: 0.2325, to: 0.757, across: 0.54, dx: -0.01, rotate: -90 }],
     },
     spine: { fill: W, titleColor: '#333333', marks: [{ parts: [{ logo: '3ds' }], color: K, from: 0.0344, to: 0.2432, across: 0.8, dx: 0.017, rotate: 90 }] },
+  },
+  // Game Boy (in a DS-size case): a brushed-silver strip down the left of the front with GAME BOY in blue reading
+  // upwards, a matching narrower band down the left of the back, and a white spine cap with the wordmark small.
+  gb: {
+    front: {
+      shape: 'strip', w: 0.2515,
+      fill: GB_SILVER,
+      marks: [{ parts: [{ logo: 'gb', mono: true }], color: GB_BLUE, from: 0.0533, to: 0.9789, across: 0.62, dx: -0.011, rotate: -90 }],
+    },
+    backStrip: {
+      w: 0.1077, fill: GB_SILVER,
+      marks: [{ parts: [{ logo: 'gb', mono: true }], color: GB_BLUE, from: 0.2577, to: 0.7357, across: 0.75, rotate: -90 }],
+    },
+    spine: { cap: { length: 0.286, fill: W }, marks: [{ parts: [{ logo: 'gb', mono: true }], color: GB_BLUE, from: 0.0197, to: 0.2657, across: 0.4, dx: 0.018, rotate: 90 }] },
   },
   'wii-u': {
     front: {

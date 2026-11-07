@@ -54,6 +54,8 @@ const GAME_OUTER: Record<string, { w: number; h: number; depth?: number }> = {
   // The DS and 3DS share one footprint, 136 × 124 mm (Walvis lists both at that size; seller figures run 134–137 × 123–125),
   // but not the thickness: the DS case is about 19 mm deep and the 3DS case 12.5 (case-research.md §15).
   ds: { w: 136, h: 124, depth: 19 },
+  // A Game Boy case is sold as the same size as the DS case.
+  gb: { w: 136, h: 124, depth: 19 },
   '3ds': { w: 136, h: 124, depth: 12.5 },
   switch: { w: 105, h: 170 },
   switch2: { w: 105, h: 170 },

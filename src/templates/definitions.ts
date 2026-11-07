@@ -336,6 +336,10 @@ const GAME_CASE: Record<string, { label: string; w: number; h: number; spine: nu
   'ps5':       { label: 'PS5',                 w: 129.5, h: 161, spine: 14,   color: '#ffffff' },
   // From a reported 207 × 125 mm full cover.
   'ps-vita':   { label: 'PS Vita',             w: 99,    h: 125, spine: 9,    color: '#003791' },
+  // The Game Boy cartridge is bigger than a DS card, but Retro Game Cases sells GB/GBC/GBA cases "the same size as the
+  // Nintendo DS case" with clips for the cartridge, and the Game Boy covers in scans/gb are 276 × 116 mm like the DS's.
+  // So it is a DS-size case; the original retail box is a Box type round it (case-research.md §16).
+  'gb':        { label: 'Game Boy',            w: 130,   h: 116, spine: 16,   color: '#c9ccd1' },
   // From the 276 × 116 mm covers in scans/ds: front 130 × 116, spine 16.
   'ds':        { label: 'Nintendo DS',         w: 130,   h: 116, spine: 16,   color: '#b9bcc2' },
   // The scans in scans/3ds measure 131 × 116 front, spine 12; the front is 130 like the DS, which shares its case's footprint (case-research.md §15).

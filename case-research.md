@@ -505,3 +505,59 @@ taller, and the cases have one footprint, so it may not be a real difference bet
 
 Insert: 130 × 116 mm front for both, with each platform's own spine (DS 16 mm, 3DS 12 mm). The 3DS scans measure 131 mm; it was set to 130 because the cases share one 136 × 124 mm footprint, the usual shell-to-cover gap on every other case here is 5.5–7 mm (so 130 on 136), and 1 mm is inside scan trimming tolerance. The 3DS strip and logos are anchored to the right edge and the spine logo to the spine's fold, so they sit where the scans have them (3.3 mm in from the right edge; 4.8 mm in from the fold). Box and slipcover: the
 shared 136 × 124 mm footprint with each case's own depth, DS 19 mm and 3DS 12.5 mm (`src/templates/pieces.ts`).
+
+## 16. Nintendo Game Boy
+
+Measured from three 300 dpi scans in `scans/gb` (Kirby's Dream Land, Super Mario Land 2, Wario Land: Super Mario Land 3;
+git-ignored) and the fan-made `template.png`. The Game Boy is normally a cardboard box, so the first question was what
+to default to.
+
+### Case or box?
+
+**The app defaults to a DS-size case**, and the original box is a Box type round it. Three things point there:
+
+| Evidence | What it says |
+| :--- | :--- |
+| The scans | all three are 276.0 × 116.0 mm (the template 275.8), the same 130 + 16 + 130 mm wrap as the DS. People print Game Boy covers for a DS-size case, not a box |
+| [Retro Game Cases](https://www.retrogamecases.com/gameboy-gameboy-color-gameboy-advance/) | sells Game Boy, Game Boy Color and Game Boy Advance cases and says they are "the same size as the Nintendo DS case", with clips that hold the cartridge. The page gives no millimetres |
+| The cartridge ([Wikipedia](https://en.wikipedia.org/wiki/Game_Boy_Game_Pak)) | 65.5 × 57 × 7.5 mm for the Game Boy and Game Boy Color, 35 × 57 × 7.5 mm for the Game Boy Advance. A DS *card* is 33–35 × 35 mm, so a DS case's tray won't hold a Game Boy cartridge as it is: it takes a case made for it, at the DS case's outside size |
+
+No source gives the original retail box's size, so the Box type is not that box: it is a tuck-end box round the DS-size
+case, like the Box type of every other case here. A true retail Game Boy box would need its own template once someone
+has a box to measure.
+
+The case outside is the DS's, 136 × 124 mm and 19 mm deep (§15), on the strength of that one seller's statement; it is not
+a measurement of a Game Boy case.
+
+### Size
+
+| Measure | Value | How it was found |
+| :--- | :--- | :--- |
+| Wrap | 276.0 × 116.0 mm | all three scans (275.7 for Super Mario Land 2) |
+| Spine / front fold | 145.7–145.9 mm | the silver strip starts where the blue spine ends |
+| Front and back | 130 × 116 mm | 276 − 145.9 = 130.1; the template's back is 130.0 |
+| Spine | 16 mm (15.7 on the template) | 276 − 2 × 130 |
+
+### Trade dress
+
+- **Front strip.** Brushed silver, down the left of the front, 32.7 mm wide (25.2 % of its width), from 145.8 to 178.5 mm on all three scans and the template. The colour runs from about `#eef5f6` at the top to `#b7c9cd` at the foot (median of the template's pixels per tenth of its height), with fine vertical brushing the app doesn't draw. The wordmark GAME BOY is in `#001497` and reads bottom to top: 19.1 mm across and 6.2–113.6 mm down (5.3–97.9 % of H).
+- **Spine.** A white cap 33.2 mm long (28.6 % of L; 33.1 on the template) with the wordmark small, reading top to bottom: 5.1 mm across and 2.3–30.8 mm down. Below it the game's own colour.
+- **Back strip** (not on the template): a 14.0 mm silver band down the left of the back with the wordmark reading bottom to top (9.9 mm across, 29.9–85.3 mm down), on two of the three scans. Wario Land 3's back has none. It is drawn by default and can be hidden with the Branded back eye.
+- **Not drawn: the red Nintendo oval** at the top of the front strip (4.6 mm tall, centred at 1.4–5.9 mm down). `gb.svg` holds only the wordmark, and the app has no Nintendo logo for it, as for the other platforms' marks that aren't supplied.
+- **The logo colour.** `gb.svg` bakes in `#393c9f`, but the template and scans print `#001497`, so the wordmark is drawn flat in `#001497` (`mono`).
+
+The engine got one small feature: a `backStrip` on a branding (a strip down the back's left edge, drawn like a front
+`strip`). The logo generator also gained `<polyline>` and `<polygon>`: `gb.svg` draws its E and Y as polylines, which it
+ignored, so the first render read "GAM BO".
+
+### How the match was checked
+
+`npm run compare:covers -- gb --scans`, and the ink bounding box of the blue wordmark on the app's render against the scans:
+
+| | Back (x, y mm) | Front | Spine |
+| :--- | :--- | :--- | :--- |
+| Scans | 2.0–11.9, 29.9–85.3 | 152.1–171.4, 6.2–113.6 | 135.6–140.7, 2.3–30.8 |
+| App | 2.2–11.9, 30.0–85.3 | 152.6–171.3, 6.3–113.5 | 135.8–140.7, 2.4–30.8 |
+
+Within 0.4 mm. The overlay against the template is only 71.7 %, because the template has the Nintendo oval and no back
+strip, and the app's dark base colour shows where the template is transparent; the wordmarks themselves overlay exactly.
