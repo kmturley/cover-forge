@@ -540,15 +540,41 @@ a measurement of a Game Boy case.
 
 ### Trade dress
 
-- **Front strip.** Brushed silver, down the left of the front, 32.7 mm wide (25.2 % of its width), from 145.8 to 178.5 mm on all three scans and the template. The colour runs from about `#eef5f6` at the top to `#b7c9cd` at the foot (median of the template's pixels per tenth of its height), with fine vertical brushing the app doesn't draw. The wordmark GAME BOY is in `#001497` and reads bottom to top: 19.1 mm across and 6.2–113.6 mm down (5.3–97.9 % of H).
-- **Spine.** A white cap 33.2 mm long (28.6 % of L; 33.1 on the template) with the wordmark small, reading top to bottom: 5.1 mm across and 2.3–30.8 mm down. Below it the game's own colour.
-- **Back strip** (not on the template): a 14.0 mm silver band down the left of the back, on two of the three scans; Wario Land 3's back has none. The scans print the wordmark on it, reading bottom to top (9.9 mm across, 29.9–85.3 mm down), but the app leaves that off and draws the plain band. It is drawn by default and can be hidden with the Branded back eye.
+- **Front strip.** Brushed silver, down the left of the front, 32.7 mm wide (25.2 % of its width), from 145.8 to 178.5 mm on all three scans and the template. The colour runs from `#eef5f6` at the top to `#adbfc3` at the foot (median of the two scans' text-free pixels per tenth of its height), with fine vertical brushing: see "The metal effect" below. The wordmark GAME BOY is in `#001497` and reads bottom to top: 19.1 mm across and 6.2–113.6 mm down (5.3–97.9 % of H).
+- **Spine.** A silver cap 33.2 mm long (28.6 % of L; 33.1 on the template), the same brushed metal as the strip but lighter and flatter (`#eff6f7` at the top to `#e5eef0` at the foot), with the wordmark small, reading top to bottom: 5.1 mm across and 2.3–30.8 mm down. Below it the game's own colour. It was first drawn plain white; the scans and template have it metal.
+- **No back band.** Two of the three scans print a 14.0 mm silver band down the left of the back (Wario Land 3's has none, and the template has none), but the app draws nothing there: the back is left to the game's own art.
 - **The Nintendo oval** at the top of the front strip, from `src/brands/svg/nintendo.svg`: 18.6 × 4.6 mm at 152.5–171.1 mm across and 1.35–5.9 mm down, in the scans' red `#ed1c24` (the SVG's own `#cc2131` is drawn flat in that red, `mono`). Its inside is clear, as on the template, so the silver shows through. The app's mark sits exactly on the template's (152.5, 1.35 to 171.1, 5.9) and 0.2 mm left of the scans'.
 - **The wordmark colour.** `gb.svg` bakes in `#393c9f`, but the template and scans print `#001497`, so the wordmark is drawn flat in `#001497` (`mono`).
 
-The engine got one small feature: a `backStrip` on a branding (a strip down the back's left edge, drawn like a front
-`strip`, with its own marks if it has any). The logo generator also gained `<polyline>` and `<polygon>`: `gb.svg` draws its E and Y as polylines, which it
+The engine got one small feature, `brushed`, on a strip or a spine cap (the metal texture below). The logo generator also gained `<polyline>` and `<polygon>`: `gb.svg` draws its E and Y as polylines, which it
 ignored, so the first render read "GAM BO".
+
+### The metal effect
+
+A plain top-to-bottom gradient gets the colour right but looks like painted plastic. Measured on the scans, what makes the
+strip read as metal is **fine vertical brushing**: a column-by-column average of the strip's pixels (text left out) has a
+spread of about 5 levels out of 255, and neighbouring pixels are alike (correlation 0.68 at one pixel, so streaks are
+about 1–3 px, 0.1–0.25 mm, wide). The template has the same, a little noisier (5.5 spread, 0.54).
+
+So the metal is two layers in the Branded folder, not one:
+
+1. **The base**, a vertical gradient fitted to the scans: ten stops from `#f4fcfd` to `#b2c4c8`, each 2.6 % lighter than the measured medians, because the texture darkens by that much on average.
+2. **A brushed texture** (`branded.front.strip-brush`, `branded.spine.cap-brush`) over the base: one left-to-right gradient of black, mostly transparent stops about 0.1 mm apart (327 across the strip, 160 on the cap), each opacity 0.026 ± 0.022 following a smoothed random walk (`0.55 × the last + noise`). Opaque black at varying strength rather than white and black mixed, because gradients between a white and a black stop pass through a muddy grey. The same seed gives the same streaks every time, so exports and goldens are stable.
+
+What else was considered and why it was left out: a *specular sheen* (a bright band across the strip, as on polished
+metal) isn't in the scans, whose columns vary by under 2 % across the strip; *noise from an image* would need a texture
+file or asset per piece; and a *gradient with a few stops* can't carry streaks this fine. Measured on the render (Kirby
+scan in brackets):
+
+| | Strip | Spine cap |
+| :--- | :--- | :--- |
+| Mean level | 207.3 (205.9) | 232.9 (232.2) |
+| Column spread | 4.3 (5.2) | 4.2 (3.8) |
+| Correlation at 1 px | 0.74 (0.68) | 0.69 (0.52) |
+| Level down the strip, every 20 mm | 236, 230, 221, 213, 200, 180 (238, 231, 220, 213, 200, 177) | 239, 236, 232, 231, 230 (240, 237, 232, 229, 228) |
+
+The texture is generated, so it has hundreds of stops: the layer editor shows a note for a gradient with more than 16
+stops instead of a row each, and saved designs keep up to 600.
 
 ### How the match was checked
 
@@ -559,4 +585,4 @@ ignored, so the first render read "GAM BO".
 | Scans | 152.1–171.4, 6.2–113.6 | 135.6–140.7, 2.3–30.8 | 152.7–171.3, 1.35–5.9 |
 | App | 152.6–171.3, 6.3–113.5 | 135.8–140.7, 2.4–30.8 | 152.5–171.1, 1.35–5.9 |
 
-Within 0.4 mm. The overlay against the template is 72.6 %: the template has no back strip, and the app's dark base colour shows where the template is transparent; the logos themselves overlay exactly.
+Within 0.4 mm. The overlay against the template is 95.7 % (it was 72.6 % with the back band, and the cap white); what is left is the app's dark base colour where the template is transparent, and the streaks, which are not the template's own.

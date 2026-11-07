@@ -69,7 +69,7 @@ const fillOf = (v: unknown): string | SafeFill | null | undefined => {
   if (typeof v === 'string') return str(v, 40);
   if (!isObj(v) || !Array.isArray(v.stops)) return undefined;
   const axis = oneOf(v.axis, ['x', 'y', 'radial'] as const);
-  const stops = v.stops.slice(0, 16).flatMap((st) => (Array.isArray(st) && num(st[0]) !== undefined && str(st[1], 40) !== undefined ? [[Math.min(1, Math.max(0, st[0] as number)), st[1] as string] as [number, string]] : []));
+  const stops = v.stops.slice(0, 600).flatMap((st) => (Array.isArray(st) && num(st[0]) !== undefined && str(st[1], 40) !== undefined ? [[Math.min(1, Math.max(0, st[0] as number)), st[1] as string] as [number, string]] : []));
   if (!axis || stops.length < 2) return undefined;
   if (axis !== 'radial') return { axis, stops };
   const [cx, cy, r] = [num(v.cx), num(v.cy), num(v.r)];

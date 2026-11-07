@@ -48,6 +48,23 @@ describe('the dress as layers', () => {
     }
   });
 
+  it('draws the Game Boy’s metal as a base and a brushed texture, the same every time', () => {
+    const t = buildTemplateById('game-case-gb');
+    const a = brandedLayers(t).layers;
+    const brushed = a.filter((l) => l.id.endsWith('-brush'));
+    expect(brushed.map((l) => l.id)).toEqual(['branded.front.strip-brush', 'branded.spine.cap-brush']);
+    for (const l of brushed) {
+      expect(l.type).toBe('shape');
+      const fill = (l as { fill: { axis: string; stops: [number, string][] } }).fill;
+      expect(fill.axis).toBe('x');
+      expect(fill.stops.length).toBeGreaterThan(100);
+      expect(fill.stops.every(([, c]) => /^rgba\(0,0,0,0\.0\d\d\)$/.test(c))).toBe(true);
+    }
+    expect(brandedLayers(t).layers).toEqual(a);
+    // The back has no band.
+    expect(a.some((l) => l.target === 'back' && l.type !== 'group')).toBe(false);
+  });
+
   const report: string[] = [];
   it.each(LIBRARY.map((e) => [e.id] as const))('%s draws what the canvas drawing does', (id) => {
     const t = buildTemplateById(id);

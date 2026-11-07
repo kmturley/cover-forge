@@ -30,7 +30,6 @@ describe('branding', () => {
       expect(deepest(b.front), name).toBeLessThan(0.25);
       // A side strip runs the full height, so it may be wider than a header is deep (the Game Boy's is 25 % of the front).
       if (b.front.shape === 'strip') expect(b.front.w, name).toBeLessThan(0.3);
-      if (b.backStrip) expect(b.backStrip.w, name).toBeLessThan(0.3);
       for (const m of b.spine?.marks ?? []) {
         expect(m.from, name).toBeGreaterThanOrEqual(0);
         expect(m.to, name).toBeGreaterThan(m.from);

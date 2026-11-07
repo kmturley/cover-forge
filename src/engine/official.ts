@@ -99,14 +99,14 @@ export type FrontHeader =
   /** A block in the top-left corner, `w` × `h`; with `wBottom` its right edge is a diagonal. */
   | { shape: 'tab'; w: number; h: number; wBottom?: number; /** Also paints the top bleed this far across (a share of W), so a logo flush with the top edge has none showing above it. */ lip?: number; fill: Paint; plate?: { top: number; bottom: number; fill: string; line: string }; marks: FrontMark[] }
   /** Full height down the left edge, `w` wide. Its marks run along it. */
-  | { shape: 'strip'; w: number; /** Down the right edge instead of the left (the 3DS's). A curved `edge` is for the left side only. */ side?: 'left' | 'right'; fill: Paint; /** The strip's right edge when it isn't straight. */ edge?: StripEdge; marks: SpanMark[] }
+  | { shape: 'strip'; w: number; /** Down the right edge instead of the left (the 3DS's). A curved `edge` is for the left side only. */ side?: 'left' | 'right'; fill: Paint; /** Fine vertical streaks over the fill: brushed metal. */ brushed?: boolean; /** The strip's right edge when it isn't straight. */ edge?: StripEdge; marks: SpanMark[] }
   | { shape: 'none'; marks: FrontMark[] };
 
 export interface SpineBranding {
   /** Colours the whole spine (Switch red, Wii white). */
   fill?: Paint;
   /** A block at the top of the spine, `length` of L, closed by an optional line. `dome` curves its lower edge up in the middle by that share of L. */
-  cap?: { length: number; fill: Paint; line?: { color: string; size: number; gap?: number }; dome?: number; /** Rounds a corner at the cap's lower edge, left then right, radius in mm. Positive rounds what lies below (the cap's colour fills the gap); negative rounds the cap's own corner. */ corners?: [number, number] };
+  cap?: { length: number; fill: Paint; line?: { color: string; size: number; gap?: number }; dome?: number; /** Fine vertical streaks over the fill: brushed metal. */ brushed?: boolean; /** Rounds a corner at the cap's lower edge, left then right, radius in mm. Positive rounds what lies below (the cap's colour fills the gap); negative rounds the cap's own corner. */ corners?: [number, number] };
   /** A thin outline round the whole spine (or its cap), `mm` thick. `top: false` leaves the top edge off, and `rightFrom`
    * starts the right edge that far down (fraction of L) so it doesn't run along a header that meets it. */
   outline?: { color: string; mm: number; top?: boolean; right?: boolean; rightFrom?: number };
@@ -126,8 +126,6 @@ export interface Branding {
   spine?: SpineBranding;
   /** Small format logos on the back (DVD, CD). */
   back?: FrontMark[];
-  /** A strip down the back cover's left edge (the Game Boy's silver band), drawn like a front `strip`. */
-  backStrip?: { w: number; fill: Paint; marks: SpanMark[] };
   /** Continues the front's band (fill and line, no marks) across the back cover. */
   backBand?: boolean;
 }
@@ -145,7 +143,9 @@ export const XBOX_GREEN = '#0c7a1f';
 const PS4_BLUE: Paint = { x: [[0, '#2e4a8e'], [0.5, '#2063a4'], [1, '#1381c0']] };
 const X360_WHITE = '#ffffff';
 /** The Game Boy's brushed-silver strip (light at the top, darker at the foot, from the fan template) and its blue. */
-const GB_SILVER: Paint = { y: [[0, '#eef5f6'], [0.25, '#e5eff1'], [0.5, '#dae5e7'], [0.75, '#cddcdf'], [1, '#b7c9cd']] };
+const GB_SILVER: Paint = { y: [[0, '#f4fcfd'], [0.15, '#eff7f9'], [0.25, '#ebf5f7'], [0.35, '#e4eff1'], [0.45, '#e0ebed'], [0.55, '#dbe7ea'], [0.65, '#d3e2e5'], [0.75, '#cadbde'], [0.85, '#bcced2'], [0.95, '#b2c4c8'], [1, '#b0c2c6']] };
+/** The spine cap's silver is a little lighter and flatter than the strip's. Both are 2.6 % lighter than the scans' medians, which the brushed texture darkens by that much. */
+const GB_CAP_SILVER: Paint = { y: [[0, '#f5fdfe'], [0.38, '#f2f9fc'], [0.62, '#edf6f8'], [1, '#ebf4f6']] };
 const GB_BLUE = '#001497';
 
 /** A format's small spine cap and back logo (DVD, CD, VHS…), which have no front header. */
@@ -338,20 +338,17 @@ export const GAME_CASE_BRANDING: Record<string, Branding> = {
     spine: { fill: W, titleColor: '#333333', marks: [{ parts: [{ logo: '3ds' }], color: K, from: 0.0344, to: 0.2432, across: 0.8, dx: 0.017, rotate: 90 }] },
   },
   // Game Boy (in a DS-size case): a brushed-silver strip down the left of the front with the Nintendo oval at the top and
-  // GAME BOY in blue reading upwards, a matching narrower band down the left of the back, and a white spine cap with the
-  // wordmark small.
+  // GAME BOY in blue reading upwards, and a brushed-silver spine cap with the wordmark small.
   gb: {
     front: {
       shape: 'strip', w: 0.2515,
-      fill: GB_SILVER,
+      fill: GB_SILVER, brushed: true,
       marks: [
         { parts: [{ logo: 'nintendo', mono: true }], color: '#ed1c24', from: 0.0116, to: 0.0511, across: 0.6, dx: -0.015, rotate: 0 },
         { parts: [{ logo: 'gb', mono: true }], color: GB_BLUE, from: 0.0533, to: 0.9789, across: 0.62, dx: -0.011, rotate: -90 },
       ],
     },
-    // The scans' back has a plain silver band here too (the template has none); its wordmark is left off.
-    backStrip: { w: 0.1077, fill: GB_SILVER, marks: [] },
-    spine: { cap: { length: 0.286, fill: W }, marks: [{ parts: [{ logo: 'gb', mono: true }], color: GB_BLUE, from: 0.0197, to: 0.2657, across: 0.4, dx: 0.018, rotate: 90 }] },
+    spine: { cap: { length: 0.286, fill: GB_CAP_SILVER, brushed: true }, marks: [{ parts: [{ logo: 'gb', mono: true }], color: GB_BLUE, from: 0.0197, to: 0.2657, across: 0.4, dx: 0.018, rotate: 90 }] },
   },
   'wii-u': {
     front: {
