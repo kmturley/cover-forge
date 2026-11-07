@@ -4,7 +4,7 @@ import { paintRect } from '../templates/geometry';
 import { brandHeight, brandPath2D, brandWidth, getBrand, getLogo, type Brand, type Logo } from '../brands';
 import { paintLogoLayers } from './logoLayers';
 import { X360_WAVES, X360_WAVES_SIZE } from './x360Waves.generated';
-import { brandingFor, type FrontHeader, type FrontMark, type Lockup, type Paint, type Part, type SpanMark, type SpineBranding } from './official';
+import { brandingFor, type Brushed, type FrontHeader, type FrontMark, type Lockup, type Paint, type Part, type SpanMark, type SpineBranding } from './official';
 
 /**
  * Draws the "Branded" trade dress (the data is in official.ts). The drawing code doesn't touch a canvas itself: it
@@ -33,6 +33,9 @@ export interface LogoPart {
   mono?: boolean;
   shadow?: MarkShadow;
   emboss?: MarkEmboss;
+  bevel?: MarkShadow[];
+  /** Stretch the artwork to this width, whatever its shape: shading, not a mark. */
+  stretchWidthPx?: number;
 }
 
 export interface Sink {
@@ -76,7 +79,7 @@ function ink(fill: Paint, x: number, y: number, w: number, h: number): Ink {
  * streaks are alike (the Game Boy strip's measure 0.67 correlation at one pixel, with a spread of about 5 of 255).
  * The same seed gives the same streaks every time.
  */
-function brushedInk(x: number, w: number, widthMm: number, seed: number): Ink {
+function brushedInk(x: number, w: number, widthMm: number, seed: number, strength = 1): Ink {
   const n = Math.max(8, Math.round(widthMm / 0.1));
   let a = seed >>> 0;
   const rand = () => {
@@ -90,9 +93,18 @@ function brushedInk(x: number, w: number, widthMm: number, seed: number): Ink {
   const stops: [number, string][] = [];
   for (let i = 0; i <= n; i++) {
     v = 0.55 * v + 0.835 * gauss();
-    stops.push([i / n, `rgba(0,0,0,${Math.min(0.08, Math.max(0, 0.025 + 0.022 * v)).toFixed(3)})`]);
+    stops.push([i / n, `rgba(0,0,0,${(strength * Math.min(0.08, Math.max(0, 0.025 + 0.022 * v))).toFixed(3)})`]);
   }
   return { line: [x, 0, x + w, 0], stops };
+}
+
+/** Draws the streaks in `rows` lengths down the height from `top`; `fill` paints one length with its ink. */
+function drawBrushed(s: Sink, b: Brushed, id: string, x: number, w: number, top: number, h: number, widthMm: number, seed: number, p: PanelRect, fill: (y0: number, y1: number, i: Ink) => void) {
+  const { strength, rows } = b === true || b === false ? { strength: 1, rows: 1 } : b;
+  for (let r = 0; r < rows; r++) {
+    s.begin(rows === 1 ? `${id}-brush` : `${id}-brush-${r + 1}`, 'Brushed texture', p);
+    fill(top + (h * r) / rows, top + (h * (r + 1)) / rows, brushedInk(x, w, widthMm, seed + r * 101, strength));
+  }
 }
 
 const partH = (p: Part) => ('h' in p && p.h) || 1;
@@ -136,7 +148,7 @@ function part(s: Sink, p: Part, color: string, unit: number, gapUnits: number): 
   const l = getLogo(p.logo);
   if (!l) return { w: 0, h: 0, draw: () => {} };
   const g = logoPartGeometry(l, p);
-  return { w: g.bw * (h / g.bh), h, draw: (x, y) => s.logo(l, { only: p.only, crop: p.crop, mono: p.mono, shadow: p.shadow, emboss: p.emboss }, x, y, h, fill) };
+  return { w: g.bw * (h / g.bh), h, draw: (x, y) => s.logo(l, { only: p.only, crop: p.crop, mono: p.mono, shadow: p.shadow, emboss: p.emboss, bevel: p.bevel }, x, y, h, fill) };
 }
 
 /** The artwork a logo part draws, in the logo's own coordinates: its top-left, size and which of its layers. */
@@ -207,12 +219,21 @@ function drawFrontMark(s: Sink, m: FrontMark, area: { x: number; w: number }, p:
   box.draw(x, y);
 }
 
-/** Stretches a shade-*.svg logo over a strip or cap: its artwork is exactly the shape of the area it shades. */
-function drawSheen(s: Sink, id: string | undefined, pieceId: string, x: number, y: number, h: number, p: PanelRect) {
+/** A shade-*.svg has 10 units to the mm and 3 mm of bleed past each end it has one at. */
+const SHEEN_BLEED_UNITS = 30;
+
+/**
+ * Stretches a shade-*.svg over a strip or cap. Its width becomes `w`, and its trim (not its bleed) lands on the `len`
+ * from `trimTop`, so it lines up on any panel: a Box's front is wider and has no bleed of its own. What overshoots is
+ * clipped to the panel. A strip's shading has bleed at both ends, a cap's only at the top.
+ */
+function drawSheen(s: Sink, id: string | undefined, pieceId: string, x: number, w: number, trimTop: number, len: number, bothEnds: boolean, p: PanelRect) {
   const l = id ? getLogo(id) : undefined;
   if (!l) return;
+  const bleed = SHEEN_BLEED_UNITS / (l.bbox[3] - l.bbox[1]);
+  const total = len / (1 - bleed * (bothEnds ? 2 : 1));
   s.begin(`${pieceId}-sheen`, 'Shading', p);
-  s.logo(l, {}, x, y, h, '#000');
+  s.logo(l, { stretchWidthPx: w }, x, trimTop - bleed * total, total, '#000');
 }
 
 /** Draws the header, spine caps and back logos. `px` is pixels per mm. */
@@ -306,7 +327,7 @@ function drawFront(s: Sink, t: TemplateConfig, p: PanelRect, h: FrontHeader, px:
       // The edge is sampled down the panel: a border-coloured shape out to the edge, then the strip's own colour
       // pulled back by the border's thickness, further in a cut.
       const e = h.edge;
-      const bw = e.border.mm * px;
+      const bw = (e.border?.mm ?? 0) * px;
       const [W2, top, bottom] = [p.widthMm * px, sy, sy + sh];
       const clampT = (y: number) => Math.min(1, Math.max(0, (y - y0) / H));
       const outer = (y: number) => x0 + e.depth(clampT(y)) * W2;
@@ -318,31 +339,32 @@ function drawFront(s: Sink, t: TemplateConfig, p: PanelRect, h: FrontHeader, px:
         const k = Math.min(ramp(t, e.cut.from, e.cut.hold[0]), 1 - ramp(t, e.cut.hold[1], e.cut.to));
         return base + (x0 + e.cut.inset * W2 - base) * k;
       };
-      const shape = (edge: (y: number) => number): PathOp[] => {
-        const ops: PathOp[] = [['M', ax, top]];
-        const steps = 96;
+      const shape = (edge: (y: number) => number, y0 = top, y1 = bottom): PathOp[] => {
+        const ops: PathOp[] = [['M', ax, y0]];
+        const steps = Math.max(2, Math.round((96 * (y1 - y0)) / (bottom - top)));
         for (let i = 0; i <= steps; i++) {
-          const y = top + ((bottom - top) * i) / steps;
+          const y = y0 + ((y1 - y0) * i) / steps;
           ops.push(['L', edge(y), y]);
         }
-        ops.push(['L', ax, bottom], ['Z']);
+        ops.push(['L', ax, y1], ['Z']);
         return ops;
       };
-      s.begin(`${key}.strip-border`, 'Strip border', p);
-      s.fillPath(shape(outer), e.border.color);
+      if (e.border) {
+        s.begin(`${key}.strip-border`, 'Strip border', p);
+        s.fillPath(shape(outer), e.border.color);
+      }
       s.begin(`${key}.strip`, 'Side strip', p);
       s.fillPath(shape(inner), ink(h.fill, ax, sy, sw, sh));
+      drawSheen(s, h.sheen, `${key}.strip`, ax, sw, y0, H, true, p);
+      if (h.brushed) drawBrushed(s, h.brushed, `${key}.strip`, ax, sw, top, bottom - top, sw / px, 7, p, (y0, y1, i) => s.fillPath(shape(inner, y0, y1), i));
     } else {
       s.begin(`${key}.strip`, 'Side strip', p);
       // On the right the paint runs on past the trim into the bleed.
       const sx = h.side === 'right' ? x0 + W - sw : ax;
       const rw = h.side === 'right' ? ax + aw - sx : x0 + sw - ax;
       s.fillRect(sx, sy, rw, sh, ink(h.fill, sx, sy, rw, sh));
-      drawSheen(s, h.sheen, `${key}.strip`, sx, sy, sh, p);
-      if (h.brushed) {
-        s.begin(`${key}.strip-brush`, 'Brushed texture', p);
-        s.fillRect(sx, sy, rw, sh, brushedInk(sx, rw, rw / px, 7));
-      }
+      drawSheen(s, h.sheen, `${key}.strip`, sx, rw, y0, H, true, p);
+      if (h.brushed) drawBrushed(s, h.brushed, `${key}.strip`, sx, rw, sy, sh, rw / px, 7, p, (y0, y1, i) => s.fillRect(sx, y0, rw, y1 - y0, i));
     }
     const stripX = h.side === 'right' ? x0 + W - sw : x0;
     h.marks.forEach((m, i) => drawSpan(s, m, { x: stripX, y: y0, across: sw, along: H }, 'vertical', px, p, `${key}.mark-${i + 1}`));
@@ -413,7 +435,7 @@ function drawSpan(s: Sink, m: SpanMark, frame: { x: number; y: number; across: n
   const vertical = orientation === 'vertical';
   const start = m.from * frame.along;
   const len = (m.to - m.from) * frame.along;
-  const shift = (m.dx ?? 0) * frame.across;
+  const shift = (m.dx ?? 0) * frame.across + (m.dxAlong ?? 0) * frame.along;
   const [cx, cy] = vertical ? [frame.x + frame.across / 2 + shift, frame.y + start + len / 2] : [frame.x + start + len / 2, frame.y + frame.across / 2 + shift];
   if (m.plate) {
     const pw = frame.across * (m.plateAcross ?? 1);
@@ -462,11 +484,8 @@ function drawSpine(s: Sink, t: TemplateConfig, p: PanelRect, sp: SpineBranding, 
       const left: PathOp[] = rl >= 0 ? [['L', cx0 + rl, bottom], ['Q', cx0, bottom, cx0, bottom + rl]] : [['L', cx0 - rl, bottom], ['Q', cx0, bottom, cx0, bottom + rl]];
       s.fillPath([['M', cx0, cy0], ['L', cx0 + cw, cy0], ...right, ...left, ['Z']], capInk);
     } else s.fillRect(rect[0], rect[1], rect[2], rect[3], capInk);
-    drawSheen(s, sp.cap.sheen, `${key}.cap`, rect[0], rect[1], rect[3], p);
-    if (sp.cap.brushed) {
-      s.begin(`${key}.cap-brush`, 'Brushed texture', p);
-      s.fillRect(rect[0], rect[1], rect[2], rect[3], brushedInk(rect[0], rect[2], rect[2] / px, 11));
-    }
+    drawSheen(s, sp.cap.sheen, `${key}.cap`, rect[0], rect[2], y0, len, false, p);
+    if (sp.cap.brushed) drawBrushed(s, sp.cap.brushed, `${key}.cap`, rect[0], rect[2], rect[1], rect[3], rect[2] / px, 11, p, (y0, y1, i) => s.fillRect(rect[0], y0, rect[2], y1 - y0, i));
     if (sp.cap.line) {
       const t2 = sp.cap.line.size * along;
       const gap = (sp.cap.line.gap ?? 0) * along;
@@ -610,13 +629,13 @@ export class CanvasSink implements Sink {
     const k = heightPx / bh;
     ctx.save();
     ctx.translate(x, y);
-    ctx.scale(k, k);
+    ctx.scale(p.stretchWidthPx !== undefined ? p.stretchWidthPx / bw : k, k);
     if (p.crop) {
       ctx.beginPath();
       ctx.rect(0, 0, bw, bh);
       ctx.clip();
     }
-    paintLogoLayers(ctx, l, used, -bx, -by, color, !!p.mono, { shadow: p.shadow, emboss: p.emboss });
+    paintLogoLayers(ctx, l, used, -bx, -by, color, !!p.mono, { shadow: p.shadow, emboss: p.emboss, bevel: p.bevel });
     ctx.restore();
   }
 }

@@ -58,16 +58,19 @@ Fold lines detected from the image in 3/4; estimated from a known spine width in
 
 Fold lines detected from the image in 2/4; estimated from a known spine width in 2/4.
 
-## gba  (n=3)
+## gba  (n=4)
 
 | File | DPI | Width mm | Height mm | Back mm | Spine mm | Spine 2 mm | Front mm | Spine source | Band % H | Band shape | Band colour | Band end colour | Spine cap % L | Notes |
 | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
-| battlebdamanfirespirits.jpg | 300 | 278.6 | 117.3 | — | — | — | — | none | — | none | — | — | — | Could not confidently locate the back|spine and spine|front fold lines, and no known spine width for this folder to fall back on. |
+| battlebdamanfirespirits.jpg | 300 | 278.6 | 117.3 | 131.3 | 15.9 | — | 131.3 | estimated | 6.8 | gradient | #6d68ab | #f6f6f6 | 28.3 | Fold lines not detected; estimated from gba's known 16 mm spine, assuming equal front/back width. |
 | candylandchutesandladdersmemory.jpg | 300 | 278.6 | 117.3 | 135.6 | 3.5 | — | 139.5 | detected | 31.3 | gradient | #8c9aa0 | #30315f | — |  |
-| cheetahgirlsthe.jpg | 300 | 278.6 | 117.3 | — | — | — | — | none | — | none | — | — | — | Could not confidently locate the back|spine and spine|front fold lines, and no known spine width for this folder to fall back on. |
-| **Mode** | | **278.6** | **117.3** | **135.6** | **3.5** | **—** | **139.5** | | **31.3** | | **#8c9aa0** | **#30315f** | **—** | |
+| cheetahgirlsthe.jpg | 300 | 278.6 | 117.3 | 131.3 | 15.9 | — | 131.3 | estimated | 14.0 | gradient | #6d68ab | #f5f5f5 | — | Fold lines not detected; estimated from gba's known 16 mm spine, assuming equal front/back width. |
+| template.png | 300 | 278.6 | 117.3 | 131.3 | 15.9 | — | 131.3 | estimated | 13.9 | gradient | #e1e1e1 | #da3ad9 | 28.3 | No symmetric spine strip found; estimated from gba's known 16 mm spine, assuming equal front/back width. |
+| **Mode** | | **278.6** | **117.3** | **131.3** | **15.9** | **—** | **131.3** | | **14.0** | | **#6d68ab** | **#e898e7** | **28.3** | |
+| app (rendered) | 300 | 276.0 | 116.0 | 130.0 | 16.0 | — | 130.0 | known | 10.7 | gradient | #f6f7f7 | #707173 | 28.3 |  |
+| *app − Mode* | | -2.5 | -1.4 | -1.4 | +0.1 | — | -1.3 | | -3.2 | = | 212 | 171 | +0.0 | |
 
-Fold lines detected from the image in 1/3; estimated from a known spine width in 0/3.
+Fold lines detected from the image in 1/4; estimated from a known spine width in 3/4.
 
 ## gbc  (n=4)
 

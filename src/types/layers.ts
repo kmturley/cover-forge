@@ -49,6 +49,7 @@ export type Stops = [number, string][];
 
 /** A soft shadow behind a mark, its offset and blur (a Gaussian's standard deviation) as fractions of the mark's height. */
 export interface MarkShadow { color: string; dx: number; dy: number; blur: number }
+/** `bevel` on a mark is a list of these drawn as inner shadows: shading the source file doesn't have, up the mark's edges. */
 /** Scales a logo's inner shadows from its source file: `alpha` their strength, `blur` their softness. */
 export interface MarkEmboss { alpha: number; blur: number }
 
@@ -67,8 +68,9 @@ export type ImageSource =
   /**
    * A built-in vector mark from src/brands. `only` keeps some of a logo's layers, `crop` a share of its artwork
    * ([left, top, right, bottom], as fractions of its bounds) and `mono` paints every layer in the one colour.
+   * `stretch` fills the layer's box whatever its shape, for shading (a logo is never distorted otherwise).
    */
-  | { kind: 'vector'; id: string; only?: number[]; crop?: [number, number, number, number]; mono?: boolean; shadow?: MarkShadow; emboss?: MarkEmboss }
+  | { kind: 'vector'; id: string; only?: number[]; crop?: [number, number, number, number]; mono?: boolean; shadow?: MarkShadow; emboss?: MarkEmboss; bevel?: MarkShadow[]; stretch?: boolean }
   /** An uploaded or linked image kept in the session's asset library, the same on every item. */
   | { kind: 'asset'; id: string };
 

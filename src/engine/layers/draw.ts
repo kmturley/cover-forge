@@ -124,7 +124,7 @@ export function transformOf(l: ImageLayer, panel: PanelRect, aspect: number): Pa
 /** The part of a built-in mark an image layer draws (all of it unless the layer says otherwise). */
 export function markOptions(l: ImageLayer): MarkOptions | undefined {
   const s = l.source;
-  return s?.kind === 'vector' && (s.only || s.crop || s.mono || s.shadow || s.emboss) ? { only: s.only, crop: s.crop, mono: s.mono, shadow: s.shadow, emboss: s.emboss } : undefined;
+  return s?.kind === 'vector' && (s.only || s.crop || s.mono || s.shadow || s.emboss || s.bevel || s.stretch) ? { only: s.only, crop: s.crop, mono: s.mono, shadow: s.shadow, emboss: s.emboss, bevel: s.bevel, stretch: s.stretch } : undefined;
 }
 
 /** A mark layer's placement and look in the shape the logo helpers take. */

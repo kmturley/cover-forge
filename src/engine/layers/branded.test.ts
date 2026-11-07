@@ -5,6 +5,7 @@ import { buildTemplateById, canvasSizePx } from '../../templates';
 import { diff } from '../regression/render';
 import '../regression/render'; // installs Path2D for Node
 import { drawOfficial } from '../branding';
+import { brandingFor, type FrontHeader } from '../official';
 import { BASE_BACKGROUND } from '../resolve';
 import { brandedFolderId, brandedLayers, setTextMeasurer } from './branded';
 import { drawLayers } from './draw';
@@ -63,6 +64,45 @@ describe('the dress as layers', () => {
     expect(brandedLayers(t).layers).toEqual(a);
     // The back has no band.
     expect(a.some((l) => l.target === 'back' && l.type !== 'group')).toBe(false);
+  });
+
+  it('breaks the Game Boy Advance brushing into faint short lengths inside the curve', () => {
+    const { layers } = brandedLayers(buildTemplateById('game-case-gba'));
+    const lengths = layers.filter((l) => l.id.startsWith('branded.front.strip-brush-'));
+    expect(lengths).toHaveLength(10);
+    const stops = (l: (typeof lengths)[number]) => (l as unknown as { fill: { stops: [number, string][] } }).fill.stops;
+    // Each length has its own streaks, and none is as strong as the Game Boy's.
+    expect(stops(lengths[0])).not.toEqual(stops(lengths[1]));
+    for (const l of lengths) for (const [, c] of stops(l)) expect(Number(c.match(/,([\d.]+)\)$/)![1])).toBeLessThan(0.03);
+    expect(layers.some((l) => l.id === 'branded.front.strip-sheen')).toBe(true);
+  });
+
+  // The shading must reach every edge of what it shades on any piece: a Box's panels are a different shape from the case's.
+  it.each(['game-case-gba', 'game-case-gba~slipcover', 'game-case-gba~box', 'game-case-gbc', 'game-case-gbc~box'])('%s: the shading fills the strip and cap, leaving no pale border', (id) => {
+    const t = buildTemplateById(id);
+    const layers = brandedLayers(t).layers;
+    const { data, width } = render(t, (ctx) => drawLayers({ ctx, template: t, item: null, px: PX, getImage: () => null }, layers));
+    const at = (xMm: number, yMm: number) => {
+      const i = (Math.round(xMm * PX) + Math.round(yMm * PX) * width) * 4;
+      return (data[i] + data[i + 1] + data[i + 2]) / 3;
+    };
+    const front = t.panels.find((p) => p.id === 'front')!;
+    const spine = t.panels.find((p) => p.id === 'spine')!;
+    const branding = brandingFor(t.kind, t.variantId);
+    const strip = branding.front as Extract<FrontHeader, { shape: 'strip' }>;
+    // Down the strip's right edge, just inside it: darker than the bare white base wherever the template is shaded.
+    const edgeAt = (f: number) => front.xMm + (strip.edge ? strip.edge.depth(f) : strip.w) * front.widthMm - 1;
+    expect(at(edgeAt(0.8), front.yMm + 0.8 * front.heightMm), 'strip edge').toBeLessThan(235);
+    // Down the cap's sides, it must reach the panel's width.
+    const capY = spine.yMm + 0.45 * branding.spine!.cap!.length * spine.heightMm;
+    expect(Math.min(at(spine.xMm + 0.5, capY), at(spine.xMm + spine.widthMm - 1, capY)), 'cap sides').toBeLessThan(240);
+  });
+
+  it('keeps the side-by-side spine logos together when the spine is wider', () => {
+    for (const v of ['gba', 'gbc']) for (const m of brandingFor('game-case', v).spine!.marks) {
+      expect(m.dx, v).toBeUndefined();
+      expect(m.dxAlong, v).toBeDefined();
+    }
   });
 
   const report: string[] = [];

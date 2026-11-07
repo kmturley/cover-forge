@@ -274,7 +274,7 @@ class LayerSink implements Sink {
     const layer: ImageLayer = {
       ...this.base(rect, rotationDeg),
       type: 'image',
-      source: { kind: 'vector', id, ...(part.only && { only: part.only }), ...(part.crop && { crop: part.crop }), ...(part.mono && { mono: true }), ...(part.shadow && { shadow: part.shadow }), ...(part.emboss && { emboss: part.emboss }) },
+      source: { kind: 'vector', id, ...(part.only && { only: part.only }), ...(part.crop && { crop: part.crop }), ...(part.mono && { mono: true }), ...(part.shadow && { shadow: part.shadow }), ...(part.emboss && { emboss: part.emboss }), ...(part.bevel && { bevel: part.bevel }), ...(part.stretchWidthPx !== undefined && { stretch: true }) },
       fit: 'fit',
       focus: { x: 50, y: 50 },
       tint: color,
@@ -288,7 +288,7 @@ class LayerSink implements Sink {
 
   logo(l: Logo, part: LogoPart, x: number, y: number, heightPx: number, color: string) {
     const g = logoPartGeometry(l, part);
-    this.mark(l.id, g.bw * (heightPx / g.bh), heightPx, x, y, color, part);
+    this.mark(l.id, part.stretchWidthPx ?? g.bw * (heightPx / g.bh), heightPx, x, y, color, part);
   }
 }
 
