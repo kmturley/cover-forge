@@ -343,12 +343,15 @@ const GAME_CASE: Record<string, { label: string; w: number; h: number; spine: nu
   'gbc':       { label: 'Game Boy Color',      w: 130,   h: 116, spine: 16,   color: '#e4eaee' },
   // The scans measure 131.7 + 15.2 + 131.7 × 117.3 mm, but it is the same DS-size case as the others (case-research.md §18).
   'gba':       { label: 'Game Boy Advance',    w: 130,   h: 116, spine: 16,   color: '#b4bcc1' },
+  // The scans in scans/nes are the retail box's wrap: 293.8 × 176.1 mm, front 133, spine 28. An NES cartridge is about 120 × 134 × 17-20 mm
+  // (ConsoleMods), so no case here holds it. A NES-size clamshell does (case-research.md §20), and the insert follows the scans.
+  'nes':       { label: 'NES',                 w: 133,   h: 176, spine: 28,   color: '#26262a' },
   // From the 276 × 116 mm covers in scans/ds: front 130 × 116, spine 16.
-  'ds':        { label: 'Nintendo DS',         w: 130,   h: 116, spine: 16,   color: '#b9bcc2' },
+  'ds':        { label: 'DS',                  w: 130,   h: 116, spine: 16,   color: '#b9bcc2' },
   // The scans in scans/3ds measure 131 × 116 front, spine 12; the front is 130 like the DS, which shares its case's footprint (case-research.md §15).
-  '3ds':       { label: 'Nintendo 3DS',        w: 130,   h: 116, spine: 12,   color: '#1a1a1a' },
-  'switch':    { label: 'Nintendo Switch',     w: 99,    h: 161, spine: 10,   color: '#e60012' },
-  'switch2':   { label: 'Nintendo Switch 2',   w: 99,    h: 161, spine: 10,   color: '#e60012' },
+  '3ds':       { label: '3DS',                 w: 130,   h: 116, spine: 12,   color: '#1a1a1a' },
+  'switch':    { label: 'Switch',              w: 99,    h: 161, spine: 10,   color: '#e60012' },
+  'switch2':   { label: 'Switch 2',            w: 99,    h: 161, spine: 10,   color: '#e60012' },
   'wii-u':     { label: 'Wii U',               w: 129.5, h: 183, spine: 14,   color: '#0096d6' },
   'wii':       { label: 'Wii',                 w: 129.5, h: 183, spine: 14,   color: '#ffffff' },
   'gamecube':  { label: 'GameCube',            w: 129.5, h: 183, spine: 14,   color: '#000000' },

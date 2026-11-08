@@ -81,6 +81,7 @@ const KNOWN_SPINE_MM: Record<string, number> = {
   gb: 16,
   gbc: 16,
   gba: 16,
+  nes: 28,
   '3ds': 12,
   switch: 10,
   switch2: 10,

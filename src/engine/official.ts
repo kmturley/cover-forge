@@ -171,6 +171,8 @@ const GBA_WHITE_SHADOW: MarkShadow = { color: 'rgba(25,30,34,0.65)', dx: 0.065, 
 const GBA_WHITE_BEVEL: MarkShadow[] = [{ color: 'rgba(110,118,122,0.95)', dx: -0.04, dy: -0.04, blur: 0.03 }];
 const GBA_BLACK_SHADOW: MarkShadow = { color: 'rgba(0,0,0,0.55)', dx: 0.07, dy: 0.07, blur: 0.09 };
 const GBA_BLACK_BEVEL: MarkShadow[] = [{ color: 'rgba(215,220,224,0.6)', dx: 0.04, dy: 0.04, blur: 0.04 }];
+/** nes.svg's ENTERTAINMENT SYSTEM letters: its layers 0 to 18 (layer 19 is the red oval). */
+const NES_TEXT = Array.from({ length: 19 }, (_, i) => i);
 const GBC_BLUE = '#0b25b0';
 const GBC_WORD_SHADOW: MarkShadow = { color: 'rgba(20,28,38,0.55)', dx: 0.075, dy: 0.075, blur: 0.04 };
 const GBC_COLOR_SHADOW: MarkShadow = { color: 'rgba(20,28,38,0.5)', dx: 0.06, dy: 0.06, blur: 0.035 };
@@ -435,6 +437,20 @@ export const GAME_CASE_BRANDING: Record<string, Branding> = {
         { parts: [{ logo: 'advance', mono: true, shadow: GBA_BLACK_SHADOW, bevel: GBA_BLACK_BEVEL }], color: GBA_INK, from: 0.026, to: 0.2568, across: 0.3, dxAlong: -0.0177, rotate: 90 },
         { parts: [{ logo: 'gba', only: [0, 1], shadow: GBA_WHITE_SHADOW, bevel: GBA_WHITE_BEVEL }], color: W, from: 0.0312, to: 0.156, across: 0.25, dxAlong: 0.0207, rotate: 90 },
         { parts: [{ logo: 'gba', only: [2, 3] }], color: GBA_INK, from: 0.1502, to: 0.1584, across: 0.08, dxAlong: 0.0103, rotate: 90 },
+      ],
+    },
+  },
+  // NES: nothing on the front (the Seal of Quality and licence line belong to the game's own art). The spine is a black cap,
+  // 27.5 % of the length (the fan template's is 31.7 %, shortened with the smaller logos), with the red Nintendo oval at the right and ENTERTAINMENT SYSTEM at the left,
+  // both reading down and centred on the cap's length, drawn about 25 % smaller than the template's (it dominated the spine). nes.svg holds the oval (layer 19) and the two rows of text (0-18) with
+  // their own colours, so they are separate marks: the oval is narrower than the text, which the template shows.
+  nes: {
+    front: { shape: 'none', marks: [] },
+    spine: {
+      cap: { length: 0.275, fill: K },
+      marks: [
+        { parts: [{ logo: 'nes', only: [19] }], color: W, from: 0.0532, to: 0.2232, across: 0.27, dx: 0.107, rotate: 90 },
+        { parts: [{ logo: 'nes', only: NES_TEXT }], color: W, from: 0.035, to: 0.24, across: 0.205, dx: -0.162, rotate: 90 },
       ],
     },
   },

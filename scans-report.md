@@ -67,8 +67,8 @@ Fold lines detected from the image in 2/4; estimated from a known spine width in
 | cheetahgirlsthe.jpg | 300 | 278.6 | 117.3 | 131.3 | 15.9 | — | 131.3 | estimated | 14.0 | gradient | #6d68ab | #f5f5f5 | — | Fold lines not detected; estimated from gba's known 16 mm spine, assuming equal front/back width. |
 | template.png | 300 | 278.6 | 117.3 | 131.3 | 15.9 | — | 131.3 | estimated | 13.9 | gradient | #e1e1e1 | #da3ad9 | 28.3 | No symmetric spine strip found; estimated from gba's known 16 mm spine, assuming equal front/back width. |
 | **Mode** | | **278.6** | **117.3** | **131.3** | **15.9** | **—** | **131.3** | | **14.0** | | **#6d68ab** | **#e898e7** | **28.3** | |
-| app (rendered) | 300 | 276.0 | 116.0 | 130.0 | 16.0 | — | 130.0 | known | 10.7 | gradient | #f6f7f7 | #707173 | 28.3 |  |
-| *app − Mode* | | -2.5 | -1.4 | -1.4 | +0.1 | — | -1.3 | | -3.2 | = | 212 | 171 | +0.0 | |
+| app (rendered) | 300 | 276.0 | 116.0 | 130.0 | 16.0 | — | 130.0 | known | 10.7 | gradient | #f5f6f7 | #515456 | 28.3 |  |
+| *app − Mode* | | -2.5 | -1.4 | -1.4 | +0.1 | — | -1.3 | | -3.2 | = | 211 | 220 | +0.0 | |
 
 Fold lines detected from the image in 1/4; estimated from a known spine width in 3/4.
 
@@ -94,6 +94,18 @@ Fold lines detected from the image in 2/4; estimated from a known spine width in
 | **Mode** | | **304.8** | **104.1** | **—** | **—** | **—** | **—** | | **—** | | **—** | **—** | **—** | |
 
 Fold lines detected from the image in 0/1; estimated from a known spine width in 0/1.
+
+## nes  (n=4)
+
+| File | DPI | Width mm | Height mm | Back mm | Spine mm | Spine 2 mm | Front mm | Spine source | Band % H | Band shape | Band colour | Band end colour | Spine cap % L | Notes |
+| :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
+| dicktracy.jpg | 300 | 293.8 | 176.1 | 132.8 | 28.3 | — | 132.8 | detected | 5.9 | flat | #fff307 | — | 31.7 |  |
+| ghostbusters.jpg | 300 | 293.8 | 176.1 | 141.8 | 10.1 | — | 141.9 | detected | 4.9 | flat | #000000 | — | — |  |
+| iceclimber.jpg | 300 | 293.8 | 176.1 | 125.3 | 48.5 | — | 120.0 | detected | 6.3 | flat | #000000 | — | — |  |
+| template.png | 300 | 293.8 | 176.1 | 132.9 | 27.9 | — | 132.9 | estimated | — | none | — | — | — | No symmetric spine strip found; estimated from nes's known 28 mm spine, assuming equal front/back width.; Nothing printed on the front panel: no header band. |
+| **Mode** | | **293.8** | **176.1** | **132.8** | **28.1** | **—** | **132.8** | | **5.9** | | **#000000** | **—** | **31.7** | |
+
+Fold lines detected from the image in 3/4; estimated from a known spine width in 1/4.
 
 ## pc  (n=0)
 
@@ -183,8 +195,8 @@ Fold lines detected from the image in 1/4; estimated from a known spine width in
 | injusticegodsamongusultimateedition.jpg | 300 | 206.7 | 124.0 | 98.8 | 9.1 | — | 98.8 | estimated | 3.2 | gradient | #245786 | #2285b7 | 18.6 | Colour profile EPSON  sRGB converted to sRGB.; Fold lines not detected; estimated from psvita's known 9 mm spine, assuming equal front/back width. |
 | template.png | 300 | 208.0 | 125.0 | 98.3 | 11.4 | — | 98.3 | detected | 7.5 | gradient | #153d83 | #028cd4 | 18.7 |  |
 | **Mode** | | **207.3** | **124.6** | **98.6** | **10.2** | **—** | **98.3** | | **4.3** | | **#153c83** | **#0289c8** | **18.7** | |
-| app (rendered) | 300 | 207.0 | 125.0 | 99.0 | 9.0 | — | 99.1 | known | 7.5 | gradient | #133d84 | #028dd4 | 18.6 |  |
-| *app − Mode* | | -0.3 | +0.3 | +0.4 | -1.3 | — | +0.8 | | +3.2 | = | 2 | 13 | -0.1 | |
+| app (rendered) | 300 | 207.0 | 125.0 | 99.0 | 9.0 | — | 99.1 | known | 8.3 | gradient | #133d84 | #028dd4 | 18.6 |  |
+| *app − Mode* | | -0.3 | +0.3 | +0.4 | -1.3 | — | +0.8 | | +4.0 | = | 2 | 13 | -0.1 | |
 
 Fold lines detected from the image in 2/4; estimated from a known spine width in 2/4.
 
@@ -281,8 +293,8 @@ Fold lines detected from the image in 2/4; estimated from a known spine width in
 | residentevil5.jpg | 300 | 267.2 | 147.8 | 128.1 | 11.0 | — | 128.1 | estimated | — | none | — | — | — | Fold lines not detected; estimated from xboxone's known 11 mm spine, assuming equal front/back width.; No header band detected on the front panel (may be sloped/curved, or none). |
 | template.png | 300 | 266.0 | 148.0 | 126.9 | 12.7 | — | 126.4 | detected | 10.5 | flat | #0e7a0d | — | 10.5 |  |
 | **Mode** | | **266.6** | **147.9** | **128.1** | **11.0** | **—** | **128.1** | | **10.5** | | **#266c1e** | **#8b5557** | **10.5** | |
-| app (rendered) | 300 | 267.0 | 149.0 | 128.0 | 11.0 | — | 128.0 | known | 10.5 | flat | #107c10 | — | 10.5 |  |
-| *app − Mode* | | +0.4 | +1.1 | -0.1 | +0.0 | — | -0.1 | | -0.0 | ≠ | 31 | — | -0.0 | |
+| app (rendered) | 300 | 267.0 | 149.0 | 128.0 | 11.0 | — | 128.0 | known | 10.5 | flat | #0c7a1f | — | 10.5 |  |
+| *app − Mode* | | +0.4 | +1.1 | -0.1 | +0.0 | — | -0.1 | | -0.0 | ≠ | 30 | — | -0.0 | |
 
 Fold lines detected from the image in 2/4; estimated from a known spine width in 2/4.
 
@@ -295,7 +307,7 @@ Fold lines detected from the image in 2/4; estimated from a known spine width in
 | xbox_series_x.starfield_US.17052118541212334574.jpg | 300 | 266.0 | 156.9 | — | — | — | — | none | — | none | — | — | — | Could not confidently locate the back|spine and spine|front fold lines, and no known spine width for this folder to fall back on. |
 | template.png | 300 | 266.0 | 148.0 | 126.9 | 12.7 | — | 126.4 | detected | 10.5 | flat | #0e7a0d | — | 10.5 |  |
 | **Mode** | | **266.0** | **156.4** | **127.1** | **12.2** | **—** | **126.7** | | **10.0** | | **#34940d** | **—** | **10.0** | |
-| app (rendered) | 300 | 267.0 | 149.0 | 128.0 | 11.0 | — | 128.0 | known | 10.5 | flat | #107c10 | — | 10.5 |  |
+| app (rendered) | 300 | 267.0 | 149.0 | 128.0 | 11.0 | — | 128.0 | known | 10.5 | gradient | #107c10 | #d2e5d2 | 10.5 |  |
 | *app − Mode* | | +1.0 | -7.4 | +0.9 | -1.2 | — | +1.3 | | +0.5 | ≠ | 43 | — | +0.5 | |
 
 Fold lines detected from the image in 2/4; estimated from a known spine width in 0/4.
