@@ -149,6 +149,10 @@ const NINTENDO_RED = '#da1820';
 const SWITCH2_RED = '#f20c0d';
 /** The Xbox One and Series covers' green, shared with the 3D case colour. */
 export const XBOX_GREEN = '#0c7a1f';
+/** Xbox green from Microsoft's brand book (R16 G124 B16). The scans print far brighter (#46a918 to #63b210), so they aren't the reference. */
+const SERIES_GREEN = '#107c10';
+/** The Xbox 360 logo without its ® (the last layer), which the front cover doesn't print. */
+const X360_NO_REGISTERED = Array.from({ length: 22 }, (_, i) => i);
 
 const PS4_BLUE: Paint = { x: [[0, '#2e4a8e'], [0.5, '#2063a4'], [1, '#1381c0']] };
 const X360_WHITE = '#ffffff';
@@ -167,6 +171,8 @@ const GBA_WHITE_SHADOW: MarkShadow = { color: 'rgba(25,30,34,0.65)', dx: 0.065, 
 const GBA_WHITE_BEVEL: MarkShadow[] = [{ color: 'rgba(110,118,122,0.95)', dx: -0.04, dy: -0.04, blur: 0.03 }];
 const GBA_BLACK_SHADOW: MarkShadow = { color: 'rgba(0,0,0,0.55)', dx: 0.07, dy: 0.07, blur: 0.09 };
 const GBA_BLACK_BEVEL: MarkShadow[] = [{ color: 'rgba(215,220,224,0.6)', dx: 0.04, dy: 0.04, blur: 0.04 }];
+/** nes.svg's ENTERTAINMENT SYSTEM letters: its layers 0 to 18 (layer 19 is the red oval). */
+const NES_TEXT = Array.from({ length: 19 }, (_, i) => i);
 const GBC_BLUE = '#0b25b0';
 const GBC_WORD_SHADOW: MarkShadow = { color: 'rgba(20,28,38,0.55)', dx: 0.075, dy: 0.075, blur: 0.04 };
 const GBC_COLOR_SHADOW: MarkShadow = { color: 'rgba(20,28,38,0.5)', dx: 0.06, dy: 0.06, blur: 0.035 };
@@ -241,9 +247,11 @@ export const GAME_CASE_BRANDING: Record<string, Branding> = {
     front: {
       shape: 'strip', w: 0.155, fill: K,
       marks: [
-        { parts: [{ stack: [{ logo: 'playstation-mark-colour' }, { logo: 'playstation-wordmark', crop: [0, 0, 0.94, 1], h: 0.22 }] }], color: W, frame: { color: W }, gap: 0.3, from: 0.034, to: 0.1325, across: 0.635, dx: -0.005, rotate: 0 },
-        { parts: [{ logo: 'sony-logo' }], color: W, from: 0.84, to: 0.98, across: 0.62, dx: -0.0035, rotate: 0 },
-        { parts: [{ logo: 'playstation-wordmark' }], color: W, from: 0.168, to: 0.79, across: 0.85, dx: 0.064, rotate: -90 },
+        { parts: [{ stack: [{ logo: 'playstation-mark-colour' }, { logo: 'playstation-wordmark', crop: [0, 0, 0.94, 1], h: 0.22 }] }], color: W, frame: { color: W }, gap: 0.3, from: 0.034, to: 0.1325, across: 0.635, dx: -0.052, rotate: 0 },
+        { parts: [{ logo: 'sony-logo' }], color: W, from: 0.845, to: 0.972, across: 0.62, dx: -0.045, rotate: 0 },
+        { parts: [{ logo: 'playstation-wordmark', crop: [0, 0, 0.94, 1] }], color: W, from: 0.184, to: 0.778, across: 0.85, dx: 0.03, rotate: -90 },
+        // The wordmark's own ® is twice the size of the scans', so it is cropped off and this smaller one set instead.
+        { parts: [{ text: '®', weight: 400 }], color: W, from: 0.1695, to: 0.181, across: 0.08, dx: 0.168, rotate: -90 },
       ],
     },
     spine: {
@@ -265,7 +273,7 @@ export const GAME_CASE_BRANDING: Record<string, Branding> = {
       cap: { length: 0.278, fill: K },
       outline: { color: W, mm: 0.25, top: false, rightFrom: 0.104 },
       marks: [
-        { parts: [{ logo: 'playstation-mark-colour' }], color: K, plate: W, plateAcross: 0.79, from: 0.018, to: 0.0776, across: 0.6, rotate: 0 },
+        { parts: [{ logo: 'playstation-mark-colour' }], color: K, plate: W, plateAcross: 0.79, from: 0.018, to: 0.0776, across: 0.66, rotate: 0 },
         { parts: [{ logo: 'playstation-2-wordmark' }], color: W, from: 0.1065, to: 0.262, rotate: 90 },
       ],
     },
@@ -274,20 +282,28 @@ export const GAME_CASE_BRANDING: Record<string, Branding> = {
   ps3: {
     front: {
       shape: 'band', depth: flat(0.083), fill: { x: [[0, K], [1, '#868686']] }, line: { color: '#b00a0a', size: 0.004 },
-      marks: [{ parts: [{ brand: 'playstation', color: '#b8b8b8' }, { brand: 'playstation3', h: 0.875 }], color: W, h: 0.05, align: 'left', inset: 0.032, gap: 0.6 }],
+      marks: [
+        { parts: [{ brand: 'playstation', color: '#b8b8b8' }, { brand: 'playstation3', h: 0.93 }], color: W, h: 0.046, align: 'left', inset: 0.033, gap: 0.68 },
+        { parts: [{ text: '®', weight: 400 }], color: '#b8b8b8', h: 0.0062, align: 'left', inset: 0.0885, cy: 0.0635, onPanel: true },
+        { parts: [{ text: '™', weight: 400 }], color: W, h: 0.0058, align: 'left', inset: 0.3765, cy: 0.0595, onPanel: true },
+      ],
     },
-    spine: { cap: { length: 0.1648, fill: K, line: { color: '#a50a0a', size: 0.004 } }, marks: [{ parts: [{ brand: 'playstation3' }], color: W, from: 0.0185, to: 0.1455, rotate: 90 }] },
+    spine: { cap: { length: 0.1648, fill: K, line: { color: '#a50a0a', size: 0.004 } }, marks: [{ parts: [{ brand: 'playstation3' }], color: W, from: 0.0215, to: 0.1455, rotate: 90 }] },
   },
   // PS4: a blue gradient band with a white line; a blue spine cap to 23% L with the symbol, then "PS4".
   ps4: {
     front: {
       shape: 'band', depth: flat(0.1094), fill: PS4_BLUE, line: { color: W, size: 0.0042 },
-      marks: [{ parts: [PS, { brand: 'playstation4', h: 0.6 }], color: W, h: 0.0765, align: 'left', inset: 0.022, gap: 0.5 }],
+      marks: [
+        { parts: [PS, { brand: 'playstation4', h: 0.625 }], color: W, h: 0.072, align: 'left', inset: 0.0245, gap: 0.54 },
+        { parts: [{ text: '®', weight: 400 }], color: W, h: 0.0068, align: 'left', inset: 0.1335, cy: 0.0855, onPanel: true },
+        { parts: [{ text: '®', weight: 400 }], color: W, h: 0.0068, align: 'left', inset: 0.4505, cy: 0.076, onPanel: true },
+      ],
     },
     spine: {
       cap: { length: 0.2277, fill: '#2e4589', line: { color: W, size: 0.0042 } },
       marks: [
-        { parts: [PS], color: W, from: 0.0174, to: 0.0654, across: 0.72, rotate: 0 },
+        { parts: [PS], color: W, from: 0.0195, to: 0.0665, across: 0.72, rotate: 0 },
         { parts: [{ brand: 'playstation4' }], color: W, from: 0.08, to: 0.21, across: 0.64, rotate: 90 },
       ],
     },
@@ -296,7 +312,11 @@ export const GAME_CASE_BRANDING: Record<string, Branding> = {
   ps5: {
     front: {
       shape: 'band', depth: flat(0.1117), fill: W, line: { color: '#094695', size: 0.0047 },
-      marks: [{ parts: [PS, { brand: 'playstation5', h: 0.6 }], color: K, h: 0.075, align: 'left', inset: 0.037, gap: 0.32 }],
+      marks: [
+        { parts: [PS, { brand: 'playstation5', h: 0.6 }], color: K, h: 0.075, align: 'left', inset: 0.037, gap: 0.32 },
+        { parts: [{ text: '®', weight: 400 }], color: K, h: 0.0068, align: 'left', inset: 0.1435, cy: 0.0905, onPanel: true },
+        { parts: [{ text: '™', weight: 400 }], color: K, h: 0.0058, align: 'left', inset: 0.4505, cy: 0.0775, onPanel: true },
+      ],
     },
     spine: {
       cap: { length: 0.2292, fill: W, line: { color: '#094695', size: 0.0052 } },
@@ -309,12 +329,15 @@ export const GAME_CASE_BRANDING: Record<string, Branding> = {
   // PS Vita: a blue gradient band with a white line, the symbol and a large wordmark left; a dark blue spine cap with the wordmark.
   'ps-vita': {
     front: {
-      shape: 'band', depth: flat(0.075), fill: { x: [[0, '#143b81'], [0.5, '#0b64ab'], [1, '#018fd7']] }, line: { color: W, size: 0.0065 },
-      marks: [{ parts: [PS, { brand: 'playstationvita', h: 0.78 }], color: W, h: 0.0482, align: 'left', inset: 0.0607, gap: 0.66 }],
+      shape: 'band', depth: flat(0.083), fill: { x: [[0, '#143b81'], [0.5, '#0b64ab'], [1, '#018fd7']] }, line: { color: W, size: 0.0065 },
+      marks: [
+        { parts: [PS, { brand: 'playstationvita', h: 0.78 }], color: W, h: 0.0455, align: 'left', inset: 0.0607, gap: 0.66 },
+        { parts: [{ text: '™', weight: 400 }], color: W, h: 0.0075, align: 'left', inset: 0.4425, cy: 0.0615, onPanel: true },
+      ],
     },
     spine: {
       cap: { length: 0.1865, fill: '#143b81', line: { color: W, size: 0.006 } },
-      marks: [{ parts: [{ brand: 'playstationvita' }], color: W, from: 0.019, to: 0.1624, dx: 0.025, rotate: 90 }],
+      marks: [{ parts: [{ brand: 'playstationvita' }], color: W, from: 0.0265, to: 0.1624, dx: 0.025, rotate: 90 }],
     },
   },
   // Switch: a red tab in the top-left corner with the Joy-Con icon over "NINTENDO SWITCH"; a red spine.
@@ -323,7 +346,7 @@ export const GAME_CASE_BRANDING: Record<string, Branding> = {
       shape: 'tab', w: 0.22, h: 0.132, fill: NINTENDO_RED,
       marks: [{ parts: [{ logo: 'switch' }], color: W, h: 0.096, align: 'center', dx: 0.006 }],
     },
-    spine: { fill: NINTENDO_RED, marks: [{ parts: [{ logo: 'switch', crop: [0.155, 0, 0.805, 0.635] }], color: W, from: 0.014, to: 0.046, across: 0.6, rotate: 0 }], titleFrom: 0.08 },
+    spine: { fill: NINTENDO_RED, marks: [{ parts: [{ logo: 'switch', crop: [0.155, 0, 0.805, 0.635] }], color: W, from: 0.019, to: 0.051, across: 0.6, rotate: 0 }], titleFrom: 0.08 },
   },
   // Switch 2: a full-width red band, the icon and "2" over a small "NINTENDO" and "SWITCH", centred; a red spine.
   switch2: {
@@ -417,10 +440,27 @@ export const GAME_CASE_BRANDING: Record<string, Branding> = {
       ],
     },
   },
+  // NES: nothing on the front (the Seal of Quality and licence line belong to the game's own art). The spine is a black cap,
+  // 27.5 % of the length (the fan template's is 31.7 %, shortened with the smaller logos), with the red Nintendo oval at the right and ENTERTAINMENT SYSTEM at the left,
+  // both reading down and centred on the cap's length, drawn about 25 % smaller than the template's (it dominated the spine). nes.svg holds the oval (layer 19) and the two rows of text (0-18) with
+  // their own colours, so they are separate marks: the oval is narrower than the text, which the template shows.
+  nes: {
+    front: { shape: 'none', marks: [] },
+    spine: {
+      cap: { length: 0.275, fill: K },
+      marks: [
+        { parts: [{ logo: 'nes', only: [19] }], color: W, from: 0.0532, to: 0.2232, across: 0.27, dx: 0.107, rotate: 90 },
+        { parts: [{ logo: 'nes', only: NES_TEXT }], color: W, from: 0.035, to: 0.24, across: 0.205, dx: -0.162, rotate: 90 },
+      ],
+    },
+  },
   'wii-u': {
     front: {
-      shape: 'band', depth: arc(0.0346, 0.0941), fill: '#019fcc', line: { color: '#fcee38', size: 0.0078, taper: 0 },
-      marks: [{ parts: [{ logo: 'wii-u', mono: true }], color: W, h: 0.052, align: 'center', cy: 0.043, dx: 0.004 }],
+      shape: 'band', depth: arc(0.0346, 0.0941), fill: '#019fcc', line: { color: '#ffe70e', size: 0.0072, taper: 0, shadow: { color: '#969694', size: 0.0024 } },
+      marks: [
+        { parts: [{ logo: 'wii-u', mono: true }], color: W, h: 0.049, align: 'center', cy: 0.0445, dx: 0.0025 },
+        { parts: [{ text: '™', weight: 400 }], color: W, h: 0.0042, align: 'left', inset: 0.624, cy: 0.0225, onPanel: true },
+      ],
     },
     spine: {
       cap: { length: 0.0346, fill: '#019fcc', dome: 0.0075 },
@@ -433,7 +473,7 @@ export const GAME_CASE_BRANDING: Record<string, Branding> = {
   // with a grey line along it and "Wii" at the right; a white spine. (Depths are the band alone: the line is drawn below.)
   wii: {
     front: {
-      shape: 'band', depth: slope([[0.0000, 0.0288], [0.0011, 0.0261], [0.0021, 0.0250], [0.0032, 0.0243], [0.0042, 0.0237], [0.0053, 0.0233], [0.0063, 0.0229], [0.0074, 0.0226], [0.0085, 0.0224], [0.0095, 0.0222], [0.0106, 0.0221], [0.0116, 0.0220], [0.0127, 0.022], [0.45, 0.024], [0.5, 0.028], [0.55, 0.036], [0.6, 0.05], [0.65, 0.072], [0.7, 0.1], [0.75, 0.119], [0.8, 0.1255], [1, 0.1255]]), fill: W, line: { color: '#8a8f93', size: 0.004 },
+      shape: 'band', depth: slope([[0.0000, 0.0288], [0.0011, 0.0261], [0.0021, 0.0250], [0.0032, 0.0243], [0.0042, 0.0237], [0.0053, 0.0233], [0.0063, 0.0229], [0.0074, 0.0226], [0.0085, 0.0224], [0.0095, 0.0222], [0.0106, 0.0221], [0.0116, 0.0220], [0.0150, 0.0222], [0.0323, 0.0225], [0.0496, 0.0225], [0.0668, 0.0225], [0.0841, 0.0225], [0.1014, 0.0225], [0.1187, 0.0225], [0.1360, 0.0225], [0.1532, 0.0225], [0.1705, 0.0225], [0.1878, 0.0225], [0.2051, 0.0225], [0.2224, 0.0225], [0.2396, 0.0225], [0.2569, 0.0225], [0.2742, 0.0225], [0.2915, 0.0225], [0.3088, 0.0225], [0.3261, 0.0225], [0.3433, 0.0225], [0.3606, 0.0225], [0.3779, 0.0225], [0.3952, 0.0225], [0.4125, 0.0225], [0.4297, 0.0229], [0.4470, 0.0237], [0.4643, 0.0248], [0.4816, 0.0261], [0.4989, 0.0277], [0.5161, 0.0301], [0.5334, 0.0325], [0.5507, 0.0357], [0.5680, 0.0395], [0.5853, 0.0442], [0.6025, 0.0500], [0.6198, 0.0563], [0.6371, 0.0640], [0.6544, 0.0725], [0.6717, 0.0827], [0.6889, 0.0924], [0.7062, 0.1016], [0.7235, 0.1094], [0.7408, 0.1151], [0.7581, 0.1196], [0.7754, 0.1225], [0.7926, 0.1246], [0.8099, 0.1251], [0.8272, 0.1251], [0.8445, 0.1251], [0.8618, 0.1251], [0.8790, 0.1251], [0.8963, 0.1251], [0.9136, 0.1251], [0.9309, 0.1251], [0.9482, 0.1251], [0.9654, 0.1251], [0.9827, 0.1251], [1.0000, 0.1251]]), fill: W, line: { color: '#8a8f93', size: 0.004 },
       marks: [{ parts: [{ logo: 'wii' }], color: W, h: 0.066, align: 'right', inset: 0.03 }],
     },
     spine: { fill: W, titleColor: '#333333', marks: [{ parts: [{ logo: 'wii' }], color: W, from: 0.0285, to: 0.1365, across: 0.55, rotate: 90 }] },
@@ -441,8 +481,8 @@ export const GAME_CASE_BRANDING: Record<string, Branding> = {
   // GameCube: a black band with a convex lower edge and a white line tapering towards the sides, the cube and wordmark centred; a black spine cap.
   gamecube: {
     front: {
-      shape: 'band', depth: arc(0.0575, 0.1055), fill: K, line: { color: '#f2f2f2', size: 0.0065, taper: 0.4, shadow: { color: '#8a8a8a', size: 0.0045 } },
-      marks: [{ parts: [{ logo: 'gamecube', crop: [0, 0, 0.214, 1], h: 1.1 }, { logo: 'gamecube', crop: [0.214, 0, 1, 1] }], color: W, h: 0.0676, align: 'center', gap: 0, dx: 0.01 }],
+      shape: 'band', depth: arc(0.0575, 0.1055), fill: K, line: { color: '#f2f2f2', size: 0.0046, taper: 0.4, shadow: { color: '#8a8a8a', size: 0.0034 } },
+      marks: [{ parts: [{ logo: 'gamecube', crop: [0, 0, 0.214, 1], h: 1.1 }, { logo: 'gamecube', crop: [0.214, 0, 1, 1] }], color: W, h: 0.0676, align: 'center', gap: 0, dx: 0.004 }],
     },
     spine: {
       cap: { length: 0.3097, fill: K, line: { color: W, size: 0.0051 } },
@@ -455,12 +495,12 @@ export const GAME_CASE_BRANDING: Record<string, Branding> = {
   xbox: {
     front: {
       shape: 'band', depth: flat(0.1), fill: K, decor: 'xbox-orb',
-      marks: [{ parts: [{ logo: 'xbox', crop: [0, 0, 0.339, 1] }, { logo: 'xbox', crop: [0.339, 0.285, 1, 0.71], h: 0.411 }], color: W, h: 0.0647, align: 'left', inset: 0.0415, cy: 0.0555, gap: 0.03 }],
+      marks: [{ parts: [{ logo: 'xbox', crop: [0, 0, 0.339, 1] }, { logo: 'xbox', crop: [0.339, 0.285, 1, 0.71], h: 0.411 }], color: W, h: 0.0647, align: 'left', inset: 0.0415, cy: 0.0555, gap: -0.035 }],
     },
     spine: {
       cap: { length: 0.2154, fill: K },
       marks: [
-        { parts: [{ logo: 'xbox', crop: [0, 0, 0.339, 1] }], color: W, from: 0.046, to: 0.093, across: 0.6, rotate: 0 },
+        { parts: [{ logo: 'xbox', crop: [0, 0, 0.339, 1] }], color: W, from: 0.046, to: 0.093, across: 0.6, rotate: 90 },
         { parts: [{ logo: 'xbox', crop: [0.339, 0.285, 1, 0.71] }], color: W, from: 0.0946, to: 0.1891, across: 0.55, rotate: 90 },
       ],
     },
@@ -469,7 +509,7 @@ export const GAME_CASE_BRANDING: Record<string, Branding> = {
   'xbox-360': {
     front: {
       shape: 'band', depth: flat(0.121), fill: X360_WHITE, line: { color: '#8dc63f', size: 0.0016 }, decor: 'x360-swoosh',
-      marks: [{ parts: [{ logo: 'xbox360' }], color: W, h: 0.0715, align: 'left', inset: 0.0275, cy: 0.0657 }],
+      marks: [{ parts: [{ logo: 'xbox360', only: X360_NO_REGISTERED }], color: W, h: 0.0715, align: 'left', inset: 0.0255, cy: 0.0657 }],
     },
     spine: {
       cap: { length: 0.261, fill: X360_WHITE },
@@ -499,7 +539,7 @@ export const GAME_CASE_BRANDING: Record<string, Branding> = {
   // continued by a pale slanted plate holding "Xbox Series X"; a charcoal spine.
   'xbox-series': {
     front: {
-      shape: 'tab', w: 0.2069, wBottom: 0.1195, h: 0.105, fill: XBOX_GREEN,
+      shape: 'tab', w: 0.2069, wBottom: 0.1195, h: 0.105, fill: SERIES_GREEN,
       plate: { top: 0.583, bottom: 0.497, fill: '#fcfcfc', line: '#d9d9d9' },
       marks: [
         { parts: [{ logo: 'xbox-seriesx-mark' }], color: W, h: 0.0583, align: 'left', inset: 0.0529, cy: 0.0588 },
@@ -508,7 +548,7 @@ export const GAME_CASE_BRANDING: Record<string, Branding> = {
     },
     spine: {
       fill: '#373632',
-      cap: { length: 0.105, fill: XBOX_GREEN },
+      cap: { length: 0.105, fill: SERIES_GREEN },
       marks: [
         { parts: [{ logo: 'xbox-seriesx-mark' }], color: W, from: 0.131, to: 0.181, across: 0.58, dx: 0.03, rotate: 0 },
         { parts: [{ logo: 'xbox-seriesx', crop: [0.372, 0.2, 1, 0.82] }], color: W, from: 0.1852, to: 0.2755, across: 0.4, dx: 0.02, rotate: 90 },

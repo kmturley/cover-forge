@@ -773,3 +773,73 @@ The app against the template is 80.4 % by the compare script (85.4 % before the 
 template being wider and taller also lowers it, as the 3DS's does (§15). Lined up on the fold they looked almost identical before the logos were moved for spacing (above). Checked in the app in Chromium, Firefox
 and WebKit (headless). Still different: ADVANCE's gloss and GAME BOY's bevel are simpler than the template's, and the
 brushing is regular where the template's has a few longer smears.
+
+## 19. A refinement pass across the covers
+
+Every cover with scans was compared with its template and a scan, and how far each logo sits from the trim was measured.
+**Scans are often cropped slightly**, so a logo can look closer to the edge than it really is on the case. Where the
+template's logo sits under about 3 mm from the top, it is deliberately padded here even though that moves it from the
+template: PS3, PS4 and PS Vita (whose band is 1 mm deeper) on the front, and PS3, PS4, PS Vita and Switch on the spine.
+
+| Cover | Change |
+| :--- | :--- |
+| PS1 | strip marks moved to the template's position; the wordmark's own ® is twice the scans' size, so it is cropped off and a smaller one set |
+| PS2 | spine symbol fills its white square a little more |
+| PS3, PS4, PS5, PS Vita, Wii U | ® and ™ added as text marks: the simple-icons logos don't have them |
+| GameCube | logo position; thinner line, closer to the scans |
+| Wii | curve re-traced from the template, so it is smooth |
+| Wii U | logo size and position; line `#ffe70e` with its grey shadow |
+| Xbox | spine X rotated 90°, as on the scans; wordmark position; ridges start further right |
+| Xbox 360 | front logo's ® removed: the scans don't have it |
+| Xbox Series X | green `#107c10`, Xbox green in Microsoft's brand book; the template's `#0e7a0d` is almost the same, while the scans print far brighter (`#53b626`, `#63b210`, `#46a918`) |
+
+Left alone: Switch 2, DS, 3DS, Game Boy, Game Boy Color, Game Boy Advance and Xbox One. PS Vita's scans show a spine about
+11 mm wide where the app has 9 mm (from one reported size), and Xbox One's and Series X's look about 1.3 mm wider than the app's
+11 mm. Those are the case's sizes, not its dress, and need checking against a real case.
+
+## 20. Nintendo Entertainment System (NES)
+
+Measured from three 300 dpi scans in `scans/nes` (Dick Tracy, Ghostbusters, Ice Climber; git-ignored) and the fan-made
+`template.png`. All four are 3470 × 2080 px: 293.8 × 176.1 mm.
+
+### Case or box?
+
+The NES shipped in cardboard boxes, and the scans are of that box's wrap. The question was which *case* holds a cartridge.
+
+| Evidence | What it says |
+| :--- | :--- |
+| The cartridge ([ConsoleMods](https://ConsoleMods.org/wiki/Dimensions_for_Game_Cartridges) via search; the page itself wouldn't load) | 134 × 120 × 17 mm for every licensed NTSC-U and PAL cartridge. [Wikipedia](https://en.wikipedia.com/wiki/Nintendo_Entertainment_System_Game_Pak) gives 133 × 120 × 20 mm. Taking the larger of each: 134 × 120 × 20 mm |
+| The cases already here | none holds it: a DS-size case is 136 × 124 mm outside, and the Blu-ray and DVD cases are 14 mm or less deep |
+| [Stone Age Gamer's Bitbox NES case](https://stoneagegamer.com/bitbox-nes-game-case.html) | the one NES-specific case found with published sizes: 195.3 × 152.4 × 25.4 mm (7 11/16 × 6 × 1 in), with a clear insert pocket. The page gives no inside or insert size |
+| Vintage clamshells ([The Vintage Gamers](https://www.thevintagegamers.com/2011/09/nes-sized-gameboy-game-cases/)) | the Game Boy clamshell is "the exact same size" as the NES one, but no millimetres anywhere |
+| [Dragonstrove acrylic case](https://www.dragonstrove.com/products/premium-acrylic-case-for-nintendo-nes-game-cartridges.oembed) | inside 121 × 136 × 19 mm: a snug fit for the cartridge, but a display case with no insert |
+
+**The app's insert is the scans' size, 133 + 28 + 133 × 176 mm,** deep enough for a cartridge (20 mm at most) and a little
+over the Bitbox's 25.4 mm. **This is not a measured case.** No source gives the insert size of any NES case, so the numbers
+are the box scans', and the case itself is only known to be at least about 125 × 140 × 21 mm inside. If you have a case,
+measure its insert and change `nes` in `GAME_CASE`. A Slipcover or Box is worked out from the insert, like the other
+cases without a published outside size, so the Box comes out close to the original box.
+
+### Size
+
+| Measure | Value | How it was found |
+| :--- | :--- | :--- |
+| Wrap | 293.8 × 176.1 mm | all four files |
+| Front and back | 132.8 mm | Dick Tracy's folds; the template estimates 132.9 |
+| Spine | 28.3 mm (27.9 on the template) | Dick Tracy. Ghostbusters and Ice Climber detect 10.1 and 48.5, which are the busy art fooling the fold detector, not different boxes |
+
+### Trade dress
+
+- **Front:** nothing. The Seal of Quality, the licence line and the game's own logo are on the art.
+- **Spine:** a black cap 27.5 % of the length (the template's is 31.7 %; shortened to fit the smaller logos, each with 3.5 % of the length above and below), with the red Nintendo oval at the right and
+  ENTERTAINMENT SYSTEM at the left, both reading down and centred on the cap. Below it the game's own colour. Drawn about 25 % smaller than the template's, which
+  filled the spine and dominated it: the oval spans 5.3–22.3 % of the length, the text 3.5–24 %.
+- **Logo.** `nes.svg` holds the oval (layer 19) and the text (layers 0–18) with their colours baked in (`#e31e26` and
+  `#dedede`). They are two marks because the oval is narrower than the text, as on the template. The SVG's text is about
+  14 % thinner for its length than the template's, and has no ® after SYSTEM; the template does.
+- **No back band.**
+
+### How the match was checked
+
+The marks' positions were measured on the template and placed as fractions of the spine. Not yet compared with the
+compare script or by overlaying the render on the template.
