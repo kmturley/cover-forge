@@ -9,6 +9,7 @@ import { computePlacement, paintRect } from '../placement';
 import { canvasPanel, codeSettingsOf, logoSettingsOf, markOptions, svgLayerAspect, transformOf, type ImageLookup } from './draw';
 import { layerImageUrl, type Assets } from './images';
 import { placementToBox } from './placement';
+import type { Turns } from './turn';
 
 /** Where a layer is on the canvas, for picking and dragging it. */
 export interface Bounds {
@@ -33,6 +34,8 @@ export interface BoundsEnv {
   item: MediaItem | null;
   assets: Assets | undefined;
   getImage: ImageLookup;
+  /** The panels drawn turned. Their layers are laid out on a swapped panel and drawn turned, so they can't be picked or dragged on the canvas. */
+  turns?: Turns;
 }
 
 const isAnchored = (l: Layer) => !!l.placement && 'x' in l.placement;
@@ -41,6 +44,7 @@ const isAnchored = (l: Layer) => !!l.placement && 'x' in l.placement;
 export function layerBounds(layer: Layer, env: BoundsEnv): Bounds | null {
   const { template: t, item } = env;
   if (!layer.visible || layer.type === 'group') return null;
+  if (layer.target !== 'canvas' && env.turns?.[layer.target]) return null;
   const panel = layer.target === 'canvas' ? canvasPanel(t) : t.panels.find((p) => p.id === layer.target);
   if (!panel || (layer.target !== 'canvas' && panel.follows)) return null;
   const area = paintRect(t, panel);

@@ -346,9 +346,12 @@ export interface Branded {
 
 const cache = new Map<string, Branded>();
 
-/** The dress's layers and patches for a case. Cached by case. */
+/** The cache key: the case, and its panels' sizes, because a turned panel is laid out with its width and height swapped. */
+const keyOf = (t: TemplateConfig) => `${t.id}|${t.panels.map((p) => `${p.widthMm}x${p.heightMm}`).join(',')}`;
+
+/** The dress's layers and patches for a case. Cached by case and panel sizes. */
 export function brandedLayers(t: TemplateConfig): Branded {
-  const hit = cache.get(t.id);
+  const hit = cache.get(keyOf(t));
   if (hit) return hit;
   const sink = new LayerSink(GEN_PX);
   drawBranding(sink, t, GEN_PX);
@@ -386,7 +389,7 @@ export function brandedLayers(t: TemplateConfig): Branded {
     if (box.xStart !== area.xStart || box.xEnd !== area.xEnd || box.yStart !== area.yStart || box.yEnd !== area.yEnd) patches[`${p.id}.image`] = { placement: placementOfBox(box) };
   }
   const out: Branded = { layers: [...folders, ...sink.layers], patches };
-  cache.set(t.id, out);
+  cache.set(keyOf(t), out);
   return out;
 }
 

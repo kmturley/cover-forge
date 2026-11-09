@@ -8,6 +8,7 @@ import { getCachedImage, loadImages } from './imageCache';
 import { BASE_BACKGROUND } from './resolve';
 import { drawLayers, type ImageLookup } from './layers/draw';
 import { resolveLayers } from './layers/resolve';
+import { turnsOf } from './layers/turn';
 import { layerImageUrls } from './layers/images';
 import { layerFonts } from './layers/fonts';
 import { ensureFont } from '../fonts/loader';
@@ -46,7 +47,7 @@ export function renderCover(
   ctx.fillRect(0, 0, t.totalWidthMm * px, t.totalHeightMm * px);
 
   const layers = resolveLayers({ template: t, item, shared: scene.shared, designs: scene.designs });
-  drawLayers({ ctx, template: t, item, px, getImage, assets: scene.assets }, layers);
+  drawLayers({ ctx, template: t, item, px, getImage, assets: scene.assets, turns: turnsOf({ item, shared: scene.shared, designs: scene.designs }) }, layers);
 
   if (scene.markAssembly) drawAssemblyHatch(ctx, t, px);
   if (scene.hideOutsideCut) {

@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type RefObject } from 'react';
 import { useAppDispatch } from '../../context/AppContext';
 import { getCachedImage } from '../../engine/imageCache';
+import { turnsOf } from '../../engine/layers/turn';
 import { containsPoint, layerAt, layerBounds, type Bounds, type BoundsEnv } from '../../engine/layers/bounds';
 import { duplicateLayer } from '../../engine/layers/factory';
 import { HANDLES, MOVING, canResize, moveRect, placementFromRect, resizeRect, sidesOf, snapRect, snapTargets, type Guide, type Handle, type SnapTargets } from '../../engine/layers/manipulate';
@@ -42,7 +43,7 @@ interface Drag {
 export function useLayerDrag(ed: LayerEditor, canvasRef: RefObject<HTMLCanvasElement | null>) {
   const dispatch = useAppDispatch();
   const { template, item, assets, layers } = ed;
-  const env: BoundsEnv = { template, item, assets, getImage: getCachedImage };
+  const env: BoundsEnv = { template, item, assets, getImage: getCachedImage, turns: turnsOf({ item, shared: ed.state.shared, designs: ed.state.designs }) };
   const selectedLayer = layers.find((l) => l.id === ed.state.selectedLayerId) ?? null;
   const selected = selectedLayer ? layerBounds(selectedLayer, env) : null;
 

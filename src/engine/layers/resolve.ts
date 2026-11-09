@@ -1,3 +1,4 @@
+import { turnedTemplate, turnsOf } from './turn';
 import type { MediaItem } from '../../types/media';
 import type { Design, SharedSettings } from '../../types/editor';
 import type { TemplateConfig } from '../../types/template';
@@ -24,8 +25,10 @@ export interface LayerSources {
  * (a dust flap's fill, a second spine's until it is edited) take its resolved look. The dress's patches to a side's title go in first, while that side's
  * Branded folder is shown.
  */
-export function resolveLayers({ template, item, shared, designs }: LayerSources): Layer[] {
+export function resolveLayers({ template: real, item, shared, designs }: LayerSources): Layer[] {
   const design = designOf(designs, item);
+  // A turned panel's artwork is laid out on the panel with its width and height swapped (see turn.ts).
+  const template = turnedTemplate(real, turnsOf({ item, shared, designs }));
   const levels = [shared.diff, design?.diff, item?.diff];
   // A patch belongs to the side it is on, so it applies only while that side's folder is shown (the last level to say wins).
   const shown = (panel: string) => levels.reduce<boolean>((on, d) => (d?.patch?.[brandedFolderId(panel)] as { visible?: boolean } | undefined)?.visible ?? on, true);
