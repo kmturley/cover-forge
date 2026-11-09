@@ -193,6 +193,14 @@ const features: Fixture[] = [
   { name: 'layers/spine-title-fitted-round-the-branded-dress', scene: withDiff(BR, { patch: { 'spine.text': { textCase: 'upper', spineFit: { startMm: 30, scale: 1.2, contrast: { on: '#ffffff', color: '#333333' } }, color: '#ffffff' }, 'spine.fill': { fill: '#ffffff' } } }), px: 3 },
   { name: 'layers/per-item-and-design', scene: scene(BR, { designs: [{ ...design, diff: { added: [{ layer: newShape('d-shape', 'front', { fill: '#00ccaa', placement: { x: { anchor: 'start', offset: 0, size: 50 }, y: { anchor: 'start', offset: 0, size: 20 } } }) }] } }], item: { ...ITEM, designId: 'd1', diff: { patch: { 'd-shape': { fill: '#ff3366' } }, added: [{ layer: newShape('i-shape', 'back', { fill: '#3366ff' }) }] } } }), px: 2 },
 
+  // Landscape: the front and back turned (+90 and -90) and laid out wide, the spine untouched. A shape in the design's top-left
+  // corner lands at the front's top-right, and the Branded dress is laid out on the swapped panel.
+  { name: 'turn/landscape-placed-shapes', scene: scene(BR, { shared: { ...shared({ front: { turn: 90 }, back: { turn: -90 } }), diff: { added: [
+    { layer: newShape('t1', 'front', { fill: '#ffcc00', placement: { x: { anchor: 'start', offset: 0, size: 40 }, y: { anchor: 'start', offset: 0, size: 15 } } }) },
+    { layer: newShape('t2', 'back', { fill: '#00ccaa', placement: { x: { anchor: 'start', offset: 0, size: 40 }, y: { anchor: 'start', offset: 0, size: 15 } } }) },
+  ] } } }), px: 2 },
+  { name: 'turn/landscape-branded-nes', scene: withShared('game-case-nes', { front: { turn: 90 }, back: { turn: -90 } }, { banner: true }), px: 2 },
+
   // Guides and the cut-out view.
   { name: 'view/guides', scene: scene(BR, { showGuides: true }), px: 2 },
   { name: 'view/assembly-hatch', scene: scene('nfc-box-card', { hideOutsideCut: true, markAssembly: true }), px: 2 },

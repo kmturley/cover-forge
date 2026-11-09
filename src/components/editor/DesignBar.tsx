@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import { targetDesignId, useAppDispatch, useAppState, useSelectedItem, type EditMode } from '../../context/AppContext';
 import { DEFAULT_DESIGN_ID, DEFAULT_DESIGN_NAME } from '../../engine/designs';
+import { LANDSCAPE, TURNABLE, turnsOf } from '../../engine/layers/turn';
+import { useEditScope } from './useEditScope';
 import { NameModal } from './NameModal';
 
 const NEW_DESIGN = '__new__';
@@ -12,6 +14,7 @@ export function DesignBar() {
   const item = useSelectedItem();
   const dispatch = useAppDispatch();
   const [naming, setNaming] = useState<'fork' | null>(null);
+  const { isOverride } = useEditScope();
 
   const designId = targetDesignId(state);
   const current = designs.find((d) => d.id === designId);
@@ -22,6 +25,16 @@ export function DesignBar() {
     { id: 'override', label: 'This media' },
   ];
 
+  const turns = turnsOf({ item, shared: state.shared, designs });
+  const landscape = !!turns.front || !!turns.back;
+  const canTurn = TURNABLE.every((id) => state.template.panels.some((p) => p.id === id && !p.follows));
+  /** Turns the front and back, or back, for the design (or just this item, as the scope says). */
+  const orient = (on: boolean) => {
+    if (!item) return;
+    for (const id of TURNABLE as ('front' | 'back')[]) {
+      dispatch({ type: 'updatePanel', id: isOverride ? item.id : null, design: designId, panel: id, patch: { turn: on ? LANDSCAPE[id] : 0 } });
+    }
+  };
   return (
     <>
       <div className="design-row">
@@ -55,6 +68,16 @@ export function DesignBar() {
           ))}
         </div>
       </div>
+      {canTurn && (
+        <div className="scope-tools">
+          <span className="scope-label" id="orientation-label">Layout:</span>
+          <div className="seg" role="group" aria-labelledby="orientation-label">
+            <button className={landscape ? '' : 'active'} aria-pressed={!landscape} disabled={!item} onClick={() => orient(false)}>Portrait</button>
+            <button className={landscape ? 'active' : ''} aria-pressed={landscape} disabled={!item} onClick={() => orient(true)}>Landscape</button>
+          </div>
+        </div>
+      )}
+      {landscape && <p className="scope-note">The front and back are turned for a landscape box. Their layers can’t be dragged on the canvas; use the position fields.</p>}
       {editMode === 'override' && item && <p className="scope-note">Edits apply to “{item.title}” only.</p>}
       {naming === 'fork' && item && (
         <NameModal

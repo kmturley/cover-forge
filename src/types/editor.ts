@@ -74,6 +74,11 @@ export interface PanelSettings {
   code?: Partial<CodeSettings>;
   /** Accent border layer, drawn on top of everything else in the panel. */
   border?: Partial<BorderSettings>;
+  /**
+   * Draws the panel's artwork turned a quarter (the front and back only; 0 turns it back). The artwork is laid out on the
+   * panel with its width and height swapped, so it is the landscape shape the box has when turned on its side.
+   */
+  turn?: 0 | 90 | -90;
 }
 
 /** A store / console brand mark drawn on top of a panel's image and text. Every field is layered like the rest (default → shared → item). */

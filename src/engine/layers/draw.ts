@@ -16,6 +16,7 @@ import { drawSpineText, spineText } from '../SpineTypography';
 import type { PanelBox } from '../../types/editor';
 import { contrast } from '../official';
 import { placementToBox } from './placement';
+import { turnedTemplate, type Turns } from './turn';
 
 export type ImageLookup = (url: string | null | undefined) => HTMLImageElement | null;
 
@@ -29,6 +30,8 @@ export interface DrawEnv {
   getImage: ImageLookup;
   /** The session's asset library, for image layers that use one. */
   assets?: Assets;
+  /** The panels whose artwork is drawn turned; their layers are laid out on the panel with width and height swapped. */
+  turns?: Turns;
 }
 
 const isLegacy = (p: LayerPlacement): p is LegacyMm => !!p && 'kind' in p;
@@ -365,6 +368,9 @@ function clipToArt(ctx: CanvasRenderingContext2D, t: TemplateConfig, px: number)
 /** Draws the layers bottom to top. Each is placed against its panel and, but for the Branded dress, clipped to it. */
 export function drawLayers(env: DrawEnv, layers: readonly Layer[]): void {
   const panels = new Map(env.template.panels.map((p) => [p.id, p]));
+  const turns = env.turns ?? {};
+  const turnedWhole = turnedTemplate(env.template, turns);
+  const turnedPanels = new Map(turnedWhole.panels.map((p) => [p.id, p]));
   const canvas = layers.some((l) => l.target === 'canvas') ? canvasPanel(env.template) : null;
   const folders = new Map(layers.filter((l) => l.type === 'group').map((l) => [l.id, l]));
   /** A layer is hidden if it, or a folder it sits in, is (folders nest at most a few deep, and a loop in a bad save ends the walk). */
@@ -375,28 +381,43 @@ export function drawLayers(env: DrawEnv, layers: readonly Layer[]): void {
   for (const l of layers) {
     if (l.type === 'group' || hidden(l)) continue;
     const onCanvas = l.target === 'canvas';
-    const panel = onCanvas ? canvas : panels.get(l.target as PanelId);
-    if (!panel) continue;
+    const real = onCanvas ? canvas : panels.get(l.target as PanelId);
+    if (!real) continue;
     // Flaps and tabs that fold away only carry their panel's colour; nothing else is drawn on them.
-    if (!onCanvas && panel.follows && !l.follows) continue;
+    if (!onCanvas && real.follows && !l.follows) continue;
+    const turn = onCanvas ? undefined : turns[l.target as PanelId];
+    // A turned panel's layers are laid out on the swapped panel, then drawn turned about its centre and cut to the real one.
+    const panel = turn ? turnedPanels.get(real.id)! : real;
+    const e = turn ? { ...env, template: turnedWhole } : env;
     if (onCanvas) {
       env.ctx.save();
       clipToArt(env.ctx, env.template, env.px);
+    } else if (turn) {
+      const [ctx, px] = [env.ctx, env.px];
+      const area = paintRect(env.template, real);
+      ctx.save();
+      ctx.beginPath();
+      ctx.rect(area.xMm * px, area.yMm * px, area.widthMm * px, area.heightMm * px);
+      ctx.clip();
+      const [cx, cy] = [(real.xMm + real.widthMm / 2) * px, (real.yMm + real.heightMm / 2) * px];
+      ctx.translate(cx, cy);
+      ctx.rotate((turn * Math.PI) / 180);
+      ctx.translate(-cx, -cy);
     }
     switch (l.type) {
       case 'shape':
-        drawShape(env, l, panel);
+        drawShape(e, l, panel);
         break;
       case 'image':
-        drawImage(env, l, panel);
+        drawImage(e, l, panel);
         break;
       case 'generated':
-        drawGenerated(env, l, panel);
+        drawGenerated(e, l, panel);
         break;
       case 'text':
-        drawText(env, l, panel);
+        drawText(e, l, panel);
         break;
     }
-    if (onCanvas) env.ctx.restore();
+    if (onCanvas || turn) env.ctx.restore();
   }
 }
