@@ -6,8 +6,10 @@ import { exportCurrent, exportSheetsPdf, exportZip } from '../../export/zipExpor
 import { PrintSheetPreview } from './PrintSheetPreview';
 import { fitsLabelSheet, getLabelSheet, labelSheetsFor } from '../../export/sheets';
 import type { MediaItem } from '../../types/media';
+import { useEscapeKey } from '../layout/useEscapeKey';
 
 export function ExportModal({ onClose }: { onClose: () => void }) {
+  useEscapeKey(onClose);
   const state = useAppState();
   const { items, template, shared, designs, assets } = state;
   const selected = useSelectedItem();

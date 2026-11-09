@@ -3,6 +3,7 @@ import { templateIdOf, useAppDispatch, useAppState } from '../../context/AppCont
 import { groupFor, originalTemplateFor } from '../../templates/library';
 import type { MediaType } from '../../types/media';
 import { TemplateLibrary } from './TemplateLibrary';
+import { useEscapeKey } from '../layout/useEscapeKey';
 
 const PLURAL: Record<MediaType, string> = { game: 'games', movie: 'movies', tv: 'TV shows', music: 'music', custom: 'custom items' };
 
@@ -13,6 +14,7 @@ type Scope = 'item' | 'group' | 'type' | 'all';
  * them (a queue group, offering the whole queue too).
  */
 export function TemplatePickerModal({ itemIds, onClose }: { itemIds: string[]; onClose: () => void }) {
+  useEscapeKey(onClose);
   const state = useAppState();
   const { items } = state;
   const chosen = items.filter((i) => itemIds.includes(i.id));
