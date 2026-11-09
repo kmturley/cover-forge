@@ -830,7 +830,7 @@ cases without a published outside size, so the Box comes out close to the origin
 
 ### Trade dress
 
-- **Front:** a red band across the top, 5.5 % of the height (the template's 114 px of 2080) in the template's `#fe0000`, with NINTENDO ENTERTAINMENT SYSTEM® spaced out in black, centred, 93 % of the front's width (`nes-wide.svg`, made from a close font, OPTI Limited View). The Seal of Quality, the licence line and the game's own logo are on the art, not drawn here.
+- **Front:** a red band across the top, 5.5 % of the height (the template's 114 px of 2080) in Nintendo red (`#da1820`, the same as the Switch; the template's is a pure `#fe0000`), with NINTENDO ENTERTAINMENT SYSTEM® spaced out in black, centred, 93 % of the front's width (`nes-wide.svg`, made from a close font, OPTI Limited View). The Seal of Quality, the licence line and the game's own logo are on the art, not drawn here.
 - **Spine:** a black cap 27.5 % of the length (the template's is 31.7 %; shortened to fit the smaller logos, each with 3.5 % of the length above and below), with the red Nintendo oval at the right and
   ENTERTAINMENT SYSTEM at the left, both reading down and centred on the cap. Below it the game's own colour. Drawn about 25 % smaller than the template's, which
   filled the spine and dominated it: the oval spans 5.3–22.3 % of the length, the text 3.5–24 %.

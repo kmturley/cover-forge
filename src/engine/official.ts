@@ -447,7 +447,7 @@ export const GAME_CASE_BRANDING: Record<string, Branding> = {
   // their own colours, so they are separate marks: the oval is narrower than the text, which the template shows.
   nes: {
     front: {
-      shape: 'band', depth: flat(0.0548), fill: '#fe0000',
+      shape: 'band', depth: flat(0.0548), fill: NINTENDO_RED,
       marks: [{ parts: [{ logo: 'nes-wide' }], color: K, h: 0.0158, align: 'center' }],
     },
     spine: {
