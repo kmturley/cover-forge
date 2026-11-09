@@ -99,11 +99,11 @@ Fold lines detected from the image in 0/1; estimated from a known spine width in
 
 | File | DPI | Width mm | Height mm | Back mm | Spine mm | Spine 2 mm | Front mm | Spine source | Band % H | Band shape | Band colour | Band end colour | Spine cap % L | Notes |
 | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
-| dicktracy.jpg | 300 | 293.8 | 176.1 | 132.8 | 28.3 | — | 132.8 | detected | 5.9 | flat | #fff307 | — | 31.7 |  |
-| ghostbusters.jpg | 300 | 293.8 | 176.1 | 141.8 | 10.1 | — | 141.9 | detected | 4.9 | flat | #000000 | — | — |  |
-| iceclimber.jpg | 300 | 293.8 | 176.1 | 125.3 | 48.5 | — | 120.0 | detected | 6.3 | flat | #000000 | — | — |  |
-| template.png | 300 | 293.8 | 176.1 | 132.9 | 27.9 | — | 132.9 | estimated | — | none | — | — | — | No symmetric spine strip found; estimated from nes's known 28 mm spine, assuming equal front/back width.; Nothing printed on the front panel: no header band. |
-| **Mode** | | **293.8** | **176.1** | **132.8** | **28.1** | **—** | **132.8** | | **5.9** | | **#000000** | **—** | **31.7** | |
+| dicktracy.jpg | 300 | 293.8 | 176.1 | 132.8 | 28.3 | — | 132.8 | detected | 2.2 | flat | #fe0000 | — | 31.7 |  |
+| ghostbusters.jpg | 300 | 293.8 | 176.1 | 141.8 | 10.1 | — | 141.9 | detected | 6.4 | flat | #000000 | — | — |  |
+| iceclimber.jpg | 300 | 293.8 | 176.1 | 125.3 | 48.5 | — | 120.0 | detected | 2.5 | flat | #fe0000 | — | — |  |
+| template.png | 300 | 293.8 | 176.1 | 132.9 | 27.9 | — | 132.9 | estimated | 2.2 | flat | #fe0000 | — | 31.7 | No symmetric spine strip found; estimated from nes's known 28 mm spine, assuming equal front/back width. |
+| **Mode** | | **293.8** | **176.1** | **132.8** | **28.1** | **—** | **132.8** | | **2.2** | | **#fe0000** | **—** | **31.7** | |
 
 Fold lines detected from the image in 3/4; estimated from a known spine width in 1/4.
 
