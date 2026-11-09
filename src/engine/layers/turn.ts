@@ -11,8 +11,8 @@ export type Turns = Partial<Record<PanelId, Turn>>;
 /** The panels that can be turned: the cover and the back. A spine keeps its own direction, and the rest fold away. */
 export const TURNABLE: readonly PanelId[] = ['front', 'back'];
 
-/** Landscape: how the front and the back turn, the way a landscape box's art sits on a portrait sheet. */
-export const LANDSCAPE: Readonly<Record<'front' | 'back', Turn>> = { front: -90, back: 90 };
+/** Landscape: how the front and the back turn, the way a landscape box's art sits on a portrait sheet: the front clockwise, the back anticlockwise. */
+export const LANDSCAPE: Readonly<Record<'front' | 'back', Turn>> = { front: 90, back: -90 };
 
 interface TurnSources {
   item: MediaItem | null;
