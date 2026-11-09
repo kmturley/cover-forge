@@ -79,6 +79,7 @@ const LOGO_LABELS = {
   advance: 'Advance',
   nes: 'Nintendo Entertainment System',
   'nes-wide': 'Nintendo Entertainment System (wide)',
+  snes: 'Super Nintendo Entertainment System',
   nintendo: 'Nintendo',
   ds: 'Nintendo DS',
   switch: 'Nintendo Switch',
