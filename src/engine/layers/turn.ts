@@ -37,7 +37,7 @@ export function turnsOf({ item, shared, designs }: TurnSources): Turns {
 /** A panel's rectangle with its width and height swapped about its centre: the shape its artwork is laid out on while it is turned. */
 export function turnedRect(p: PanelRect): PanelRect {
   const [cx, cy] = [p.xMm + p.widthMm / 2, p.yMm + p.heightMm / 2];
-  return { ...p, xMm: cx - p.heightMm / 2, yMm: cy - p.widthMm / 2, widthMm: p.heightMm, heightMm: p.widthMm };
+  return { ...p, xMm: cx - p.heightMm / 2, yMm: cy - p.widthMm / 2, widthMm: p.heightMm, heightMm: p.widthMm, turnedFrom: { widthMm: p.widthMm, heightMm: p.heightMm } };
 }
 
 /**

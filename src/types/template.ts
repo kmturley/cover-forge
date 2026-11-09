@@ -23,6 +23,11 @@ export interface PanelRect {
   follows?: PanelId;
   /** A second spine that starts as a copy of this panel's look (colour, title), until it is edited on its own. */
   mirrors?: PanelId;
+  /**
+   * Set on the swapped copy of a turned panel (see engine/layers/turn.ts): its size before the swap. The Branded dress uses it
+   * to keep its marks and bands the size they are in portrait, rather than a share of the other way round.
+   */
+  turnedFrom?: { widthMm: number; heightMm: number };
 }
 
 /** What is printed for a case: its own insert or label, a sleeve round the case, or a box that holds it. */

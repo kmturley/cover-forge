@@ -346,6 +346,9 @@ const GAME_CASE: Record<string, { label: string; w: number; h: number; spine: nu
   // The scans in scans/nes are the retail box's wrap: 293.8 × 176.1 mm, front 133, spine 28. An NES cartridge is about 120 × 134 × 17-20 mm
   // (ConsoleMods), so no case here holds it. A NES-size clamshell does (case-research.md §20), and the insert follows the scans.
   'nes':       { label: 'NES',                 w: 133,   h: 176, spine: 28,   color: '#26262a' },
+  // PROTOTYPE (case-research.md §21): the original retail box, 7 × 5 × 1.25 in (177.8 × 127 × 31.75 mm). The scans' folds read 29-32 mm
+  // for the spine, and the fan template's 25.4 mm is the depth of a 1 inch universal case.
+  'snes':      { label: 'SNES',                w: 127,   h: 177.8, spine: 31.75, color: '#26262a' },
   // From the 276 × 116 mm covers in scans/ds: front 130 × 116, spine 16.
   'ds':        { label: 'DS',                  w: 130,   h: 116, spine: 16,   color: '#b9bcc2' },
   // The scans in scans/3ds measure 131 × 116 front, spine 12; the front is 130 like the DS, which shares its case's footprint (case-research.md §15).

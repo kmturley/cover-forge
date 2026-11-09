@@ -203,6 +203,11 @@ function lockupName(m: Lockup): string {
 
 /** Draws a front mark with its height, alignment and inset; `depth` gives the header's depth where it lands. */
 function drawFrontMark(s: Sink, m: FrontMark, area: { x: number; w: number }, p: PanelRect, px: number, depth: (xMm: number) => number, id: string) {
+  // On a turned panel the mark keeps its size in mm, which is a different share of the swapped width and height.
+  if (p.turnedFrom) {
+    const [kw, kh] = [p.turnedFrom.widthMm / p.widthMm, p.turnedFrom.heightMm / p.heightMm];
+    m = { ...m, h: m.h * kh, inset: (m.inset ?? 0.025) * kw, ...(m.dx !== undefined && { dx: m.dx * kw }) };
+  }
   s.begin(id, `${lockupName(m)} mark`, p);
   const H = p.heightMm * px;
   let box = lockup(s, m, m.h * H);
@@ -249,7 +254,22 @@ export function drawBranding(s: Sink, t: TemplateConfig, px: number): void {
   s.restore();
 }
 
-function drawFront(s: Sink, t: TemplateConfig, p: PanelRect, h: FrontHeader, px: number, key: string) {
+/** A header with its bands and tabs kept the size (in mm) they have on a portrait panel, for a panel drawn turned. */
+function keepSize(h: FrontHeader, kw: number, kh: number): FrontHeader {
+  switch (h.shape) {
+    case 'band':
+      return { ...h, depth: (x) => h.depth(x) * kh, ...(h.line && { line: { ...h.line, size: h.line.size * kh } }) };
+    case 'foot':
+      return { ...h, h: h.h * kh };
+    case 'tab':
+      return { ...h, w: h.w * kw, h: h.h * kh, ...(h.wBottom !== undefined && { wBottom: h.wBottom * kw }), ...(h.lip !== undefined && { lip: h.lip * kw }), ...(h.plate && { plate: { ...h.plate, top: h.plate.top * kw, bottom: h.plate.bottom * kw } }) };
+    default:
+      return h;
+  }
+}
+
+function drawFront(s: Sink, t: TemplateConfig, p: PanelRect, header: FrontHeader, px: number, key: string) {
+  const h = p.turnedFrom ? keepSize(header, p.turnedFrom.widthMm / p.widthMm, p.turnedFrom.heightMm / p.heightMm) : header;
   const area = paintRect(t, p);
   // Snapped outwards to whole pixels so the paint meets its neighbour with no hairline of the base colour between them.
   const [ax, ay] = [Math.floor(area.xMm * px), Math.floor(area.yMm * px)];
@@ -298,6 +318,12 @@ function drawFront(s: Sink, t: TemplateConfig, p: PanelRect, h: FrontHeader, px:
       }
     }
     h.marks.forEach((m, i) => drawFrontMark(s, m, panelBox, p, px, (xMm) => h.depth(Math.min(1, Math.max(0, (xMm - p.xMm) / p.widthMm))) * p.heightMm, `${key}.mark-${i + 1}`));
+  } else if (h.shape === 'foot') {
+    const top = y0 + (1 - h.h) * H;
+    const bottom = (area.yMm + area.heightMm) * px;
+    s.begin(`${key}.foot`, 'Footer band', p);
+    s.fillRect(ax, top, aw, bottom - top, ink(h.fill, x0, top, W, bottom - top));
+    h.marks.forEach((m, i) => drawFrontMark(s, { ...m, cy: m.cy ?? 1 - h.h / 2 }, panelBox, p, px, () => 0, `${key}.mark-${i + 1}`));
   } else if (h.shape === 'tab') {
     const tw = h.w * W;
     const bw = (h.wBottom ?? h.w) * W;

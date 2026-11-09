@@ -199,6 +199,7 @@ const features: Fixture[] = [
     { layer: newShape('t1', 'front', { fill: '#ffcc00', placement: { x: { anchor: 'start', offset: 0, size: 40 }, y: { anchor: 'start', offset: 0, size: 15 } } }) },
     { layer: newShape('t2', 'back', { fill: '#00ccaa', placement: { x: { anchor: 'start', offset: 0, size: 40 }, y: { anchor: 'start', offset: 0, size: 15 } } }) },
   ] } } }), px: 2 },
+  { name: 'turn/landscape-branded-snes', scene: withShared('game-case-snes', { front: { turn: 90 }, back: { turn: -90 } }, { banner: true }), px: 2 },
   { name: 'turn/landscape-branded-nes', scene: withShared('game-case-nes', { front: { turn: 90 }, back: { turn: -90 } }, { banner: true }), px: 2 },
 
   // Guides and the cut-out view.

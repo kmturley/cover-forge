@@ -110,6 +110,8 @@ export type FrontHeader =
   | { shape: 'tab'; w: number; h: number; wBottom?: number; /** Also paints the top bleed this far across (a share of W), so a logo flush with the top edge has none showing above it. */ lip?: number; fill: Paint; plate?: { top: number; bottom: number; fill: string; line: string }; marks: FrontMark[] }
   /** Full height down the left edge, `w` wide. Its marks run along it. */
   | { shape: 'strip'; w: number; /** Down the right edge instead of the left (the 3DS's). A curved `edge` is for the left side only. */ side?: 'left' | 'right'; fill: Paint; /** Fine vertical streaks over the fill: brushed metal. */ brushed?: Brushed; /** A shade-*.svg logo stretched over the fill, under the brushing: soft 2D shading no gradient can make. */ sheen?: string; /** The strip's right edge when it isn't straight. */ edge?: StripEdge; marks: SpanMark[] }
+  /** A band across the foot of the front, `h` of its height (the Super Nintendo's). Marks are centred up and down in it. */
+  | { shape: 'foot'; h: number; fill: Paint; marks: FrontMark[] }
   | { shape: 'none'; marks: FrontMark[] };
 
 export interface SpineBranding {
@@ -456,6 +458,17 @@ export const GAME_CASE_BRANDING: Record<string, Branding> = {
         { parts: [{ logo: 'nes', only: [19] }], color: W, from: 0.0532, to: 0.2232, across: 0.27, dx: 0.107, rotate: 90 },
         { parts: [{ logo: 'nes', only: NES_TEXT }], color: W, from: 0.035, to: 0.24, across: 0.205, dx: -0.162, rotate: 90 },
       ],
+    },
+  },
+  // SNES: a black band across the foot of the front with the Super Nintendo logo right-aligned in it, and a black spine cap with
+  // the same logo reading down. Measured on the fan template (scans/snes): band 15.4 % of the height, logo 9.6 % high and 4.95 %
+  // of the width (6.4 mm) from the right edge; cap 30.4 % of the length, the logo at 4.0-26.3 % and centred, 9.7 mm wide. The template's
+  // fractions are re-stated for the original box's 127 mm front and 31.75 mm spine (case-research.md §21).
+  snes: {
+    front: { shape: 'foot', h: 0.1543, fill: K, marks: [{ parts: [{ logo: 'snes' }], color: W, h: 0.0962, align: 'right', inset: 0.0507 }] },
+    spine: {
+      cap: { length: 0.304, fill: K },
+      marks: [{ parts: [{ logo: 'snes' }], color: W, from: 0.04, to: 0.2633, across: 0.307, rotate: 90 }],
     },
   },
   'wii-u': {

@@ -843,3 +843,75 @@ cases without a published outside size, so the Box comes out close to the origin
 
 The marks' positions were measured on the template and placed as fractions of the spine. Not yet compared with the
 compare script or by overlaying the render on the template.
+
+## 21. Super Nintendo (SNES)
+
+Measured from the fan-made `template.png` and three 300 dpi covers in `scans/snes` (Aero Fighters, Batman Returns, Super
+Alfred Chicken; git-ignored). All four are 3366 × 2100 px: **285.0 × 177.8 mm** (11.2 × 7 in). **Prototype: nothing is
+committed, and the app's SNES entry is not final.**
+
+### The original box
+
+The SNES shipped in a landscape cardboard box.
+
+| Source | What it says |
+| :--- | :--- |
+| [USC digital archive, Chrono Trigger SNES box](https://scalar.usc.edu/works/chronicles/media/chrono-trigger-snes-box-front) | black cardboard, "7" x 5" x 1.25"": **177.8 × 127 × 31.75 mm** (height × width × depth, held landscape) |
+| [Target listing, SNES / N64 box protector](https://www.target.com/p/old-skool-game-box-protector-for-snes-nintendo-64-20-pack/-/A-93857139) | 7 × 5 × 1.5 in, but that is the protector, not the box |
+| Nintendo | publishes no box size, and no other source for one turned up. It is one title's box |
+
+This agrees with the scans. A 7 in (177.8 mm) sheet is the wrap's height, so the box's face is 127 mm on the sheet
+and its depth is the spine: 2 × 127 + 31.75 = 285.75 mm against the scans' 285.0. The fold detector reads the spine as
+28.8, 32.1 and 32.5 mm and the front as 129.7–129.9 mm. The back reads 122.8–126.5 mm, narrower than the front: a printed
+wrap is not symmetric (the box's overlap and glue edge). So the original box is **127 × 178 mm on the front and about
+32 mm deep**, and the scans' fronts are a little over, which is trim.
+
+### The cartridge
+
+| Source | Size (height × width × thickness) |
+| :--- | :--- |
+| [Wikipedia](https://en.wikipedia.org/wiki/Super_Nintendo_Entertainment_System_Game_Pak), North American | 88 × 136 × 20 mm (3.45 × 5.35 × 0.78 in) |
+| Wikipedia, PAL and Japanese | 86 × 130 × 20 mm (3.39 × 5 × 0.79 in) |
+| A gaming blog (via search; not opened) | 87.7 × 135.85 × 19.7 mm |
+
+The largest is **88 × 136 × 20 mm**: a long, flat cartridge, shorter than an NES one (§20: about 134 × 120 × 20 mm) but
+16 mm wider. It is too long for the DS-size case (136 × 124 mm outside), so no case already here holds it.
+
+### Cases that hold it
+
+| Case | Size | Notes |
+| :--- | :--- | :--- |
+| [Stone Age Gamer, Bitbox SNES/SFC case](https://stoneagegamer.com/bitbox-snes-sfc-game-case.html) | 7 11/16 × 6 5/16 × 1 5/32 in: **195.3 × 160.3 × 29.4 mm** | SNES-specific: "Fits most North American SNES, European SNES, Super Famicom style carts snugly". Has a "bottom sealed clear insert pocket", and the page offers cover art to print. It does not say whether the sizes are outside or inside, and gives no insert size. About 5 mm wider and 4 mm deeper than the same seller's NES case (195.3 × 152.4 × 25.4 mm, §20) |
+| Universal game case (listings found by search: a 25-pack at "7 1/4"H x 5 1/4"W x 1"D", a 10-pack at "5.25 x 1 x 7.25 inches") | about **184 × 133 × 25.4 mm** | sold for SNES and N64 boxes and cartridges. Reports differ: one buyer found a SNES cart snug, another found universal cases too loose for Genesis carts. No insert size |
+| [Zedlabz](https://www.zedlabz.com/collections/empty-game-cases) and Retro Game Cases | not found | their NES, SNES and Game Boy cases were not reached: no size on the pages that loaded, and the Retro Game Cases page 404s |
+
+**Best fit: the 1-inch universal case, or the Bitbox SNES case if a SNES-specific one is wanted.** Both are deep enough for
+the cartridge (25.4 and 29.4 mm against 20 mm) and both are wider than its 136 mm lying along the long edge. The universal
+case's outside, 133 × 184 mm, is the original box's 127 × 178 mm face plus about 6 mm, which is how a 7 × 5 in cover would
+sit in its window. That is an inference: **no seller gives an insert size**, so it is not confirmed.
+
+### What this means for the template
+
+The template now uses **the original box: 127 + 31.75 + 127 × 177.8 mm** (a wrap of 285.75 mm, 0.75 mm wider than the
+scans), because it is the one SNES size with a source, and a cartridge (88 × 136 × 20 mm) fits it. The branding fractions
+come from the fan template and are re-stated for these sizes in millimetres (the spine logo is still 9.7 mm wide, the front
+logo 6.4 mm from the right edge). The fan template's 25.4 mm spine is the depth of a 1 inch universal case, so printing it
+for that case means setting `spine` to 25 in the `snes` entry of `definitions.ts`. Slipcover and Box are derived from the
+insert plus 1.5 and 2 mm (§11), so on the original-box insert they come out 2 mm larger than the real box (129 × 179.8 ×
+33.75 mm). An exact original Box would need its size set by hand, which the app cannot do yet.
+
+### Trade dress
+
+Black spine cap 30.4 % of the length (the template's) with the Super Nintendo logo reading down (4.0–26.3 % of the length,
+38 % of the spine's width, centred), and a black band across the foot of the front, 15.4 % of the height, with the logo
+right-aligned in it (9.6 % high, 4.95 % of the width from the right edge, centred in the band). The logo is `snes.svg` in
+its own red (`#FC0C18`). Branding needed a new front shape, `foot`, for a band at the bottom. Landscape (the front turned
++90° and the back −90°) puts the band against the spine. The dress keeps its size in millimetres when a panel is turned: the
+foot band stays 27 mm deep and the logo 17 mm high, which are 15.4 % and 9.6 % of the 178 mm height but would be 20 and 12.5 mm
+as shares of the 130 mm the turned panel is wide. Only the Branded dress does this: a layer's percentages stay percentages.
+
+### How the match was checked
+
+Positions were measured on the template's alpha channel and placed as fractions. Not yet run through the compare script
+or overlaid on the template. The Landscape render has not been compared with a custom landscape cover.
+
