@@ -1,7 +1,9 @@
 import { useState } from 'react';
+import { useEscapeKey } from '../layout/useEscapeKey';
 
 /** Asks for a design name (a new fork or a rename). */
 export function NameModal({ title, initial, confirm, onDone, onClose }: { title: string; initial: string; confirm: string; onDone: (name: string) => void; onClose: () => void }) {
+  useEscapeKey(onClose);
   const [name, setName] = useState(initial);
   const ok = name.trim().length > 0;
   const submit = () => ok && (onDone(name.trim()), onClose());

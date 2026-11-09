@@ -3,6 +3,7 @@ import { useAppDispatch, useAppState, useSelectedItem } from '../../context/AppC
 import { preloadItem, renderCover } from '../../engine/CanvasRenderer';
 import { PRESETS, designFromPreset, type Preset } from '../../engine/layers/presets';
 import { newDesignId } from '../../context/designFile';
+import { useEscapeKey } from '../layout/useEscapeKey';
 
 const PREVIEW_PX = 220;
 
@@ -32,6 +33,7 @@ function Preview({ preset }: { preset: Preset }) {
 
 /** The built-in designs, each shown as it would look on the selected item. Using one makes a design of your own from it. */
 export function PresetModal({ onClose }: { onClose: () => void }) {
+  useEscapeKey(onClose);
   const dispatch = useAppDispatch();
   const item = useSelectedItem();
   const { designs } = useAppState();
