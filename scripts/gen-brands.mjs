@@ -78,6 +78,7 @@ const LOGO_LABELS = {
   gba: 'Game Boy Advance',
   advance: 'Advance',
   nes: 'Nintendo Entertainment System',
+  'nes-wide': 'Nintendo Entertainment System (wide)',
   nintendo: 'Nintendo',
   ds: 'Nintendo DS',
   switch: 'Nintendo Switch',

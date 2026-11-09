@@ -440,12 +440,16 @@ export const GAME_CASE_BRANDING: Record<string, Branding> = {
       ],
     },
   },
-  // NES: nothing on the front (the Seal of Quality and licence line belong to the game's own art). The spine is a black cap,
+  // NES: a red band across the top of the front with NINTENDO ENTERTAINMENT SYSTEM® spaced out in black (nes-wide.svg, 93 % of the
+  // width, drawn from the OPTI Limited View font). The Seal of Quality and licence line belong to the game's own art. The spine is a black cap,
   // 27.5 % of the length (the fan template's is 31.7 %, shortened with the smaller logos), with the red Nintendo oval at the right and ENTERTAINMENT SYSTEM at the left,
   // both reading down and centred on the cap's length, drawn about 25 % smaller than the template's (it dominated the spine). nes.svg holds the oval (layer 19) and the two rows of text (0-18) with
   // their own colours, so they are separate marks: the oval is narrower than the text, which the template shows.
   nes: {
-    front: { shape: 'none', marks: [] },
+    front: {
+      shape: 'band', depth: flat(0.0548), fill: NINTENDO_RED,
+      marks: [{ parts: [{ logo: 'nes-wide' }], color: K, h: 0.0158, align: 'center' }],
+    },
     spine: {
       cap: { length: 0.275, fill: K },
       marks: [
