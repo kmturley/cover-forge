@@ -2,7 +2,7 @@ import type { PanelRect, TemplateConfig } from '../../types/template';
 import type { Fill, GroupLayer, ImageLayer, Layer, LayerPatch, ShapeLayer, TextLayer } from '../../types/layers';
 import { brandWidth, type Brand, type Logo } from '../../brands';
 import { drawBranding, logoPartGeometry, type Font, type Ink, type LogoPart, type PathOp, type Sink } from '../branding';
-import { brandingFor } from '../official';
+import { brandingOf, pinnedSpine } from '../official';
 import { PANEL_IDS } from '../resolve';
 import { rectToBox, type RectMm } from '../box';
 import { boundsOf, circlePoints, clipPolygon, isRect, quadPoints, remapStops, simplify, type Pt } from './geometry';
@@ -346,8 +346,8 @@ export interface Branded {
 
 const cache = new Map<string, Branded>();
 
-/** The cache key: the case, and its panels' sizes, because a turned panel is laid out with its width and height swapped. */
-const keyOf = (t: TemplateConfig) => `${t.id}|${t.panels.map((p) => `${p.widthMm}x${p.heightMm}`).join(',')}`;
+/** The cache key: the case, the dress it is marked with, and its panels' sizes, because a turned panel is laid out with its width and height swapped. */
+const keyOf = (t: TemplateConfig) => `${t.id}|${t.dress ?? ''}|${t.panels.map((p) => `${p.widthMm}x${p.heightMm}`).join(',')}`;
 
 /** The dress's layers and patches for a case. Cached by case and panel sizes. */
 export function brandedLayers(t: TemplateConfig): Branded {
@@ -358,11 +358,11 @@ export function brandedLayers(t: TemplateConfig): Branded {
 
   const folders: GroupLayer[] = [...new Set(sink.layers.map((l) => l.target))].map((panel) => ({ id: brandedFolderId(panel), type: 'group', name: 'Branded', visible: true, target: panel, placement: null, rotationDeg: 0, opacity: 1 }));
   const patches: Record<string, LayerPatch> = {};
-  const spine = brandingFor(t.kind, t.variantId).spine;
-  if (spine) {
+  if (brandingOf(t).spine) {
     for (const p of t.panels) {
       if (!p.text) continue;
       const length = p.text === 'vertical' ? p.heightMm : p.widthMm;
+      const spine = pinnedSpine(brandingOf(t), length, p.text === 'vertical' ? p.widthMm : p.heightMm)!;
       const end = spine.titleFrom ?? Math.max(spine.cap?.length ?? 0, ...spine.marks.map((m) => m.to)) + 0.02;
       patches[`${p.id}.text`] = {
         spineFit: { startMm: Number((end * length).toFixed(2)), scale: spine.titleScale ?? 1, ...(spine.titleColor && typeof spine.fill === 'string' && { contrast: { on: spine.fill, color: spine.titleColor } }) },

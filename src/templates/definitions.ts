@@ -1,4 +1,4 @@
-import type { PanelId, PanelRect, PreviewMaterial, PreviewSpec, SpineOrientation, TemplateConfig, TemplateKind, TemplateMark, TemplateVariant } from '../types/template';
+import type { CaseOrigin, PanelId, PanelRect, PreviewMaterial, PreviewSpec, SpineOrientation, TemplateConfig, TemplateKind, TemplateMark, TemplateVariant } from '../types/template';
 import { XBOX_GREEN } from '../engine/official';
 
 export const PX_PER_MM = 300 / 25.4;
@@ -320,6 +320,27 @@ const VINYL: Record<string, { label: string; sizeMm: number; spine: number }> = 
 };
 
 /**
+ * Which kind of case each platform's template is (see CaseOrigin). The standard ones are the industry's own cases; the Switch,
+ * Vita, DS and 3DS cases and the NES and SNES boxes are what those games came in; the Game Boy family came in boxes of an
+ * unknown size, so its template is the DS-size case sold for them since.
+ */
+const GAME_CASE_ORIGIN: Record<string, CaseOrigin> = {
+  pc: 'standard', ps1: 'standard', ps2: 'standard', ps3: 'standard', ps4: 'standard', ps5: 'standard',
+  wii: 'standard', 'wii-u': 'standard', gamecube: 'standard', xbox: 'standard', 'xbox-360': 'standard', 'xbox-one': 'standard', 'xbox-series': 'standard',
+  'ps-vita': 'original', ds: 'original', '3ds': 'original', switch: 'original', switch2: 'original', nes: 'original', snes: 'original',
+  gb: 'aftermarket', gbc: 'aftermarket', gba: 'aftermarket',
+};
+
+/**
+ * What each non-standard case is called, for the Case picker. Platforms that share one case share its name: the Game Boy family
+ * uses the DS-size case (sold for them since; the DS's own is the original), and the Switch and Switch 2 share a case size.
+ */
+const GAME_CASE_NAME: Record<string, string> = {
+  ds: 'DS case', gb: 'DS case', gbc: 'DS case', gba: 'DS case', '3ds': '3DS case',
+  switch: 'Switch case', switch2: 'Switch case', 'ps-vita': 'PS Vita case', nes: 'NES case', snes: 'SNES case',
+};
+
+/**
  * Game case variants (US releases): the platform, the size of its printed insert (`w`/`h` = the front panel, `spine`)
  * and the case colour for the 3D view. Sizes are the US cover art sizes in branding-spec.md, cross-checked against
  * multiple independent sources per case in case-research.md: platforms on the same case share a size, and the brand
@@ -603,7 +624,7 @@ export const TEMPLATE_DEFS: TemplateDef[] = [
     kind: 'game-case',
     name: 'Game case',
     group: 'Game cases',
-    variants: Object.entries(GAME_CASE).map(([id, v]) => ({ id, label: v.label })),
+    variants: Object.entries(GAME_CASE).map(([id, v]) => ({ id, label: v.label, origin: GAME_CASE_ORIGIN[id], caseName: GAME_CASE_NAME[id] })),
     build: (id) => {
       const v = GAME_CASE[id] ?? GAME_CASE['ps4'];
       const variantId = GAME_CASE[id] ? id : 'ps4';

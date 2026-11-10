@@ -58,8 +58,11 @@ describe('template library', () => {
     expect(detail('vhs-std-25')).toBe('VHS Sleeve · 105 × 190 mm · 25 mm spine');
     expect(detail('nfc-card-cr80-duplex')).toBe('CR80 Card · 54 × 85.6 mm');
     expect(detail('vinyl-7inch')).toBe('7" Single Sleeve · 184 × 184 mm · 3 mm spine');
-    expect(detail('game-case-ps4')).toBe('Custom · 129.5 × 161 mm · 14 mm spine');
-    expect(detail('game-case-switch')).toBe('Custom · 99 × 161 mm · 10 mm spine');
+    // A case that fits no listed size is named for where it comes from: a standard case, the game's original, or one made since.
+    expect(detail('game-case-ps4')).toBe('Blu-ray Case (14 mm) · 129.5 × 161 mm · 14 mm spine');
+    expect(detail('game-case-switch')).toBe('Switch case (original) · 99 × 161 mm · 10 mm spine');
+    expect(detail('game-case-snes')).toBe('SNES case (original) · 127 × 177.8 mm · 31.8 mm spine');
+    expect(detail('game-case-gba')).toBe('DS case (aftermarket) · 130 × 116 mm · 16 mm spine');
     expect(detail('nfc-sticker-25')).toBe('Custom · 25 × 25 mm');
     expect(searchLibrary('jewel').map((e) => e.id)).toEqual(['game-case-ps1', 'cd-jewel']);
   });
@@ -72,8 +75,8 @@ describe('template library', () => {
   it('searches every word, by name, maker or group', () => {
     // By name within a group.
     expect(searchLibrary('nintendo').map((e) => e.name)).toEqual(['3DS', 'DS', 'Game Boy', 'Game Boy Advance', 'Game Boy Color', 'GameCube', 'NES', 'SNES', 'Switch', 'Switch 2', 'Wii', 'Wii U']);
-    // The standard case counts too: Xbox One and Series X|S covers fit a Blu-ray case, as does the Blu-ray 4K UHD one.
-    expect(searchLibrary('blu ray').map((e) => e.id)).toEqual(['game-case-xbox-one', 'game-case-xbox-series', 'bluray-us-11', 'uhd-us-11', 'uhd-multi4-15', 'uhd-elite-12.5', 'bluray-slim-7']);
+    // The standard case counts too: PS3, PS4, PS5, Xbox One and Series X|S covers fit a Blu-ray case, as does the Blu-ray 4K UHD one.
+    expect(searchLibrary('blu ray').map((e) => e.id)).toEqual(['game-case-ps3', 'game-case-ps4', 'game-case-ps5', 'game-case-xbox-one', 'game-case-xbox-series', 'bluray-us-11', 'uhd-us-11', 'uhd-multi4-15', 'uhd-elite-12.5', 'bluray-slim-7']);
     expect(searchLibrary('')).toHaveLength(LIBRARY.length);
   });
 

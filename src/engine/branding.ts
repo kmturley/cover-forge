@@ -4,7 +4,7 @@ import { paintRect } from '../templates/geometry';
 import { brandHeight, brandPath2D, brandWidth, getBrand, getLogo, type Brand, type Logo } from '../brands';
 import { paintLogoLayers } from './logoLayers';
 import { X360_WAVES, X360_WAVES_SIZE } from './x360Waves.generated';
-import { brandingFor, type Brushed, type FrontHeader, type FrontMark, type Lockup, type Paint, type Part, type SpanMark, type SpineBranding } from './official';
+import { brandingOf, pinnedSpine, tiedMarks, type Brushed, type FrontHeader, type FrontMark, type Lockup, type Paint, type Part, type SpanMark, type SpineBranding } from './official';
 
 /**
  * Draws the "Branded" trade dress (the data is in official.ts). The drawing code doesn't touch a canvas itself: it
@@ -201,6 +201,9 @@ function lockupName(m: Lockup): string {
   return first(m.parts) ?? 'Mark';
 }
 
+/** Front panels drawn at the platform's own size in mm (their case is taller or narrower than its own), as opposed to genuinely turned ones. */
+const pinned = new WeakSet<PanelRect>();
+
 /** Draws a front mark with its height, alignment and inset; `depth` gives the header's depth where it lands. */
 function drawFrontMark(s: Sink, m: FrontMark, area: { x: number; w: number }, p: PanelRect, px: number, depth: (xMm: number) => number, id: string) {
   // On a turned panel the mark keeps its size in mm, which is a different share of the swapped width and height.
@@ -243,14 +246,25 @@ function drawSheen(s: Sink, id: string | undefined, pieceId: string, x: number, 
 
 /** Draws the header, spine caps and back logos. `px` is pixels per mm. */
 export function drawBranding(s: Sink, t: TemplateConfig, px: number): void {
-  const b = brandingFor(t.kind, t.variantId);
+  const b = brandingOf(t);
   s.save();
-  const front = t.panels.find((p) => p.id === 'front');
-  if (front) drawFront(s, t, front, b.front, px, 'front');
+  const own = t.panels.find((p) => p.id === 'front');
+  // On a front taller or narrower than the platform's own, the header keeps its size in mm (as on a turned panel) rather than following the panel.
+  let front = own;
+  if (own && b.ref && !own.turnedFrom && (own.heightMm > b.ref.h || own.widthMm < b.ref.w)) {
+    front = { ...own, turnedFrom: { widthMm: Math.max(own.widthMm, b.ref.w), heightMm: Math.min(own.heightMm, b.ref.h) } };
+    pinned.add(front);
+  }
+  const bf = b.front;
+  const header: FrontHeader = own && b.ref && !own.turnedFrom && bf.shape !== 'strip' ? { ...bf, marks: tiedMarks(bf.marks, b.ref, own.widthMm, own.heightMm) } : bf;
+  if (front) drawFront(s, t, front, header, px, 'front');
   const back = t.panels.find((p) => p.id === 'back');
   if (back && b.backBand && b.front.shape === 'band') drawFront(s, t, back, { ...b.front, marks: [] }, px, 'back');
   if (back && b.back) b.back.forEach((m, i) => drawFrontMark(s, m, { x: back.xMm * px, w: back.widthMm * px }, back, px, () => 0, `back.mark-${i + 1}`));
-  if (b.spine) for (const p of t.panels) if (p.text) drawSpine(s, t, p, b.spine, px);
+  for (const p of t.panels) {
+    const sp = p.text ? pinnedSpine(b, p.text === 'vertical' ? p.heightMm : p.widthMm, p.text === 'vertical' ? p.widthMm : p.heightMm) : undefined;
+    if (sp) drawSpine(s, t, p, sp, px);
+  }
   s.restore();
 }
 
@@ -262,14 +276,23 @@ function keepSize(h: FrontHeader, kw: number, kh: number): FrontHeader {
     case 'foot':
       return { ...h, h: h.h * kh };
     case 'tab':
-      return { ...h, w: h.w * kw, h: h.h * kh, ...(h.wBottom !== undefined && { wBottom: h.wBottom * kw }), ...(h.lip !== undefined && { lip: h.lip * kw }), ...(h.plate && { plate: { ...h.plate, top: h.plate.top * kw, bottom: h.plate.bottom * kw } }) };
+      return { ...h, w: Math.min(1, h.w * kw), h: h.h * kh, ...(h.wBottom !== undefined && { wBottom: Math.min(1, h.wBottom * kw) }), ...(h.lip !== undefined && { lip: h.lip * kw }), ...(h.plate && { plate: { ...h.plate, top: h.plate.top * kw, bottom: h.plate.bottom * kw } }) };
     default:
       return h;
   }
 }
 
 function drawFront(s: Sink, t: TemplateConfig, p: PanelRect, header: FrontHeader, px: number, key: string) {
-  const h = p.turnedFrom ? keepSize(header, p.turnedFrom.widthMm / p.widthMm, p.turnedFrom.heightMm / p.heightMm) : header;
+  // A mark's own centre is a share of the height, which a pinned header keeps in mm.
+  const pin = (m: FrontMark): FrontMark => (pinned.has(p) && m.cy !== undefined ? { ...m, cy: m.cy * (p.turnedFrom!.heightMm / p.heightMm) } : m);
+  let h = p.turnedFrom ? keepSize(header, p.turnedFrom.widthMm / p.widthMm, p.turnedFrom.heightMm / p.heightMm) : header;
+  // A strip keeps its width in mm on a front narrower than the platform's own, or its marks (sized by the width) would shrink away from each other.
+  if (h.shape === 'strip' && pinned.has(p)) {
+    const kw = p.turnedFrom!.widthMm / p.widthMm;
+    const edge = h.edge;
+    // The curved edge (the DS's, the GBA's) is a share of the width too, so it widens with the strip, or the logo would run over it.
+    h = { ...h, w: Math.min(0.5, h.w * kw), ...(edge && { edge: { ...edge, depth: (t: number) => edge.depth(t) * kw, ...(edge.cut && { cut: { ...edge.cut, inset: edge.cut.inset * kw } }) } }) };
+  }
   const area = paintRect(t, p);
   // Snapped outwards to whole pixels so the paint meets its neighbour with no hairline of the base colour between them.
   const [ax, ay] = [Math.floor(area.xMm * px), Math.floor(area.yMm * px)];
@@ -292,7 +315,7 @@ function drawFront(s: Sink, t: TemplateConfig, p: PanelRect, header: FrontHeader
     if (h.decor) {
       s.save();
       s.clip(band);
-      drawDecor(s, h.decor, x0, y0, W, deepest - y0, p, key);
+      drawDecor(s, h.decor, x0, y0, W, deepest - y0, p, key, pinned.has(p) ? W - p.turnedFrom!.widthMm * px : 0);
       s.restore();
     }
 
@@ -317,7 +340,7 @@ function drawFront(s: Sink, t: TemplateConfig, p: PanelRect, header: FrontHeader
         s.restore();
       }
     }
-    h.marks.forEach((m, i) => drawFrontMark(s, m, panelBox, p, px, (xMm) => h.depth(Math.min(1, Math.max(0, (xMm - p.xMm) / p.widthMm))) * p.heightMm, `${key}.mark-${i + 1}`));
+    h.marks.forEach((m, i) => drawFrontMark(s, pin(m), panelBox, p, px, (xMm) => h.depth(Math.min(1, Math.max(0, (xMm - p.xMm) / p.widthMm))) * p.heightMm, `${key}.mark-${i + 1}`));
   } else if (h.shape === 'foot') {
     const top = y0 + (1 - h.h) * H;
     const bottom = (area.yMm + area.heightMm) * px;
@@ -345,7 +368,7 @@ function drawFront(s: Sink, t: TemplateConfig, p: PanelRect, header: FrontHeader
       s.fillRect(ax, ay, x0 + h.lip * W - ax, y0 - ay + 1, ink(h.fill, x0, ay, tw, th));
     }
     const tabBox = { x: x0, w: bw };
-    h.marks.forEach((m, i) => drawFrontMark(s, m, m.onPanel ? panelBox : tabBox, p, px, () => h.h * p.heightMm, `${key}.mark-${i + 1}`));
+    h.marks.forEach((m, i) => drawFrontMark(s, pin(m), m.onPanel ? panelBox : tabBox, p, px, () => h.h * p.heightMm, `${key}.mark-${i + 1}`));
   } else if (h.shape === 'strip') {
     const sw = h.w * W;
     const [sy, sh] = [area.yMm * px, area.heightMm * px];
@@ -381,7 +404,8 @@ function drawFront(s: Sink, t: TemplateConfig, p: PanelRect, header: FrontHeader
       }
       s.begin(`${key}.strip`, 'Side strip', p);
       s.fillPath(shape(inner), ink(h.fill, ax, sy, sw, sh));
-      drawSheen(s, h.sheen, `${key}.strip`, ax, sw, y0, H, true, p);
+      // The shading is drawn from the trim, where its artwork begins, so its curved edge lands on the fill's (a bleed to the left would shift it).
+      drawSheen(s, h.sheen, `${key}.strip`, x0, sw, y0, H, true, p);
       if (h.brushed) drawBrushed(s, h.brushed, `${key}.strip`, ax, sw, top, bottom - top, sw / px, 7, p, (y0, y1, i) => s.fillPath(shape(inner, y0, y1), i));
     } else {
       s.begin(`${key}.strip`, 'Side strip', p);
@@ -393,13 +417,22 @@ function drawFront(s: Sink, t: TemplateConfig, p: PanelRect, header: FrontHeader
       if (h.brushed) drawBrushed(s, h.brushed, `${key}.strip`, sx, rw, sy, sh, rw / px, 7, p, (y0, y1, i) => s.fillRect(sx, y0, rw, y1 - y0, i));
     }
     const stripX = h.side === 'right' ? x0 + W - sw : x0;
-    h.marks.forEach((m, i) => drawSpan(s, m, { x: stripX, y: y0, across: sw, along: H }, 'vertical', px, p, `${key}.mark-${i + 1}`));
+    // On a front taller than the platform's own, the marks keep their size in mm: those in the top half stay with the top, those in the bottom half
+    // with the bottom and the rest with the middle (a logo that was centred stays centred).
+    const k = pinned.has(p) ? Math.min(1, p.turnedFrom!.heightMm / p.heightMm) : 1;
+    const keep = (m: SpanMark): SpanMark => {
+      if (k >= 1) return m;
+      const a = m.anchor ?? (m.to <= 0.5 ? 'top' : m.from >= 0.5 ? 'bottom' : 'center');
+      const f = (v: number) => (a === 'top' ? v * k : a === 'bottom' ? 1 - (1 - v) * k : 0.5 + (v - 0.5) * k);
+      return { ...m, from: f(m.from), to: f(m.to), ...(m.dxAlong && { dxAlong: m.dxAlong * k }) };
+    };
+    h.marks.forEach((m, i) => drawSpan(s, keep(m), { x: stripX, y: y0, across: sw, along: H }, 'vertical', px, p, `${key}.mark-${i + 1}`));
   } else {
     h.marks.forEach((m, i) => drawFrontMark(s, m, panelBox, p, px, () => 0, `${key}.mark-${i + 1}`));
   }
 }
 
-function drawDecor(s: Sink, decor: 'xbox-orb' | 'x360-swoosh', x0: number, y0: number, W: number, depth: number, p: PanelRect, key: string) {
+function drawDecor(s: Sink, decor: 'xbox-orb' | 'x360-swoosh', x0: number, y0: number, W: number, depth: number, p: PanelRect, key: string, narrowed = 0) {
   if (decor === 'xbox-orb') {
     // Fine horizontal ridges fading in towards the orb, a dark ring, then the glossy green-to-yellow orb with its X,
     // cropped by the band's bottom and right trims.
@@ -427,7 +460,10 @@ function drawDecor(s: Sink, decor: 'xbox-orb' | 'x360-swoosh', x0: number, y0: n
   // as tall as the band and flush with the right trim, with its last colours carried on into the bleed.
   const k = depth / (X360_WAVES_SIZE.h - 1);
   const right = x0 + W;
-  const sx = (x: number) => right - (X360_WAVES_SIZE.w - x) * k;
+  // On a front narrower than the platform's own the artwork keeps its height but is squeezed sideways to leave the logo the room it has there
+  // (`narrowed` is how much narrower the front is, in px), so the swooshes never run into the text.
+  const kx = narrowed < 0 ? Math.max(0.35 * k, k + (narrowed / X360_WAVES_SIZE.w)) : k;
+  const sx = (x: number) => right - (X360_WAVES_SIZE.w - x) * kx;
   const sy = (y: number) => y0 + y * k;
   const edgeAt = (pts: [number, number][], y: number) => {
     // Past the last point, keep to the last segment rather than wrapping round to the first.

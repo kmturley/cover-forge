@@ -9,11 +9,12 @@ import { DEFAULTS_VERSION } from '../engine/layers/presets';
 import { PANEL_IDS } from '../engine/resolve';
 import { DEFAULT_DESIGN_ID, designOf, mergePanelSettings } from '../engine/designs';
 import { DEFAULT_TEMPLATE_ID, buildTemplateById } from '../templates';
-import { syncTemplate } from './templateOf';
+import { syncTemplate, templateIdOf } from './templateOf';
 import { LEGACY_FIELDS } from '../engine/box';
 
 export { templateIdOf, templateOf } from './templateOf';
-import { defaultTemplateFor, isTemplateId, type LastTemplates } from '../templates/library';
+import { changeCase, defaultTemplateFor, isTemplateId, type LastTemplates } from '../templates/library';
+import { dressOf } from '../engine/layers/dress';
 import { sortItems } from './items';
 import { loadSession, restoreSession, saveSession } from './session';
 import { applyParams, type Startup } from './share';
@@ -86,6 +87,10 @@ export type Action =
   | { type: 'setEditMode'; mode: EditMode }
   /** Gives the items a template (none = just the empty-queue one); new items of their types then start with it too. */
   | { type: 'setItemTemplate'; items: string[]; template: string }
+  /** Changes the items' Type (insert, slipcover or box) of the case they are on: only the template id changes, so their branding stays. */
+  | { type: 'setItemType'; items: string[]; template: string }
+  /** Changes the items' case, keeping their branding (and their Type where the case has it); see `changeCase`. */
+  | { type: 'setItemCase'; items: string[]; case: string }
   | { type: 'setShowGuides'; show: boolean }
   | { type: 'setShowMeasurements'; show: boolean }
   | { type: 'setView'; view: ViewMode }
@@ -300,7 +305,32 @@ function apply(state: AppState, action: Action): AppState {
       const ids = new Set(action.items);
       const lastTemplates = { ...state.lastTemplates };
       for (const i of state.items) if (ids.has(i.id)) lastTemplates[i.type] = action.template;
+      // A template brings its own branding: a dress the item had chosen goes.
+      const fresh = (i: MediaItem): MediaItem => ({ ...i, templateId: action.template, ...(i.panels?.front?.dress !== undefined && { panels: { ...i.panels, front: mergePanel(i.panels.front, { dress: undefined }) } }) });
+      return { ...state, templateId: action.template, lastTemplates, items: state.items.map((i) => (ids.has(i.id) ? fresh(i) : i)) };
+    }
+    case 'setItemType': {
+      if (!isTemplateId(action.template)) return state;
+      const ids = new Set(action.items);
+      const lastTemplates = { ...state.lastTemplates };
+      for (const i of state.items) if (ids.has(i.id)) lastTemplates[i.type] = action.template;
       return { ...state, templateId: action.template, lastTemplates, items: state.items.map((i) => (ids.has(i.id) ? { ...i, templateId: action.template } : i)) };
+    }
+    case 'setItemCase': {
+      const ids = new Set(action.items);
+      const lastTemplates = { ...state.lastTemplates };
+      let templateId = state.templateId;
+      const items = state.items.map((i) => {
+        if (!ids.has(i.id)) return i;
+        const res = changeCase(templateIdOf(state, i), dressOf(i), action.case);
+        if (!res) return i;
+        lastTemplates[i.type] = res.template;
+        templateId = res.template;
+        // The branding is kept by a dress on the item, unless the new case's own is the one kept (then none is needed).
+        const dress = res.dress || undefined;
+        return { ...i, templateId: res.template, panels: { ...i.panels, front: mergePanel(i.panels?.front, { dress }) } };
+      });
+      return { ...state, templateId, lastTemplates, items };
     }
     case 'setShowGuides':
       return { ...state, showGuides: action.show };

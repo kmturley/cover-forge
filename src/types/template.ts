@@ -117,7 +117,19 @@ export interface TemplateConfig {
   /** Pixels per mm at 300 DPI. */
   dpiScale: number;
   preview: PreviewSpec;
+  /**
+   * Set on the working copy the layers are laid out against (see engine/layers/view.ts): the platform whose Branded dress to
+   * draw instead of the case's own, or `none` for no dress.
+   */
+  dress?: string;
 }
+
+/**
+ * What kind of case a template is: an industry-standard one (a DVD or Blu-ray case, a CD jewel case), the one the game
+ * originally came in (a Switch case, a DS case, the NES and SNES boxes), or one made since (the DS-size case sold for
+ * Game Boy games). All are a "case": the Type (Insert, Slipcover or Box) is chosen separately.
+ */
+export type CaseOrigin = 'standard' | 'original' | 'aftermarket';
 
 export interface TemplateVariant {
   id: string;
@@ -125,4 +137,8 @@ export interface TemplateVariant {
   label: string;
   /** Retired: still built for saves and links that use it, but not offered in the library. */
   hidden?: boolean;
+  /** Which kind of case it is, where that isn't just a standard size (see CaseOrigin). */
+  origin?: CaseOrigin;
+  /** The case's name where it isn't a standard's ("DS case"): templates that share a case share its name, so the Case picker lists it once. */
+  caseName?: string;
 }

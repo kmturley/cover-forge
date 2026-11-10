@@ -45,6 +45,13 @@ export function turnedRect(p: PanelRect): PanelRect {
  * as it was. Layers are laid out against this, then drawn turned into the real panels.
  */
 export function turnedTemplate(t: TemplateConfig, turns: Turns): TemplateConfig {
-  if (Object.keys(turns).length === 0) return t;
-  return { ...t, panels: t.panels.map((p) => (turns[p.id] && !p.follows ? turnedRect(p) : p)) };
+  const key = JSON.stringify(turns);
+  if (key === '{}') return t;
+  // The same object for the same turns, so what is cached by template (the default layers) is found again.
+  const seen = memo.get(t) ?? memo.set(t, new Map()).get(t)!;
+  let out = seen.get(key);
+  if (!out) seen.set(key, (out = { ...t, panels: t.panels.map((p) => (turns[p.id] && !p.follows ? turnedRect(p) : p)) }));
+  return out;
 }
+
+const memo = new WeakMap<TemplateConfig, Map<string, TemplateConfig>>();

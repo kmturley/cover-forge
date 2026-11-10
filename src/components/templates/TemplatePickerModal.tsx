@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { templateIdOf, useAppDispatch, useAppState } from '../../context/AppContext';
-import { groupFor, originalTemplateFor } from '../../templates/library';
+import { groupFor, originalTemplateFor, templatesOf } from '../../templates/library';
+import { dressOf } from '../../engine/layers/dress';
 import type { MediaType } from '../../types/media';
 import { TemplateLibrary } from './TemplateLibrary';
 import { useEscapeKey } from '../layout/useEscapeKey';
@@ -10,7 +11,7 @@ const PLURAL: Record<MediaType, string> = { game: 'games', movie: 'movies', tv: 
 type Scope = 'item' | 'group' | 'type' | 'all';
 
 /**
- * Picks the case for some items: one (then also offering every item of its type, or the whole queue) or a group of
+ * Picks the template (the branding, and the case and Type it starts with) for some items: one (then also offering every item of its type, or the whole queue) or a group of
  * them (a queue group, offering the whole queue too).
  */
 export function TemplatePickerModal({ itemIds, onClose }: { itemIds: string[]; onClose: () => void }) {
@@ -30,7 +31,8 @@ export function TemplatePickerModal({ itemIds, onClose }: { itemIds: string[]; o
     ...(single && sameType.length > 1 && sameType.length < items.length ? [{ id: 'type' as const, label: `All ${PLURAL[item.type]} (${sameType.length})`, ids: sameType.map((i) => i.id) }] : []),
     ...(items.length > chosen.length ? [{ id: 'all' as const, label: `Whole queue (${items.length})`, ids: items.map((i) => i.id) }] : []),
   ];
-  const current = [...new Set(chosen.map((i) => templateIdOf(state, i)))];
+  // What is marked is the template (the brand), not the case it is on now: changing the case never moves it.
+  const current = [...new Set(chosen.flatMap((i) => templatesOf(templateIdOf(state, i), dressOf(i))))];
   // The scope was picked from an earlier render's options; if the items changed since, fall back to the first.
   const targets = (scopes.find((s) => s.id === scope) ?? scopes[0]).ids;
   // When every item is the same kind of media: its group comes first, marked recommended, with its original case marked.
@@ -46,7 +48,7 @@ export function TemplatePickerModal({ itemIds, onClose }: { itemIds: string[]; o
   return (
     <div className="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="picker-title" onClick={onClose}>
       <div className="modal wide" onClick={(e) => e.stopPropagation()}>
-        <h2 id="picker-title" className="modal-title">{single ? `Case for “${item.title}”` : `Case for ${chosen.length} items`}</h2>
+        <h2 id="picker-title" className="modal-title">{single ? `Template for “${item.title}”` : `Template for ${chosen.length} items`}</h2>
         {scopes.length > 1 && (
           <div className="seg picker-scope" role="group" aria-label="Apply to">
             {scopes.map((s) => (
@@ -56,7 +58,7 @@ export function TemplatePickerModal({ itemIds, onClose }: { itemIds: string[]; o
             ))}
           </div>
         )}
-        <TemplateLibrary selected={current.length === 1 ? current : []} onPick={pick} recommended={recommended} original={original} />
+        <TemplateLibrary selected={current} onPick={pick} recommended={recommended} original={original} />
         <div className="modal-actions">
           <button onClick={onClose}>Cancel</button>
         </div>

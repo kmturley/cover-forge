@@ -367,7 +367,7 @@ exports[`the default layers of every case > are frozen 1`] = `
     "branded.front.mark-1 · image · front · in branded.front",
     "branded.spine.cap · shape · spine · in branded.spine",
     "branded.spine.mark-1 · image · spine · in branded.spine",
-    "branded.spine.mark-2 · image · spine · in branded.spine",
+    "branded.spine.mark-1-2 · image · spine · in branded.spine",
     "spine.text · text · spine",
   ],
   "game-case-pc": [
