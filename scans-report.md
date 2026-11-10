@@ -200,6 +200,18 @@ Fold lines detected from the image in 1/4; estimated from a known spine width in
 
 Fold lines detected from the image in 2/4; estimated from a known spine width in 2/4.
 
+## snes  (n=4)
+
+| File | DPI | Width mm | Height mm | Back mm | Spine mm | Spine 2 mm | Front mm | Spine source | Band % H | Band shape | Band colour | Band end colour | Spine cap % L | Notes |
+| :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
+| aerofighters.jpg | 300 | 285.0 | 177.8 | 126.5 | 28.8 | — | 129.7 | detected | 5.0 | gradient | #090909 | #616662 | — |  |
+| batmanreturns.jpg | 300 | 285.0 | 177.8 | 123.0 | 32.1 | — | 129.9 | detected | 4.9 | flat | #000000 | — | — |  |
+| superalfredchicken.jpg | 300 | 285.0 | 177.8 | 122.8 | 32.5 | — | 129.7 | detected | 5.0 | gradient | #090909 | #616662 | 20.4 |  |
+| template.png | 300 | 285.0 | 177.8 | 130.0 | 25.1 | — | 130.0 | estimated | 30.5 | flat | #000000 | — | 30.5 | No symmetric spine strip found; estimated from snes's known 25 mm spine, assuming equal front/back width. |
+| **Mode** | | **285.0** | **177.8** | **124.8** | **30.4** | **—** | **129.7** | | **5.0** | | **#050505** | **#616662** | **25.5** | |
+
+Fold lines detected from the image in 3/4; estimated from a known spine width in 1/4.
+
 ## switch  (n=4)
 
 | File | DPI | Width mm | Height mm | Back mm | Spine mm | Spine 2 mm | Front mm | Spine source | Band % H | Band shape | Band colour | Band end colour | Spine cap % L | Notes |

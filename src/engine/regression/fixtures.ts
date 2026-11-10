@@ -199,7 +199,14 @@ const features: Fixture[] = [
     { layer: newShape('t1', 'front', { fill: '#ffcc00', placement: { x: { anchor: 'start', offset: 0, size: 40 }, y: { anchor: 'start', offset: 0, size: 15 } } }) },
     { layer: newShape('t2', 'back', { fill: '#00ccaa', placement: { x: { anchor: 'start', offset: 0, size: 40 }, y: { anchor: 'start', offset: 0, size: 15 } } }) },
   ] } } }), px: 2 },
+  { name: 'turn/landscape-branded-snes', scene: withShared('game-case-snes', { front: { turn: 90 }, back: { turn: -90 } }, { banner: true }), px: 2 },
   { name: 'turn/landscape-branded-nes', scene: withShared('game-case-nes', { front: { turn: 90 }, back: { turn: -90 } }, { banner: true }), px: 2 },
+
+  // A platform's Branded dress on another case: the SNES dress on a DVD-size case, and no dress at all.
+  { name: 'dress/snes-on-dvd-case', scene: scene('game-case-pc', { item: item({ front: { dress: 'snes' } }), banner: true }), px: 2 },
+  { name: 'dress/snes-box-on-dvd-case', scene: scene('game-case-pc~box', { item: item({ front: { dress: 'snes' } }), banner: true }), px: 1 },
+  { name: 'dress/3ds-on-jewel', scene: scene('game-case-ps1', { item: item({ front: { dress: '3ds' } }), banner: true }), px: 2 },
+  { name: 'dress/none', scene: scene('game-case-ps4', { item: item({ front: { dress: 'none' } }), banner: true }), px: 2 },
 
   // Guides and the cut-out view.
   { name: 'view/guides', scene: scene(BR, { showGuides: true }), px: 2 },

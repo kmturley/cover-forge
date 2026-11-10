@@ -79,6 +79,11 @@ export interface PanelSettings {
    * panel with its width and height swapped, so it is the landscape shape the box has when turned on its side.
    */
   turn?: 0 | 90 | -90;
+  /**
+   * Which platform's Branded dress to draw on the case instead of its own: a platform id (`snes`, `ps2`), or `none`. Empty (or
+   * unset) is the case's own. It is a setting of the whole case, kept on the front like Landscape's turn, so it layers the same way.
+   */
+  dress?: string;
 }
 
 /** A store / console brand mark drawn on top of a panel's image and text. Every field is layered like the rest (default → shared → item). */

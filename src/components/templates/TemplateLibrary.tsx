@@ -8,7 +8,7 @@ interface Props {
   onPick: (id: string) => void;
   /** The group made for the items' media, listed first and marked "(recommended)". */
   recommended?: LibraryGroup | null;
-  /** The case the items' original release came in, marked so it's easy to go back to. */
+  /** The template the items' original release came in, marked so it's easy to go back to. */
   original?: string | null;
 }
 
@@ -20,7 +20,7 @@ export function TemplateLibrary({ selected, onPick, recommended = null, original
   return (
     <div className="library">
       <div className="library-search">
-        <input type="search" autoFocus placeholder="Search cases: PS4, Blu-ray, vinyl, Nintendo…" aria-label="Search templates" value={query} onChange={(e) => setQuery(e.target.value)} />
+        <input type="search" autoFocus placeholder="Search templates: PS4, Blu-ray, vinyl, Nintendo…" aria-label="Search templates" value={query} onChange={(e) => setQuery(e.target.value)} />
       </div>
       <div className="library-list">
         {!found.length && <p className="muted">No templates match “{query}”.</p>}

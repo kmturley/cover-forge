@@ -43,6 +43,8 @@ export interface FrontMark extends Lockup {
   dx?: number;
   /** A solid rectangle behind the mark, for marks that sit on the artwork. */
   plate?: string;
+  /** A ® or ™ that belongs to the logo mark before it: it keeps its place against that logo (as drawn on the platform's own case) when the logo changes size with the case. */
+  tag?: boolean;
 }
 
 /** A mark fitted into a span of the spine (or of a front strip), centred in it. */
@@ -52,6 +54,8 @@ export interface SpanMark extends Lockup {
   to: number;
   /** Share of the width it may use. Default 0.6. */
   across?: number;
+  /** Where it stays when the strip is taller than the one it was drawn for: with the top, with the bottom, or the middle. Default: whichever half of the strip it is in (the middle if it crosses it). */
+  anchor?: 'top' | 'bottom' | 'center';
   /** 90 reads top-to-bottom (spines), −90 bottom-to-top (PS1 and early PS3 strips). */
   rotate: 0 | 90 | -90;
   /** Fills the whole span, edge to edge, behind the mark (PS2's white square). */
@@ -110,19 +114,23 @@ export type FrontHeader =
   | { shape: 'tab'; w: number; h: number; wBottom?: number; /** Also paints the top bleed this far across (a share of W), so a logo flush with the top edge has none showing above it. */ lip?: number; fill: Paint; plate?: { top: number; bottom: number; fill: string; line: string }; marks: FrontMark[] }
   /** Full height down the left edge, `w` wide. Its marks run along it. */
   | { shape: 'strip'; w: number; /** Down the right edge instead of the left (the 3DS's). A curved `edge` is for the left side only. */ side?: 'left' | 'right'; fill: Paint; /** Fine vertical streaks over the fill: brushed metal. */ brushed?: Brushed; /** A shade-*.svg logo stretched over the fill, under the brushing: soft 2D shading no gradient can make. */ sheen?: string; /** The strip's right edge when it isn't straight. */ edge?: StripEdge; marks: SpanMark[] }
+  /** A band across the foot of the front, `h` of its height (the Super Nintendo's). Marks are centred up and down in it. */
+  | { shape: 'foot'; h: number; fill: Paint; marks: FrontMark[] }
   | { shape: 'none'; marks: FrontMark[] };
 
 export interface SpineBranding {
   /** Colours the whole spine (Switch red, Wii white). */
   fill?: Paint;
   /** A block at the top of the spine, `length` of L, closed by an optional line. `dome` curves its lower edge up in the middle by that share of L. */
-  cap?: { length: number; fill: Paint; line?: { color: string; size: number; gap?: number }; dome?: number; /** Fine vertical streaks over the fill: brushed metal. */ brushed?: Brushed; /** A shade-*.svg logo stretched over the fill, under the brushing: soft 2D shading no gradient can make. */ sheen?: string; /** Rounds a corner at the cap's lower edge, left then right, radius in mm. Positive rounds what lies below (the cap's colour fills the gap); negative rounds the cap's own corner. */ corners?: [number, number] };
+  cap?: { length: number; fill: Paint; /** The cap meets the front's header and is as deep as it: it keeps that depth whatever the spine's width. */ joins?: boolean; line?: { color: string; size: number; gap?: number }; dome?: number; /** Fine vertical streaks over the fill: brushed metal. */ brushed?: Brushed; /** A shade-*.svg logo stretched over the fill, under the brushing: soft 2D shading no gradient can make. */ sheen?: string; /** Rounds a corner at the cap's lower edge, left then right, radius in mm. Positive rounds what lies below (the cap's colour fills the gap); negative rounds the cap's own corner. */ corners?: [number, number] };
   /** A thin outline round the whole spine (or its cap), `mm` thick. `top: false` leaves the top edge off, and `rightFrom`
    * starts the right edge that far down (fraction of L) so it doesn't run along a header that meets it. */
   outline?: { color: string; mm: number; top?: boolean; right?: boolean; rightFrom?: number };
   marks: SpanMark[];
   /** Where the title may start (fraction of L). Default: just past the cap and the marks. */
   titleFrom?: number;
+  /** The width (mm) the marks take together on the platform's own spine. On a narrower spine they are scaled to fill most of it rather than shrunk with it, and the cap follows them. */
+  fit?: number;
   /** Scales the title's automatic size (the VHS spine's is a little larger). */
   titleScale?: number;
   /** The title's colour when the chosen one wouldn't show on `fill` (dark grey on Wii's white spine). */
@@ -138,6 +146,8 @@ export interface Branding {
   back?: FrontMark[];
   /** Continues the front's band (fill and line, no marks) across the back cover. */
   backBand?: boolean;
+  /** The platform's own case (mm): front height, and the spine's length and width. The dress keeps its size in mm on a bigger case, pinned to the top, instead of stretching with it. */
+  ref?: { w: number; h: number; spine: number; spineW: number };
 }
 
 /** A mark's `color` only tints logo layers that have no fill of their own; logos with colours baked into the SVG (Wii, Xbox, Xbox 360…) ignore it. */
@@ -208,22 +218,22 @@ export const FORMAT_BRANDING: Record<TemplateKind, Branding> = {
   bluray: {
     backBand: true,
     front: { shape: 'band', depth: flat(0.08), fill: '#0a4da2', marks: [{ parts: [{ logo: 'blu-ray' }], color: W, h: 0.06, align: 'center' }] },
-    spine: { cap: { length: 0.08, fill: '#0a4da2' }, marks: [{ parts: [{ logo: 'blu-ray' }], color: W, from: 0.008, to: 0.072, across: 0.85, rotate: 0 }] },
+    spine: { cap: { length: 0.08, fill: '#0a4da2' }, marks: [{ parts: [{ logo: 'blu-ray' }], color: W, from: 0.008, to: 0.072, across: 0.8, rotate: 0 }] },
   },
   // Blu-ray 4K UHD: the Blu-ray layout with a black band, the grey logo and a grey line under the band (1 px at 96 dpi, 0.265 mm).
   uhd: {
     backBand: true,
     front: { shape: 'band', depth: flat(0.08), fill: K, line: { color: '#979797', size: 0.0018 }, marks: [{ parts: [{ logo: 'blu-ray-ultra-hd-4k' }], color: W, h: 0.0448, align: 'center' }] },
-    spine: { cap: { length: 0.08, fill: K, line: { color: '#979797', size: 0.0018 } }, marks: [{ parts: [{ logo: 'blu-ray-ultra-hd' }], color: W, from: 0.88, to: 0.98, across: 0.85, rotate: 90 }], titleFrom: 0.13 },
+    spine: { cap: { length: 0.08, fill: K, line: { color: '#979797', size: 0.0018 } }, marks: [{ parts: [{ logo: 'blu-ray-ultra-hd' }], color: W, from: 0.88, to: 0.98, across: 0.8, rotate: 90 }], titleFrom: 0.13 },
   },
   dvd: format([{ logo: 'dvd' }], W, '#141414', 0.08),
   vhs: format([{ logo: 'vhs' }], W, '#141414', 0.08, undefined, { across: 0.58, titleScale: 1.25 }),
-  cd: format([{ logo: 'cd' }], W, '#141414', 0.108, undefined, { across: 0.9, rotate: 90, from: 0.022, to: 0.102 }),
+  cd: format([{ logo: 'cd' }], W, '#141414', 0.108, undefined, { across: 0.8, rotate: 90, from: 0.022, to: 0.102 }),
   cassette: format([{ logo: 'cassette', color: W }], W, '#141414', 0.26, undefined, { across: 0.8, rotate: 90, from: 0.045, to: 0.215, titleScale: 1.3 }),
   vinyl: format([{ text: 'STEREO · 33⅓ RPM', weight: 700 }], W, '#1a1a1a', 0, undefined, { backH: 0.0175 }),
   floppy: labelBand('1.44MB HD', '#22252b', W, 0.086, 0),
-  'nfc-card': labelBand('NFC', '#1a73e8', W, 0.082, 0, NFC_WAVES, 0.85),
-  'nfc-sticker': labelBand('NFC', '#1a73e8', W, 0.1, 0, NFC_WAVES, 0.85, true, 'center'),
+  'nfc-card': labelBand('NFC', '#1a73e8', W, 0.082, 0.13, NFC_WAVES, 0.85, false),
+  'nfc-sticker': labelBand('NFC', '#1a73e8', W, 0.1, 0.13, NFC_WAVES, 0.85, false, 'center'),
   'nfc-box': labelBand('NFC', '#1a73e8', W, 0.078, 0.13, NFC_WAVES, 0.85, false),
   'game-case': labelBand('GAME', '#1a1a1a', W, 0.1, 0.12),
 };
@@ -239,7 +249,7 @@ export const GAME_CASE_BRANDING: Record<string, Branding> = {
       marks: [{ parts: [{ logo: 'pc' }], color: W, h: 0.0646, align: 'left', inset: 0, cy: 0.0646 / 2, onPanel: true }],
     },
     spine: {
-      marks: [{ parts: [{ logo: 'pc' }], color: W, from: 0.02, to: 0.19, across: 0.85, rotate: 90 }],
+      marks: [{ parts: [{ logo: 'pc' }], color: W, from: 0.02, to: 0.19, across: 0.8, rotate: 90 }],
     },
   },
   // PS1 (jewel case): a black strip down the left, the PS symbol at its top and "PlayStation" reading upwards.
@@ -248,10 +258,10 @@ export const GAME_CASE_BRANDING: Record<string, Branding> = {
       shape: 'strip', w: 0.155, fill: K,
       marks: [
         { parts: [{ stack: [{ logo: 'playstation-mark-colour' }, { logo: 'playstation-wordmark', crop: [0, 0, 0.94, 1], h: 0.22 }] }], color: W, frame: { color: W }, gap: 0.3, from: 0.034, to: 0.1325, across: 0.635, dx: -0.052, rotate: 0 },
-        { parts: [{ logo: 'sony-logo' }], color: W, from: 0.845, to: 0.972, across: 0.62, dx: -0.045, rotate: 0 },
-        { parts: [{ logo: 'playstation-wordmark', crop: [0, 0, 0.94, 1] }], color: W, from: 0.184, to: 0.778, across: 0.85, dx: 0.03, rotate: -90 },
+        { parts: [{ logo: 'sony-logo' }], color: W, from: 0.845, to: 0.972, across: 0.62, dx: -0.045, anchor: 'bottom', rotate: 0 },
+        { parts: [{ logo: 'playstation-wordmark', crop: [0, 0, 0.94, 1] }], color: W, from: 0.184, to: 0.778, across: 0.8, dx: 0.03, anchor: 'center', rotate: -90 },
         // The wordmark's own ® is twice the size of the scans', so it is cropped off and this smaller one set instead.
-        { parts: [{ text: '®', weight: 400 }], color: W, from: 0.1695, to: 0.181, across: 0.08, dx: 0.168, rotate: -90 },
+        { parts: [{ text: '®', weight: 400 }], color: W, from: 0.1695, to: 0.181, across: 0.08, dx: 0.168, anchor: 'center', rotate: -90 },
       ],
     },
     spine: {
@@ -284,8 +294,8 @@ export const GAME_CASE_BRANDING: Record<string, Branding> = {
       shape: 'band', depth: flat(0.083), fill: { x: [[0, K], [1, '#868686']] }, line: { color: '#b00a0a', size: 0.004 },
       marks: [
         { parts: [{ brand: 'playstation', color: '#b8b8b8' }, { brand: 'playstation3', h: 0.93 }], color: W, h: 0.046, align: 'left', inset: 0.033, gap: 0.68 },
-        { parts: [{ text: '®', weight: 400 }], color: '#b8b8b8', h: 0.0062, align: 'left', inset: 0.0885, cy: 0.0635, onPanel: true },
-        { parts: [{ text: '™', weight: 400 }], color: W, h: 0.0058, align: 'left', inset: 0.3765, cy: 0.0595, onPanel: true },
+        { parts: [{ text: '®', weight: 400 }], color: '#b8b8b8', h: 0.0062, align: 'left', inset: 0.0885, cy: 0.0635, onPanel: true, tag: true },
+        { parts: [{ text: '™', weight: 400 }], color: W, h: 0.0058, align: 'left', inset: 0.3765, cy: 0.0595, onPanel: true, tag: true },
       ],
     },
     spine: { cap: { length: 0.1648, fill: K, line: { color: '#a50a0a', size: 0.004 } }, marks: [{ parts: [{ brand: 'playstation3' }], color: W, from: 0.0215, to: 0.1455, rotate: 90 }] },
@@ -296,8 +306,8 @@ export const GAME_CASE_BRANDING: Record<string, Branding> = {
       shape: 'band', depth: flat(0.1094), fill: PS4_BLUE, line: { color: W, size: 0.0042 },
       marks: [
         { parts: [PS, { brand: 'playstation4', h: 0.625 }], color: W, h: 0.072, align: 'left', inset: 0.0245, gap: 0.54 },
-        { parts: [{ text: '®', weight: 400 }], color: W, h: 0.0068, align: 'left', inset: 0.1335, cy: 0.0855, onPanel: true },
-        { parts: [{ text: '®', weight: 400 }], color: W, h: 0.0068, align: 'left', inset: 0.4505, cy: 0.076, onPanel: true },
+        { parts: [{ text: '®', weight: 400 }], color: W, h: 0.0068, align: 'left', inset: 0.1335, cy: 0.0855, onPanel: true, tag: true },
+        { parts: [{ text: '®', weight: 400 }], color: W, h: 0.0068, align: 'left', inset: 0.4505, cy: 0.076, onPanel: true, tag: true },
       ],
     },
     spine: {
@@ -314,8 +324,8 @@ export const GAME_CASE_BRANDING: Record<string, Branding> = {
       shape: 'band', depth: flat(0.1117), fill: W, line: { color: '#094695', size: 0.0047 },
       marks: [
         { parts: [PS, { brand: 'playstation5', h: 0.6 }], color: K, h: 0.075, align: 'left', inset: 0.037, gap: 0.32 },
-        { parts: [{ text: '®', weight: 400 }], color: K, h: 0.0068, align: 'left', inset: 0.1435, cy: 0.0905, onPanel: true },
-        { parts: [{ text: '™', weight: 400 }], color: K, h: 0.0058, align: 'left', inset: 0.4505, cy: 0.0775, onPanel: true },
+        { parts: [{ text: '®', weight: 400 }], color: K, h: 0.0068, align: 'left', inset: 0.1435, cy: 0.0905, onPanel: true, tag: true },
+        { parts: [{ text: '™', weight: 400 }], color: K, h: 0.0058, align: 'left', inset: 0.4505, cy: 0.0775, onPanel: true, tag: true },
       ],
     },
     spine: {
@@ -332,7 +342,7 @@ export const GAME_CASE_BRANDING: Record<string, Branding> = {
       shape: 'band', depth: flat(0.083), fill: { x: [[0, '#143b81'], [0.5, '#0b64ab'], [1, '#018fd7']] }, line: { color: W, size: 0.0065 },
       marks: [
         { parts: [PS, { brand: 'playstationvita', h: 0.78 }], color: W, h: 0.0455, align: 'left', inset: 0.0607, gap: 0.66 },
-        { parts: [{ text: '™', weight: 400 }], color: W, h: 0.0075, align: 'left', inset: 0.4425, cy: 0.0615, onPanel: true },
+        { parts: [{ text: '™', weight: 400 }], color: W, h: 0.0075, align: 'left', inset: 0.4425, cy: 0.0615, onPanel: true, tag: true },
       ],
     },
     spine: {
@@ -406,9 +416,9 @@ export const GAME_CASE_BRANDING: Record<string, Branding> = {
       shape: 'strip', w: 0.2519,
       fill: '#f8fbfc', sheen: 'shade-gbc-strip',
       marks: [
-        { parts: [{ logo: 'gb', mono: true, shadow: GBC_WORD_SHADOW }], color: GBC_BLUE, from: 0.3147, to: 0.958, across: 0.5, dx: -0.005, rotate: -90 },
-        { parts: [{ logo: 'color', shadow: GBC_COLOR_SHADOW, emboss: GBC_EMBOSS }], color: GBC_BLUE, from: 0.042, to: 0.3217, across: 0.4, dx: 0.008, rotate: -90 },
-        { parts: [{ text: '®', color: '#55595e', weight: 400 }], color: GBC_BLUE, from: 0.3399, to: 0.3562, across: 0.06, dx: 0.18, rotate: -90 },
+        { parts: [{ logo: 'gb', mono: true, shadow: GBC_WORD_SHADOW }], color: GBC_BLUE, from: 0.3147, to: 0.958, across: 0.5, dx: -0.005, anchor: 'center', rotate: -90 },
+        { parts: [{ logo: 'color', shadow: GBC_COLOR_SHADOW, emboss: GBC_EMBOSS }], color: GBC_BLUE, from: 0.042, to: 0.3217, across: 0.4, dx: 0.008, anchor: 'center', rotate: -90 },
+        { parts: [{ text: '®', color: '#55595e', weight: 400 }], color: GBC_BLUE, from: 0.3399, to: 0.3562, across: 0.06, dx: 0.18, anchor: 'center', rotate: -90 },
       ],
     },
     spine: {
@@ -426,9 +436,9 @@ export const GAME_CASE_BRANDING: Record<string, Branding> = {
       shape: 'strip', w: 0.2274, fill: W, sheen: 'shade-gba-strip', brushed: GBA_BRUSH,
       edge: { depth: GBA_EDGE },
       marks: [
-        { parts: [{ logo: 'advance', mono: true, shadow: GBA_BLACK_SHADOW, bevel: GBA_BLACK_BEVEL }], color: GBA_INK, from: 0.0652, to: 0.4978, across: 0.25, dx: -0.071, rotate: -90 },
-        { parts: [{ logo: 'gba', only: [0, 1], shadow: GBA_WHITE_SHADOW, bevel: GBA_WHITE_BEVEL }], color: W, from: 0.5053, to: 0.9348, across: 0.35, dx: -0.071, rotate: -90 },
-        { parts: [{ logo: 'gba', only: [2, 3] }], color: GBA_INK, from: 0.5075, to: 0.5248, across: 0.06, dx: 0.065, rotate: -90 },
+        { parts: [{ logo: 'advance', mono: true, shadow: GBA_BLACK_SHADOW, bevel: GBA_BLACK_BEVEL }], color: GBA_INK, from: 0.0652, to: 0.4978, across: 0.25, dx: -0.071, anchor: 'center', rotate: -90 },
+        { parts: [{ logo: 'gba', only: [0, 1], shadow: GBA_WHITE_SHADOW, bevel: GBA_WHITE_BEVEL }], color: W, from: 0.5053, to: 0.9348, across: 0.35, dx: -0.071, anchor: 'center', rotate: -90 },
+        { parts: [{ logo: 'gba', only: [2, 3] }], color: GBA_INK, from: 0.5075, to: 0.5248, across: 0.06, dx: 0.065, anchor: 'center', rotate: -90 },
       ],
     },
     spine: {
@@ -452,10 +462,24 @@ export const GAME_CASE_BRANDING: Record<string, Branding> = {
     },
     spine: {
       cap: { length: 0.275, fill: K },
+      fit: 13,
+      // One lockup, the oval and the text stacked (so reading down, side by side across the spine) with a fixed small gap between them:
+      // they stay as close at every spine width, which two marks placed by shares of the width did not. The oval is 1.54 times the text's height
+      // (the oval 85 % of the text's length, as the template draws them); `gap` 0.4 puts 16 % of the text's height between them.
       marks: [
-        { parts: [{ logo: 'nes', only: [19] }], color: W, from: 0.0532, to: 0.2232, across: 0.27, dx: 0.107, rotate: 90 },
-        { parts: [{ logo: 'nes', only: NES_TEXT }], color: W, from: 0.035, to: 0.24, across: 0.205, dx: -0.162, rotate: 90 },
+        { parts: [{ stack: [{ logo: 'nes', only: [19], h: 1.54 }, { logo: 'nes', only: NES_TEXT }] }], color: W, gap: 0.4, from: 0.035, to: 0.24, across: 0.5, rotate: 90 },
       ],
+    },
+  },
+  // SNES: a black band across the foot of the front with the Super Nintendo logo right-aligned in it, and a black spine cap with
+  // the same logo reading down. Measured on the fan template (scans/snes): band 15.4 % of the height, logo 9.6 % high and 4.95 %
+  // of the width (6.4 mm) from the right edge; cap 30.4 % of the length, the logo at 4.0-26.3 % and centred, 9.7 mm wide. The template's
+  // fractions are re-stated for the original box's 127 mm front and 31.75 mm spine (case-research.md §21).
+  snes: {
+    front: { shape: 'foot', h: 0.1543, fill: K, marks: [{ parts: [{ logo: 'snes' }], color: W, h: 0.0962, align: 'right', inset: 0.0507 }] },
+    spine: {
+      cap: { length: 0.304, fill: K },
+      marks: [{ parts: [{ logo: 'snes' }], color: W, from: 0.04, to: 0.2633, across: 0.307, rotate: 90 }],
     },
   },
   'wii-u': {
@@ -463,11 +487,11 @@ export const GAME_CASE_BRANDING: Record<string, Branding> = {
       shape: 'band', depth: arc(0.0346, 0.0941), fill: '#019fcc', line: { color: '#ffe70e', size: 0.0072, taper: 0, shadow: { color: '#969694', size: 0.0024 } },
       marks: [
         { parts: [{ logo: 'wii-u', mono: true }], color: W, h: 0.049, align: 'center', cy: 0.0445, dx: 0.0025 },
-        { parts: [{ text: '™', weight: 400 }], color: W, h: 0.0042, align: 'left', inset: 0.624, cy: 0.0225, onPanel: true },
+        { parts: [{ text: '™', weight: 400 }], color: W, h: 0.0042, align: 'left', inset: 0.624, cy: 0.0225, onPanel: true, tag: true },
       ],
     },
     spine: {
-      cap: { length: 0.0346, fill: '#019fcc', dome: 0.0075 },
+      cap: { length: 0.0346, joins: true, fill: '#019fcc', dome: 0.0075 },
       fill: W,
       titleColor: '#333333',
       marks: [{ parts: [{ logo: 'wii-u' }], color: W, from: 0.056, to: 0.191, across: 0.55, rotate: 90 }],
@@ -532,7 +556,7 @@ export const GAME_CASE_BRANDING: Record<string, Branding> = {
     },
     spine: {
       fill: '#373632',
-      cap: { length: 0.105, fill: XBOX_GREEN },
+      cap: { length: 0.105, joins: true, fill: XBOX_GREEN },
       marks: [
         { parts: [{ logo: 'xbox-one', crop: [0, 0, 0.208, 1] }], color: W, from: 0.1298, to: 0.1812, across: 0.6, dx: 0.03, rotate: 0 },
         { parts: [{ logo: 'xbox-one', crop: [0.208, 0.16, 1, 0.82] }], color: W, from: 0.1823, to: 0.3503, across: 0.5, dx: 0.03, rotate: 90 },
@@ -552,7 +576,7 @@ export const GAME_CASE_BRANDING: Record<string, Branding> = {
     },
     spine: {
       fill: '#373632',
-      cap: { length: 0.105, fill: SERIES_GREEN },
+      cap: { length: 0.105, joins: true, fill: SERIES_GREEN },
       marks: [
         { parts: [{ logo: 'xbox-seriesx-mark' }], color: W, from: 0.131, to: 0.181, across: 0.58, dx: 0.03, rotate: 0 },
         { parts: [{ logo: 'xbox-seriesx', crop: [0.372, 0.2, 1, 0.82] }], color: W, from: 0.1852, to: 0.2755, across: 0.4, dx: 0.02, rotate: 90 },
@@ -570,9 +594,95 @@ const FORMAT_VARIANT_BRANDING: Record<string, Branding> = {
   },
 };
 
-/** The branding for a template: its platform's for game cases, else its variant's or its format's. */
-export function brandingFor(kind: TemplateKind, variantId: string): Branding {
+/** What `none` as a dress draws: nothing. */
+const NO_BRANDING: Branding = { front: { shape: 'none', marks: [] } };
+
+/**
+ * The branding for a template: its platform's for game cases, else its variant's or its format's. A `dress` (a brand id, from
+ * `brandOf` in the library, or `none`) is drawn instead of that, whatever the case.
+ */
+export function brandingFor(kind: TemplateKind, variantId: string, dress?: string): Branding {
+  if (dress === 'none') return NO_BRANDING;
+  if (dress) {
+    // A platform's (`snes`), or a format's (`dvd`, or a variant of one: `bluray/slim-7`).
+    if (Object.hasOwn(GAME_CASE_BRANDING, dress)) return GAME_CASE_BRANDING[dress];
+    if (Object.hasOwn(FORMAT_VARIANT_BRANDING, dress)) return FORMAT_VARIANT_BRANDING[dress];
+    const kind = dress.split('/')[0];
+    if (Object.hasOwn(FORMAT_BRANDING, kind)) return FORMAT_BRANDING[kind as TemplateKind];
+  }
   return kind === 'game-case' ? (Object.hasOwn(GAME_CASE_BRANDING, variantId) ? GAME_CASE_BRANDING[variantId] : FORMAT_BRANDING['game-case']) : (FORMAT_VARIANT_BRANDING[`${kind}/${variantId}`] ?? FORMAT_BRANDING[kind]);
+}
+
+/** Each platform's own case, which its dress was drawn for: front height, spine length (the same) and spine width. */
+const CASE_REF: Record<string, [number, number, number]> = {
+  pc: [129.5, 183, 14], ps1: [120, 120, 6.5], ps2: [129.5, 183, 14], ps3: [129.5, 149, 14], ps4: [129.5, 161, 14], ps5: [129.5, 161, 14], 'ps-vita': [99, 125, 9],
+  gb: [130, 116, 16], gbc: [130, 116, 16], gba: [130, 116, 16], nes: [133, 176, 28], snes: [127, 177.8, 31.75], ds: [130, 116, 16], '3ds': [130, 116, 12],
+  switch: [99, 161, 10], switch2: [99, 161, 10], 'wii-u': [129.5, 183, 14], wii: [129.5, 183, 14], gamecube: [129.5, 183, 14], xbox: [129.5, 183, 14],
+  'xbox-360': [129.5, 183, 14], 'xbox-one': [128, 149, 11], 'xbox-series': [128, 149, 11],
+};
+for (const [id, [w, h, spineW]] of Object.entries(CASE_REF)) if (GAME_CASE_BRANDING[id]) GAME_CASE_BRANDING[id].ref = { w, h, spine: h, spineW };
+
+/** A spine whose marks fill 65 % of the width it is drawn on, leaving a margin either side (up to their size on the platform's own spine); the cap, marks and title start keep to that size, in mm. */
+/** How much of a narrow spine's width a fitted lockup may take: the rest is padding, so a logo never runs to the edges. */
+const FIT_SHARE = 0.65;
+
+function fitted(sp: SpineBranding, ref: { spine: number; spineW: number }, lengthMm: number, widthMm: number): SpineBranding {
+  const s = Math.min(1, (FIT_SHARE * widthMm) / sp.fit!);
+  const k = Math.min(1, ref.spine / lengthMm) * s;
+  // Shares of the width are of the wider spine: in mm they scale by `s`, so as shares of this one by s × (that width / this).
+  const w = (s * ref.spineW) / widthMm;
+  return {
+    ...sp,
+    cap: sp.cap && { ...sp.cap, length: sp.cap.length * k },
+    marks: sp.marks.map((m) => ({ ...m, from: m.from * k, to: m.to * k, across: Math.min(1, (m.across ?? 0.6) * w), ...(m.dx !== undefined && { dx: m.dx * w }), ...(m.dxAlong && { dxAlong: m.dxAlong * k }) })),
+    titleFrom: sp.titleFrom === undefined ? undefined : sp.titleFrom * k,
+    fit: undefined,
+  };
+}
+
+/**
+ * The spine as it is drawn on one `lengthMm` long and `widthMm` wide. Past the size it was drawn for (a longer spine), or short of it
+ * (a thinner one, where its marks shrink to fit), the cap, marks and title start keep their proportions in mm and stay at the top:
+ * a Switch dress on a DVD case must not stretch its logo into two, nor a NES cap sit empty round a small logo.
+ */
+export function pinnedSpine(b: Branding, lengthMm: number, widthMm?: number): SpineBranding | undefined {
+  const sp = b.spine;
+  if (!sp || !b.ref) return sp;
+  if (sp.fit && widthMm && widthMm < b.ref.spineW) return fitted(sp, b.ref, lengthMm, widthMm);
+  const k = Math.min(1, b.ref.spine / lengthMm) * Math.min(1, widthMm ? widthMm / b.ref.spineW : 1);
+  if (k >= 1) return sp;
+  // A cap that meets the front's header follows the header, which only changes with the length.
+  const kc = sp.cap?.joins ? Math.min(1, b.ref.spine / lengthMm) : k;
+  return {
+    ...sp,
+    cap: sp.cap && { ...sp.cap, length: sp.cap.length * kc, ...(sp.cap.dome && { dome: sp.cap.dome * kc }), ...(sp.cap.line && { line: { ...sp.cap.line, size: sp.cap.line.size * k, ...(sp.cap.line.gap && { gap: sp.cap.line.gap * k }) } }) },
+    outline: sp.outline && { ...sp.outline, ...(sp.outline.rightFrom && { rightFrom: sp.outline.rightFrom * k }) },
+    marks: sp.marks.map((m) => ({ ...m, from: m.from * k, to: m.to * k, ...(m.dxAlong && { dxAlong: m.dxAlong * k }) })),
+    titleFrom: sp.titleFrom === undefined ? undefined : sp.titleFrom * k,
+  };
+}
+
+/** The branding a template is drawn with, its own or the dress it was marked with. */
+export const brandingOf = (t: { kind: TemplateKind; variantId: string; dress?: string }): Branding => brandingFor(t.kind, t.variantId, t.dress);
+
+/**
+ * A header's marks as drawn on a front `w` × `h` mm. Each ® or ™ stays against its logo: the logo's size follows the height (and it keeps
+ * its inset), so the tag moves by the same share of the distance it has from the logo on the platform's own case.
+ */
+export function tiedMarks(marks: FrontMark[], ref: { w: number; h: number }, w: number, h: number): FrontMark[] {
+  const s = Math.min(h, ref.h) / ref.h;
+  const K = Math.max(w, ref.w);
+  let logo: FrontMark | undefined;
+  return marks.map((m) => {
+    if (!m.tag) {
+      logo = m;
+      return m;
+    }
+    if (!logo) return m;
+    // The logo's reference point, as a share of W in the design and in mm as drawn.
+    const [own, at] = logo.align === 'center' ? [0.5 + (logo.dx ?? 0), w / 2 + (logo.dx ?? 0) * K] : [(logo.inset ?? 0.025) + (logo.dx ?? 0), ((logo.inset ?? 0.025) + (logo.dx ?? 0)) * K];
+    return { ...m, inset: (at + ((m.inset ?? 0.025) - own) * ref.w * s) / K };
+  });
 }
 
 /** How much to scale a spine title's automatic size by (1 unless the format asks for more). */
@@ -582,7 +692,7 @@ export function spineTitleScale(kind: TemplateKind, variantId: string, branded: 
 
 /** Room to leave at the start of a spine's title for the cap and marks (0 when Branded is off). */
 export function spineTitleStartMm(kind: TemplateKind, variantId: string, branded: boolean, spineLengthMm: number): number {
-  const spine = branded ? brandingFor(kind, variantId).spine : undefined;
+  const spine = branded ? pinnedSpine(brandingFor(kind, variantId), spineLengthMm) : undefined;
   if (!spine) return 0;
   const end = spine.titleFrom ?? Math.max(spine.cap?.length ?? 0, ...spine.marks.map((m) => m.to)) + 0.02;
   return end * spineLengthMm;

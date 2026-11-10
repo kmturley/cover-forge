@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { getLogo } from '../brands';
 import { TEMPLATE_DEFS, buildTemplate } from '../templates';
-import { FORMAT_BRANDING, GAME_CASE_BRANDING, arc, brandingFor, contrast, ease, slope, spineTitleCase, spineTitleColor, spineTitleStartMm, type FrontHeader } from './official';
+import { FORMAT_BRANDING, GAME_CASE_BRANDING, pinnedSpine, arc, brandingFor, contrast, ease, slope, spineTitleCase, spineTitleColor, spineTitleStartMm, type FrontHeader } from './official';
 
 const variantsOf = (kind: (typeof TEMPLATE_DEFS)[number]['kind']) => (kind === 'game-case' ? Object.keys(GAME_CASE_BRANDING) : [undefined]);
 
@@ -133,5 +133,31 @@ describe('spine title case', () => {
     expect((box[2] - box[0]) / (box[3] - box[1])).toBeCloseTo((widest * front.widthMm) / (front.heightMm + 6), 2);
     const cap = getLogo(b.spine!.cap!.sheen)!.bbox;
     expect((cap[2] - cap[0]) / (cap[3] - cap[1])).toBeCloseTo(spine.widthMm / (b.spine!.cap!.length * spine.heightMm + 3), 2);
+  });
+});
+
+describe('pinnedSpine', () => {
+  const sw = GAME_CASE_BRANDING.switch;
+  it('keeps the spine as drawn on the platform\'s own case', () => {
+    expect(pinnedSpine(sw, 161, 10)).toBe(sw.spine);
+  });
+  it('pins marks to the top at their size in mm on a longer spine', () => {
+    const m = sw.spine!.marks[0];
+    const longer = pinnedSpine(sw, 183, 14)!.marks[0];
+    expect(longer.from * 183).toBeCloseTo(m.from * 161);
+    expect(longer.to * 183).toBeCloseTo(m.to * 161);
+  });
+  it('shrinks the cap with a thinner spine, so a small logo is not lost in a long cap', () => {
+    const snes = GAME_CASE_BRANDING.snes;
+    expect(pinnedSpine(snes, 183, 14)!.cap!.length * 183).toBeCloseTo(snes.spine!.cap!.length * 177.8 * (14 / 31.75));
+  });
+  it('scales a fitted lockup to fill most of a narrow spine, with the cap following it', () => {
+    const nes = GAME_CASE_BRANDING.nes;
+    const s = (0.65 * 14) / nes.spine!.fit!;
+    const fit = pinnedSpine(nes, 176, 14)!;
+    expect(fit.cap!.length * 176).toBeCloseTo(nes.spine!.cap!.length * 176 * s);
+    // The marks' width, in mm, is their share of the spine times its width: the platform's own, scaled.
+    expect((fit.marks[0].across ?? 0) * 14).toBeCloseTo((nes.spine!.marks[0].across ?? 0) * 28 * s);
+    expect(pinnedSpine(nes, 176, 28)).toBe(nes.spine);
   });
 });
