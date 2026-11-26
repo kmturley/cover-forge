@@ -12,8 +12,11 @@ export const DEFAULT_CAMERA_POSITION: [number, number, number] = [-2.2, 1.1, 2.6
 
 const fmt = (v: { x: number; y: number; z: number }) => `[${v.x.toFixed(2)}, ${v.y.toFixed(2)}, ${v.z.toFixed(2)}]`;
 
-/** The 3D model of the current template: a case/box, or a card/disk with an optional separate label. */
-function Model({ texture, template }: { texture: Texture; template: TemplateConfig }) {
+/**
+ * The 3D model of a template: a case/box, or a card/disk with an optional separate label. Built in mm; `scale` turns mm
+ * into scene units (by default the preview's own, so any case fills the view; a comparison passes one scale for all).
+ */
+export function Model({ texture, template, scale }: { texture: Texture; template: TemplateConfig; scale?: number }) {
   const spec = template.preview;
   const geometry = useMemo(() => (spec.kind === 'slab' ? createSlabBodyGeometry(spec) : createBodyGeometry(template, spec)), [template, spec]);
 
@@ -88,7 +91,7 @@ function Model({ texture, template }: { texture: Texture; template: TemplateConf
   const shutter = spec.kind === 'slab' ? spec.shutter : undefined;
   const hub = spec.kind === 'slab' ? spec.hub : undefined;
   return (
-    <group scale={previewScale(spec)}>
+    <group scale={scale ?? previewScale(spec)}>
       <mesh geometry={geometry} material={materials} />
       {hollow && inner && <mesh geometry={geometry} material={[inner, inner, inner, inner, inner, inner]} scale={[(hollow.widthMm - 2 * SLEEVE_WALL_MM) / hollow.widthMm, 1, (hollow.depthMm - 2 * SLEEVE_WALL_MM) / hollow.depthMm]} />}
       {pieces.map((p, i) => (

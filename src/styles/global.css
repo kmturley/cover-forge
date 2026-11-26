@@ -230,14 +230,19 @@ button.link.selected { color: var(--accent); text-decoration: none; cursor: defa
 .library-search { display: flex; gap: 10px; align-items: center; margin-bottom: 8px; }
 .library-list { max-height: min(52vh, 480px); overflow-y: auto; padding-right: 4px; }
 .library-group { margin: 12px 0 6px; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }
-.library-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 6px; }
-.library-tile { display: flex; align-items: center; gap: 10px; text-align: left; padding: 8px 10px; border-width: 2px; border-radius: 8px; min-width: 0; }
+/* Three columns in the picker, so each tile has room for a good-sized preview of the cover. */
+.library-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 6px; }
+.library-tile { display: flex; align-items: center; gap: 12px; text-align: left; padding: 6px 10px 6px 6px; border-width: 2px; border-radius: 8px; min-width: 0; }
 .library-tile svg { flex: none; color: var(--muted); }
+.library-thumb { flex: none; width: 76px; height: 92px; display: flex; align-items: center; justify-content: center; }
+.library-thumb-canvas { display: contents; }
+.library-thumb canvas { max-width: 76px; max-height: 92px; border-radius: 2px; box-shadow: 0 1px 4px rgba(0,0,0,.55); }
 .library-tile:hover:not(.selected) { border-color: var(--muted); }
 .library-tile.selected { border-color: var(--accent); }
 .library-tile.selected svg { color: var(--accent); }
 .library-text { display: flex; flex-direction: column; min-width: 0; flex: 1; }
-.library-name { display: flex; align-items: center; gap: 6px; }
+/* The template's name stands out above its case details. */
+.library-name { display: flex; align-items: center; gap: 6px; font-size: 15px; font-weight: 600; color: #fff; margin-bottom: 2px; }
 .library-text small { color: var(--muted); font-size: 11px; }
 /* The items' recommended group, and the case their original release came in, so it's easy to go back to. */
 .library-group .recommended { color: var(--accent); text-transform: none; letter-spacing: 0; }
@@ -376,3 +381,25 @@ h3 { font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: v
 .preset-preview { width: 100%; height: auto; background: var(--bg); border-radius: 4px; }
 .layer-actions .menu-list { left: auto; right: 0; }
 .scope-label { font-size: 12px; color: var(--muted); }
+
+/* Template picker: a list (2D) or every case side by side at true relative size (3D), searched, sorted and grouped the same way. */
+.picker-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.picker-tools { flex-wrap: wrap; }
+.picker-tools input[type='search'] { flex: 1 1 240px; width: auto; }
+.picker-tool { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--muted); white-space: nowrap; }
+.picker-tool select { width: auto; }
+.picker-actions { align-items: center; }
+.modal.wide.comparing { width: min(1400px, 96vw); }
+.compare-view { position: relative; height: min(58vh, 560px); border: 1px solid var(--border); border-radius: 8px; overflow: hidden; background: radial-gradient(ellipse at 50% 40%, #2a2e36, var(--bg) 75%); }
+.compare-view canvas { cursor: grab; }
+.compare-view canvas:active { cursor: grabbing; }
+.compare-facing { position: absolute; top: 8px; left: 8px; z-index: 30; }
+.compare-tag { display: flex; flex-direction: column; align-items: center; white-space: nowrap; padding: 3px 8px; border-radius: 6px; background: rgba(18,19,22,.88); border: 1px solid var(--border); font-size: 11px; line-height: 1.3; color: var(--text); }
+.compare-tag span { color: var(--muted); }
+.compare-tag.on { border-color: var(--accent); }
+.compare-group { white-space: nowrap; font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); }
+.compare-hint { margin: 0 auto 0 0; flex: 1 1 320px; }
+.compare-pick { color: var(--text); }
+@media (max-width: 640px) {
+  .compare-view { height: 46vh; }
+}
