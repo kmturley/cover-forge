@@ -189,6 +189,8 @@ const GBC_COLOR_SHADOW: MarkShadow = { color: 'rgba(20,28,38,0.5)', dx: 0.06, dy
 // The SVG's inner shadows are drawn as authored, then made tighter and stronger so they still read at cover size.
 const GBC_EMBOSS: MarkEmboss = { alpha: 1.3, blur: 0.8 };
 const GB_BLUE = '#001497';
+/** minidisc.svg's lettering: every layer but the first, its white plate. */
+const MINIDISC_LETTERS = Array.from({ length: 16 }, (_, i) => i + 1);
 
 /** A format's small spine cap and back logo (DVD, CD, VHS…), which have no front header. */
 function format(label: Part[], color: string, bg: string, cap: number, spineLabel: Part[] = label, opts: { across?: number; titleScale?: number; rotate?: 0 | 90 | -90; inset?: number; from?: number; to?: number; backH?: number } = {}): Branding {
@@ -228,6 +230,11 @@ export const FORMAT_BRANDING: Record<TemplateKind, Branding> = {
   },
   dvd: format([{ logo: 'dvd' }], W, '#141414', 0.08),
   vhs: format([{ logo: 'vhs' }], W, '#141414', 0.08, undefined, { across: 0.58, titleScale: 1.25 }),
+  // The Betamax logo is the Beta wordmark over the β in its box: tall, so its cap is longer than VHS's.
+  betamax: format([{ logo: 'betamax' }], W, '#141414', 0.135, undefined, { across: 0.6, titleScale: 1.25, from: 0.03, to: 0.12 }),
+  // The MiniDisc logo without its white plate (layer 0): the MD lettering alone, in the cap's colour.
+  minidisc: format([{ logo: 'minidisc', only: MINIDISC_LETTERS }], W, '#141414', 0.16, undefined, { across: 0.8, from: 0.02, to: 0.14 }),
+  'card-box': format([{ text: 'PLAYING CARDS', weight: 700 }], W, '#1a1a1a', 0, undefined, { backH: 0.03 }),
   cd: format([{ logo: 'cd' }], W, '#141414', 0.108, undefined, { across: 0.8, rotate: 90, from: 0.022, to: 0.102 }),
   cassette: format([{ logo: 'cassette', color: W }], W, '#141414', 0.26, undefined, { across: 0.8, rotate: 90, from: 0.045, to: 0.215, titleScale: 1.3 }),
   vinyl: format([{ text: 'STEREO · 33⅓ RPM', weight: 700 }], W, '#1a1a1a', 0, undefined, { backH: 0.0175 }),

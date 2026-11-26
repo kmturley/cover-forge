@@ -2,13 +2,60 @@ import { useEffect, useMemo, useRef, type ElementRef } from 'react';
 import { Canvas } from '@react-three/fiber';
 import { ContactShadows, Environment, OrbitControls } from '@react-three/drei';
 import { BackSide, MeshStandardMaterial, type BufferGeometry, type Texture } from 'three';
-import type { TemplateConfig } from '../types/template';
-import { FACE_ORDER, createBodyGeometry, createInsetGeometry, createLabelGeometry, createLabelSliceGeometry, createSlabBodyGeometry, createSlabFaceGeometry, bodyPrintedFaces, insetFaces, insetPlacement, labelWrap, modelSizeMm, previewScale, SLEEVE_WALL_MM } from './PreviewGeometry';
+import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js';
+import type { PanelId, TemplateConfig } from '../types/template';
+import { FACE_ORDER, createBodyGeometry, createCornerArc, createInsetGeometry, createPanelStrip, createLabelGeometry, createLabelSliceGeometry, createSlabBodyGeometry, createSlabFaceGeometry, bodyPrintedFaces, insetFaces, insetPlacement, labelWrap, modelSizeMm, previewScale, SLEEVE_WALL_MM } from './PreviewGeometry';
 import { Measurements3D } from './Measurements3D';
 import { createBodyMaterial, createSleeveMaterial } from './PreviewMaterials';
 
 /** Three-quarter view showing the left edge (-X), top edge (+Y) and front (+Z). Tune via the console log. */
 export const DEFAULT_CAMERA_POSITION: [number, number, number] = [-2.2, 1.1, 2.6];
+
+type Piece = { geometry: BufferGeometry; position: [number, number, number]; rotation: [number, number, number] };
+
+/**
+ * A tray card folded round a case, drawn as one continuous wrap at the card's height: the flat of the back, each rounded back
+ * corner (half the corner's arc of the back, half of the flap), the flat of each side, and half of each front corner (the
+ * flap's end). Every arc shows exactly its own length of artwork, so nothing is stretched and the design runs on round the
+ * folds. Seen from behind, the back's left edge on the sheet is on the case's +x side.
+ */
+function trayWrap(t: TemplateConfig, spec: Extract<TemplateConfig['preview'], { kind: 'box' }>): Piece[] {
+  const back = t.panels.find((p) => p.id === 'back');
+  const leftId = spec.faces['-x'];
+  const rightId = spec.faces['+x'];
+  const left = t.panels.find((p) => p.id === leftId);
+  const right = t.panels.find((p) => p.id === rightId);
+  if (!back || !left || !right || !leftId || !rightId) return [];
+  const { widthMm: w, depthMm: d, radiusMm: r } = spec;
+  const arc = Math.PI / 4;
+  // The length of artwork on half a corner's arc.
+  const e = r * arc;
+  const h = back.heightMm;
+  const off = 0.05;
+  const R = r + off;
+  const [cx, cz] = [w / 2 - r, d / 2 - r];
+  const [B, L, Rt] = [back.widthMm, left.widthMm, right.widthMm];
+  const corner = (id: PanelId, from: number, to: number, x: number, z: number, theta: number): Piece => ({ geometry: createCornerArc(t, id, from, to, R, h, theta, arc), position: [x, 0, z], rotation: [0, 0, 0] });
+  // Angles as three's CylinderGeometry: 0 faces +z, π/2 +x, π -z, 3π/2 -x; each arc's artwork runs with the angle.
+  return [
+    // The back, seen from behind: turned to face -z, so the sheet's left edge is at +x.
+    { geometry: createPanelStrip(t, 'back', e, B - e, [w - 2 * r, h]), position: [0, 0, -d / 2 - off], rotation: [0, Math.PI, 0] },
+    // The flap on -x runs from the back edge (its left on the sheet) towards the front; the one on +x the other way.
+    { geometry: createPanelStrip(t, leftId, e, L - e, [d - 2 * r, left.heightMm]), position: [-w / 2 - off, 0, 0], rotation: [0, -Math.PI / 2, 0] },
+    { geometry: createPanelStrip(t, rightId, e, Rt - e, [d - 2 * r, right.heightMm]), position: [w / 2 + off, 0, 0], rotation: [0, Math.PI / 2, 0] },
+    // Back-left corner: from the back (facing -z) round to the -x flap; then the flap's end round the front-left corner.
+    corner('back', B - e, B, -cx, -cz, Math.PI),
+    corner(leftId, 0, e, -cx, -cz, Math.PI + arc),
+    corner(leftId, L - e, L, -cx, cz, (3 * Math.PI) / 2),
+    // Front-right corner: the +x flap's start; then the back-right corner, from the flap round to the back.
+    corner(rightId, 0, e, cx, cz, arc),
+    corner(rightId, Rt - e, Rt, cx, -cz, Math.PI / 2),
+    corner('back', 0, e, cx, -cz, Math.PI / 2 + arc),
+  ];
+}
+
+/** How thick the hinge strip on a case's front is drawn, mm. */
+const HINGE_DEPTH_MM = 0.6;
 
 const fmt = (v: { x: number; y: number; z: number }) => `[${v.x.toFixed(2)}, ${v.y.toFixed(2)}, ${v.z.toFixed(2)}]`;
 
@@ -24,13 +71,16 @@ export function Model({ texture, template, scale }: { texture: Texture; template
   const pieces = useMemo(() => {
     const out: { geometry: BufferGeometry; position: [number, number, number]; rotation: [number, number, number] }[] = [];
     if (spec.kind === 'box') {
-      for (const { face, panel } of insetFaces(template, spec)) out.push({ geometry: createInsetGeometry(template, panel), ...insetPlacement(spec, face) });
+      if (spec.wrapTray) out.push(...trayWrap(template, spec));
+      else for (const { face, panel } of insetFaces(template, spec)) out.push({ geometry: createInsetGeometry(template, panel), ...insetPlacement(spec, face) });
       for (const d of spec.decals ?? []) {
         const panel = template.panels.find((p) => p.id === d.panel);
         if (!panel) continue;
-        const x = d.align === 'min-x' ? -spec.widthMm / 2 + panel.widthMm / 2 : spec.widthMm / 2 - panel.widthMm / 2;
-        // On the back face, seen from behind: the plane is turned to face -z, and sits a hair off the surface (no z-fighting).
-        out.push({ geometry: createLabelGeometry(template, d.panel), position: [x, 0, -spec.depthMm / 2 - 0.05], rotation: [0, Math.PI, 0] });
+        const m = d.marginMm ?? 0;
+        const x = d.align === 'min-x' ? -spec.widthMm / 2 + panel.widthMm / 2 + m : spec.widthMm / 2 - panel.widthMm / 2 - m;
+        // A hair off the surface (no z-fighting); on the back face it is turned to face -z, seen from behind.
+        if (d.face === '+z') out.push({ geometry: createLabelGeometry(template, d.panel), position: [x, 0, spec.depthMm / 2 + 0.05], rotation: [0, 0, 0] });
+        else out.push({ geometry: createLabelGeometry(template, d.panel), position: [x, 0, -spec.depthMm / 2 - 0.05], rotation: [0, Math.PI, 0] });
       }
     } else if (spec.fullFace) {
       // A card or sticker: the artwork follows the body's own outline, so rounded corners show. Just proud of the surface.
@@ -73,6 +123,18 @@ export function Model({ texture, template, scale }: { texture: Texture; template
   const hollow = spec.kind === 'box' && spec.hollow ? spec : undefined;
   const inner = useMemo(() => (hollow ? new MeshStandardMaterial({ color: hollow.casing.color, roughness: 0.9, side: BackSide }) : undefined), [hollow]);
   const dark = useMemo(() => new MeshStandardMaterial({ color: '#0b0c0f', roughness: 0.9 }), []);
+  const tray = spec.kind === 'box' ? spec.tray : undefined;
+  const trayMaterial = useMemo(() => (tray ? new MeshStandardMaterial({ color: tray.color, roughness: 0.5 }) : undefined), [tray]);
+  useEffect(() => () => trayMaterial?.dispose(), [trayMaterial]);
+  const hinge = spec.kind === 'box' ? spec.hinge : undefined;
+  const hingeMaterial = useMemo(() => (hinge ? new MeshStandardMaterial({ color: hinge.color, roughness: 0.45 }) : undefined), [hinge]);
+  const hingeGeometry = useMemo(
+    // A thin strip on the front only, a little shorter than the case so it never pokes past the top or bottom.
+    () => (hinge && spec.kind === 'box' ? new RoundedBoxGeometry(hinge.widthMm, spec.heightMm - 2 * (spec.tray?.rimMm ?? spec.radiusMm), HINGE_DEPTH_MM, 2, HINGE_DEPTH_MM / 2) : undefined),
+    [hinge, spec],
+  );
+  useEffect(() => () => hingeMaterial?.dispose(), [hingeMaterial]);
+  useEffect(() => () => hingeGeometry?.dispose(), [hingeGeometry]);
 
   useEffect(() => () => geometry.dispose(), [geometry]);
   useEffect(() => () => pieces.forEach((p) => p.geometry.dispose()), [pieces]);
@@ -94,6 +156,22 @@ export function Model({ texture, template, scale }: { texture: Texture; template
     <group scale={scale ?? previewScale(spec)}>
       <mesh geometry={geometry} material={materials} />
       {hollow && inner && <mesh geometry={geometry} material={[inner, inner, inner, inner, inner, inner]} scale={[(hollow.widthMm - 2 * SLEEVE_WALL_MM) / hollow.widthMm, 1, (hollow.depthMm - 2 * SLEEVE_WALL_MM) / hollow.depthMm]} />}
+      {tray && trayMaterial && spec.kind === 'box' && (
+        // The tray inside the clear rim, front and back, just under the printed parts.
+        <>
+          <mesh material={trayMaterial} position={[0, 0, spec.depthMm / 2 + 0.02]}>
+            <planeGeometry args={[spec.widthMm - 2 * tray.rimMm, spec.heightMm - 2 * tray.rimMm]} />
+          </mesh>
+          <mesh material={trayMaterial} position={[0, 0, -spec.depthMm / 2 - 0.02]} rotation={[0, Math.PI, 0]}>
+            <planeGeometry args={[spec.widthMm - 2 * tray.rimMm, spec.heightMm - 2 * tray.rimMm]} />
+          </mesh>
+        </>
+      )}
+      {hinge && hingeMaterial && spec.kind === 'box' && (
+        // The lid's hinge: a bar at the front of the spine edge, just proud of the body so it covers the faces it sits on.
+        // On the front face, out to the spine edge, just proud of the surface.
+        <mesh material={hingeMaterial} geometry={hingeGeometry!} position={[-spec.widthMm / 2 + (spec.tray?.rimMm ?? 0.4) + hinge.widthMm / 2, 0, spec.depthMm / 2 + HINGE_DEPTH_MM / 2 - 0.2]} />
+      )}
       {pieces.map((p, i) => (
         <mesh key={i} geometry={p.geometry} material={sleeve} position={p.position} rotation={p.rotation} />
       ))}

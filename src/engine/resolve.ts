@@ -23,7 +23,7 @@ export interface ResolvedPanel {
 }
 
 /** Formats whose back carries no barcode unless the user adds one: a tape, a floppy and every NFC piece. */
-const NO_BACK_BARCODE: TemplateKind[] = ['cassette', 'floppy', 'nfc-card', 'nfc-sticker', 'nfc-box'];
+const NO_BACK_BARCODE: TemplateKind[] = ['cassette', 'minidisc', 'floppy', 'nfc-card', 'nfc-sticker', 'nfc-box', 'card-box'];
 
 /** The code a panel starts with when nobody has chosen one: an EAN-13 barcode on the back of every case but the formats above. */
 export function defaultCodeKind(kind: TemplateKind | null | undefined, id: PanelId): CodeSettings['kind'] {

@@ -1,4 +1,4 @@
-import { ExtrudeGeometry, PlaneGeometry, Shape, ShapeGeometry, type BufferAttribute } from 'three';
+import { CylinderGeometry, ExtrudeGeometry, PlaneGeometry, Shape, ShapeGeometry, type BufferAttribute } from 'three';
 import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js';
 import type { BoxFace, PanelId, PreviewSpec, TemplateConfig } from '../types/template';
 
@@ -108,11 +108,17 @@ export function bodyPrintedFaces(t: TemplateConfig, spec: PreviewSpec): Partial<
  * substitutes an invented number for the real one. Showing the true size, consistently on every axis, is what an
  * actual assembled case looks like.
  */
-export function createInsetGeometry(t: TemplateConfig, id: PanelId): PlaneGeometry {
+/** `size` draws it at another size (the flat of a side it is stretched to fill); by default its own. */
+export function createInsetGeometry(t: TemplateConfig, id: PanelId, size?: [number, number]): PlaneGeometry {
   const p = t.panels.find((q) => q.id === id);
   if (!p) throw new Error(`Template has no ${id} panel`);
-  const range = panelUvRange(t, id);
-  const geo = new PlaneGeometry(p.widthMm, p.heightMm);
+  // Trimmed a hair (0.15 mm a side) so texture filtering at the card's edge never picks up the panel next to it on the sheet.
+  const trim = 0.15;
+  const r = panelUvRange(t, id);
+  const du = ((r.u1 - r.u0) * trim) / p.widthMm;
+  const dv = ((r.v1 - r.v0) * trim) / p.heightMm;
+  const range = { u0: r.u0 + du, u1: r.u1 - du, v0: r.v0 + dv, v1: r.v1 - dv };
+  const geo = new PlaneGeometry(size?.[0] ?? p.widthMm, size?.[1] ?? p.heightMm);
   const uv = geo.getAttribute('uv') as BufferAttribute;
   for (let i = 0; i < uv.count; i++) {
     uv.setXY(i, range.u0 + uv.getX(i) * (range.u1 - range.u0), range.v0 + uv.getY(i) * (range.v1 - range.v0));
@@ -124,11 +130,12 @@ export function createInsetGeometry(t: TemplateConfig, id: PanelId): PlaneGeomet
 /** Where the plane for an inset face sits (just proud of the surface) and how it is turned to face outwards. */
 export function insetPlacement(spec: Extract<PreviewSpec, { kind: 'box' }>, face: BoxFace): { position: [number, number, number]; rotation: [number, number, number] } {
   const off = 0.05;
+  const z = 0;
   switch (face) {
     case '+x':
-      return { position: [spec.widthMm / 2 + off, 0, 0], rotation: [0, Math.PI / 2, 0] };
+      return { position: [spec.widthMm / 2 + off, 0, z], rotation: [0, Math.PI / 2, 0] };
     case '-x':
-      return { position: [-spec.widthMm / 2 - off, 0, 0], rotation: [0, -Math.PI / 2, 0] };
+      return { position: [-spec.widthMm / 2 - off, 0, z], rotation: [0, -Math.PI / 2, 0] };
     case '-z':
       return { position: [0, 0, -spec.depthMm / 2 - off], rotation: [0, Math.PI, 0] };
     default:
@@ -234,6 +241,42 @@ export function createSlabFaceGeometry(t: TemplateConfig, spec: Slab, id: PanelI
     const v = (pos.getY(i) + spec.bodyHeightMm / 2) / spec.bodyHeightMm;
     uv.setXY(i, range.u0 + u * (range.u1 - range.u0), range.v0 + v * (range.v1 - range.v0));
   }
+  uv.needsUpdate = true;
+  return geo;
+}
+
+/** How much of a panel's height is trimmed off its top and bottom in the preview (as for insets), mm. */
+const STRIP_TRIM_MM = 0.15;
+
+/** The UV range of part of a panel, `fromMm`..`toMm` across it (from its left edge), trimmed a hair top and bottom. */
+function panelPartUv(t: TemplateConfig, id: PanelId, fromMm: number, toMm: number): UvRange {
+  const p = t.panels.find((q) => q.id === id)!;
+  const r = panelUvRange(t, id);
+  const du = (r.u1 - r.u0) / p.widthMm;
+  const dv = ((r.v1 - r.v0) * STRIP_TRIM_MM) / p.heightMm;
+  return { u0: r.u0 + fromMm * du, u1: r.u0 + toMm * du, v0: r.v0 + dv, v1: r.v1 - dv };
+}
+
+/** A flat plane `size` big showing the strip of a panel `fromMm`..`toMm` across it (stretched to fit). */
+export function createPanelStrip(t: TemplateConfig, id: PanelId, fromMm: number, toMm: number, size: [number, number]): PlaneGeometry {
+  const range = panelPartUv(t, id, fromMm, toMm);
+  const geo = new PlaneGeometry(size[0], size[1]);
+  const uv = geo.getAttribute('uv') as BufferAttribute;
+  for (let i = 0; i < uv.count; i++) uv.setXY(i, range.u0 + uv.getX(i) * (range.u1 - range.u0), range.v0 + uv.getY(i) * (range.v1 - range.v0));
+  uv.needsUpdate = true;
+  return geo;
+}
+
+/**
+ * Part of a rounded corner, an open arc of a cylinder (axis vertical, centred on the origin), showing the strip of a panel
+ * `fromMm`..`toMm` across it: `fromMm` at `thetaStart`, `toMm` at the arc's other end (angles as three's CylinderGeometry:
+ * 0 faces +z, π/2 faces +x).
+ */
+export function createCornerArc(t: TemplateConfig, id: PanelId, fromMm: number, toMm: number, radius: number, height: number, thetaStart: number, thetaLength: number): CylinderGeometry {
+  const range = panelPartUv(t, id, fromMm, toMm);
+  const geo = new CylinderGeometry(radius, radius, height, 6, 1, true, thetaStart, thetaLength);
+  const uv = geo.getAttribute('uv') as BufferAttribute;
+  for (let i = 0; i < uv.count; i++) uv.setXY(i, range.u0 + uv.getX(i) * (range.u1 - range.u0), range.v0 + uv.getY(i) * (range.v1 - range.v0));
   uv.needsUpdate = true;
   return geo;
 }

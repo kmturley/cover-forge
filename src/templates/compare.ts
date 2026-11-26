@@ -45,7 +45,7 @@ function formatOf(entry: LibraryEntry, t: TemplateConfig): Format {
   if (entry.kind === 'vinyl') return 'Sleeves';
   if (pieceOf(t.id) === 'box') return 'Boxes';
   // A jewel case has a spine card at each side of its tray; a cassette's case is the same kind of hinged box.
-  if (entry.kind === 'cassette' || entry.kind === 'cd' || (spec.faces['+x'] && spec.faces['-x'])) return 'Jewel & tape cases';
+  if (entry.kind === 'cassette' || entry.kind === 'cd' || entry.kind === 'minidisc' || (spec.faces['+x'] && spec.faces['-x'])) return 'Jewel & tape cases';
   return 'Keep cases';
 }
 

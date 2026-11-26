@@ -310,6 +310,156 @@ function jewelCase(kind: TemplateKind, name: string, variantId: string): Templat
 }
 
 /**
+ * MiniDisc cases (case-research.md §22). Two different cases, so two templates:
+ * - the standard case blank and home-recorded discs come in, printed with a J-card: one strip, 73 mm tall, folded into a
+ *   68 mm front, a 5.5 mm spine and an 11 mm tab that tucks behind the disc (like a cassette's, smaller);
+ * - the full-size album case pre-recorded MiniDiscs were sold in, 110 × 90 × 14 mm, built like a CD jewel case: a rear tray
+ *   card (106 × 101.5 mm: a 9.3 mm spine flap, an 87.4 mm back, a 9.3 mm spine flap) and a 73 × 105 mm booklet front behind
+ *   the lid. The tray card's folds and the booklet's panels are measured from the case seller's printable templates.
+ */
+const MINIDISC_JCARD = { front: 68, spine: 5.5, tab: 11, h: 73 };
+/** `w`, `h`, `d` are the real case's outside size, for reference; the 3D preview is sized to the print (see miniDiscAlbumCase). */
+const MINIDISC_ALBUM = { w: 90, h: 110, d: 14, tray: { w: 106, h: 101.5, spine: 9.3 }, booklet: { w: 73, h: 105 } };
+/** Corner radius of the album case's 3D body, mm. */
+const MINIDISC_ALBUM_RADIUS = 1.5;
+
+function miniDiscCase(): TemplateConfig {
+  const { front, spine, tab, h } = MINIDISC_JCARD;
+  return assemble({
+    kind: 'minidisc',
+    name: 'MiniDisc',
+    variantId: 'std',
+    bleedMm: 3,
+    pieces: [
+      {
+        dir: 'row',
+        specs: [
+          { id: 'back', label: 'Back (tucks in)', w: tab, h },
+          { id: 'spine', label: 'Spine', w: spine, h, text: 'vertical' },
+          { id: 'front', label: 'Front', w: front, h },
+        ],
+      },
+    ],
+    preview: {
+      kind: 'box',
+      widthMm: front,
+      heightMm: h,
+      depthMm: spine,
+      faces: { '+z': 'front', '-x': 'spine' },
+      decals: [{ panel: 'back', face: '-z', align: 'min-x' }],
+      casing: { color: '#d9dde2', transmission: 0.8, roughness: 0.15 },
+      glossy: true,
+      radiusMm: 1,
+    },
+  });
+}
+
+/**
+ * The full-size MiniDisc album case. The tray card's 106 mm is the back plus a spine flap each side, folded at 9.3 mm in
+ * from each end. The front is the cover panel of the roll-fold booklet (up to six panels, 73.1 mm then a little narrower
+ * each, 105 mm tall): only the cover is printed. The 3D preview follows a photo of a real case: the booklet 4.6 mm in from
+ * the opening edge, the lid's dark hinge bar on the spine side, and the spine cards at the back, behind the lid.
+ */
+function miniDiscAlbumCase(): TemplateConfig {
+  const { tray, booklet } = MINIDISC_ALBUM;
+  const flap = tray.spine;
+  const back = tray.w - 2 * flap;
+  // The 3D body is sized so the tray card wraps it exactly, as the 2D shows it: the back across the flat of the back and half
+  // of each rounded back corner, each flap across the rest of that corner, the flat of its side and half the front corner,
+  // with nothing stretched. Height is the booklet's, the tallest part. (The real case is 90 × 110 × 14 mm; drawn at that size
+  // the print could only cover part of it.)
+  const r = MINIDISC_ALBUM_RADIUS;
+  const halfCorner = (Math.PI * r) / 4;
+  return assemble({
+    kind: 'minidisc',
+    name: 'MiniDisc Album',
+    variantId: 'album',
+    bleedMm: 3,
+    pieces: [
+      {
+        dir: 'row',
+        specs: [
+          { id: 'spine', label: 'Spine (left)', w: flap, h: tray.h, text: 'vertical' },
+          { id: 'back', label: 'Back (tray card)', w: tray.w - 2 * flap, h: tray.h },
+          { id: 'spineRight', label: 'Spine (right)', w: flap, h: tray.h, text: 'vertical' },
+        ],
+      },
+      { dir: 'row', specs: [{ id: 'front', label: 'Front (booklet)', w: booklet.w, h: booklet.h }] },
+    ],
+    preview: {
+      kind: 'box',
+      widthMm: back + 2 * r - 2 * halfCorner,
+      heightMm: booklet.h,
+      depthMm: flap + 2 * r - 2 * halfCorner,
+      // The tray card's flaps on the sides they fold to: seen from behind, the sheet's left flap is on the case's +x side.
+      faces: { '-x': 'spineRight', '+x': 'spine' },
+      // Placed as on a real album case (case-research.md §22): the booklet at its own size, about 3.6 mm in from the opening
+      // edge (the photo's 4.6 mm less the clear rim this body leaves off), and the spare width, about 11.4 mm, on the hinge side.
+      decals: [{ panel: 'front', face: '+z', align: 'max-x', marginMm: 3.6 }],
+      // The tray card is one sheet folded round the back corners: drawn as one wrap, with no gap at the folds.
+      wrapTray: true,
+      // As in photos of printed cases: inside a thin clear rim, everything round the booklet and the back card is the black inner
+      // tray, with the lid's black hinge down the spine side of the front, so the artwork looks a tight fit.
+      hinge: { widthMm: 5.3, color: '#08090a' },
+      tray: { color: '#111214', rimMm: 0.5 },
+      casing: { color: '#d9dde2', transmission: 0.8, roughness: 0.15 },
+      glossy: true,
+      radiusMm: r,
+    },
+  });
+}
+
+/**
+ * The slim 8 cm case for Mini CDs and Mini DVDs (case-research.md §25): 93 × 90 × 5.2 mm, a one-piece tray with a clear lid
+ * that holds a 82.6 × 85.7 mm (3¼ × 3⅜ in) card. Printed as one strip folded round the hinge, like a slim CD case's wrap:
+ * the front under the lid, a spine as wide as the case is deep, and a back across the whole back of the case (its width
+ * less a 1 mm frame each side). The case is one moulded piece with no separate tray, so there is no tray card and no
+ * second spine (the 7.5 mm 8 cm case with a tray has those, but its sizes are not known).
+ */
+const MINI_CD_SLIM = { w: 93, h: 90, d: 5.2, card: { w: 82.6, h: 85.7 }, frame: 1 };
+
+function miniCdSlimCase(): TemplateConfig {
+  const { w, h, d, card, frame } = MINI_CD_SLIM;
+  return assemble({
+    kind: 'cd',
+    name: 'Mini CD',
+    variantId: 'mini-slim',
+    bleedMm: 3,
+    pieces: [
+      {
+        dir: 'row',
+        specs: [
+          { id: 'back', label: 'Back', w: w - 2 * frame, h: card.h },
+          { id: 'spine', label: 'Spine (hinge)', w: d, h: card.h, text: 'vertical' },
+          { id: 'front', label: 'Front (under the lid)', w: card.w, h: card.h },
+        ],
+      },
+    ],
+    preview: {
+      kind: 'box',
+      widthMm: w,
+      heightMm: h,
+      depthMm: d,
+      faces: { '-x': 'spine' },
+      // The front sits under the lid beside the hinge, just inside the lid's frame; the back fills the back of the case.
+      decals: [
+        { panel: 'front', face: '+z', align: 'max-x', marginMm: 2 },
+        { panel: 'back', face: '-z', align: 'min-x', marginMm: frame },
+      ],
+      casing: { color: '#16181c', transmission: 0.35, roughness: 0.12 },
+      glossy: true,
+      radiusMm: 1,
+    },
+  });
+}
+
+/** A Betamax cassette's sleeve, 98 × 159 × 27 mm (case-research.md §23): a printable box like the VHS one, a size smaller. */
+const BETAMAX = { w: 98, h: 159, d: 27 };
+
+/** A tuck box for a standard poker-size deck (63.5 × 88.9 mm cards), 66 × 91 × 18 mm for 54 cards (case-research.md §24). */
+const CARD_BOX = { w: 66, h: 91, d: 18 };
+
+/**
  * Vinyl record sleeve sizes. The sleeve is a square jacket: front | spine | back in a row.
  * Standard outer sleeve thickness is ~3 mm (spine). Sizes are the outer sleeve dimensions.
  */
@@ -436,11 +586,21 @@ export const TEMPLATE_DEFS: TemplateDef[] = [
     build: () => tuckBox({ kind: 'vhs', name: 'VHS box', variantId: 'std-25', w: 105, h: 190, d: 25, casing: { color: '#e6dfcf', roughness: 0.8 }, radiusMm: 1 }),
   },
   {
+    kind: 'betamax',
+    name: 'Betamax box',
+    group: 'Boxes',
+    variants: [{ id: 'std', label: 'Betamax' }],
+    build: () => tuckBox({ kind: 'betamax', name: 'Betamax box', variantId: 'std', ...BETAMAX, casing: { color: '#e6dfcf', roughness: 0.8 }, radiusMm: 1 }),
+  },
+  {
     kind: 'cd',
     name: 'CD',
     group: 'Cases',
-    variants: [{ id: 'jewel', label: 'CD Jewel Case' }],
-    build: () => jewelCase('cd', 'CD Jewel Case', 'jewel'),
+    variants: [
+      { id: 'jewel', label: 'CD Jewel Case' },
+      { id: 'mini-slim', label: 'Mini CD / DVD' },
+    ],
+    build: (id) => (id === 'mini-slim' ? miniCdSlimCase() : jewelCase('cd', 'CD Jewel Case', 'jewel')),
   },
   {
     kind: 'cassette',
@@ -477,6 +637,23 @@ export const TEMPLATE_DEFS: TemplateDef[] = [
           radiusMm: 1,
         },
       }),
+  },
+  {
+    kind: 'minidisc',
+    name: 'MiniDisc',
+    group: 'Cases',
+    variants: [
+      { id: 'std', label: 'MiniDisc' },
+      { id: 'album', label: 'MiniDisc Album' },
+    ],
+    build: (id) => (id === 'album' ? miniDiscAlbumCase() : miniDiscCase()),
+  },
+  {
+    kind: 'card-box',
+    name: 'Card deck box',
+    group: 'Boxes',
+    variants: [{ id: 'poker', label: 'Card Deck Box' }],
+    build: () => tuckBox({ kind: 'card-box', name: 'Card Deck Box', variantId: 'poker', ...CARD_BOX, casing: { color: '#ece8df', roughness: 0.8 }, radiusMm: 0.8 }),
   },
   {
     kind: 'floppy',
