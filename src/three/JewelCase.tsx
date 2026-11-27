@@ -94,11 +94,9 @@ function insertPieces(t: TemplateConfig, spec: BoxSpec, c: CaseConstruction): { 
 
 /** Where the tray's features sit, mm, from a photo of an empty jewel case (black tray, supplied in review). */
 const TRAY = {
-  /** The tray's end on the hinge side: a strip the full height of the inside, this wide. */
+  /** The tray's end on the hinge side: a strip this wide. The whole tray fills the base's inside height, a snug fit. */
   stripMm: 14,
-  /** The main tray's height: a little shorter than the inside, leaving a narrow clear band above and below it for the lid's tabs. */
-  mainHeightMm: 115,
-  cornerMm: 4,
+  cornerMm: 1.5,
   /** The disc's centre, a little to the opening side of the case's middle, and the rim of its well (cut off by the tray's top and bottom edges). */
   disc: { x: 4, wellMm: [60.2, 61] as const },
   /** The hub: a raised round platform with a rosette of slots through it, the gaps between the teeth that grip the disc. */
@@ -157,18 +155,18 @@ const extrude = (shape: Shape | Shape[], depth: number) => new ExtrudeGeometry(s
  */
 function trayParts(W: number, H: number, D: number, c: CaseConstruction, trayDepth: number) {
   // A little inside the tray card's flaps at each end, so the card and the tray never share a surface.
-  const inner = { x0: -W / 2 + c.sideWallMm + 0.3, x1: W / 2 - c.sideWallMm - 0.5, h: H - 2 * c.wallMm - 1 };
+  const inner = { x0: -W / 2 + c.sideWallMm + 0.3, x1: W / 2 - c.sideWallMm - 0.5, h: H - 2 * c.wallMm - 0.6 };
   const z = -D / 2 + c.wallMm + GAP + 0.1;
   const stripX1 = inner.x0 + TRAY.stripMm;
   const { x: dx } = TRAY.disc;
-  const main = roundedRect((stripX1 + inner.x1) / 2, 0, inner.x1 - stripX1, TRAY.mainHeightMm, TRAY.cornerMm);
+  const main = roundedRect((stripX1 + inner.x1) / 2, 0, inner.x1 - stripX1, inner.h, TRAY.cornerMm);
   main.holes.push(rosette(dx, 0));
   const platform = new Shape();
   platform.absarc(dx, 0, TRAY.hub.platformMm, 0, Math.PI * 2, false);
   platform.holes.push(rosette(dx, 0));
   // The well's rim: the two sides of the ring that lie on the tray, where its top and bottom run off the tray's edges.
   const [r0, r1] = TRAY.disc.wellMm;
-  const half = TRAY.mainHeightMm / 2 - 0.5;
+  const half = inner.h / 2 - 0.5;
   const wellArcs = [0, Math.PI].map((mid) => {
     const [a1, a0] = [Math.asin(Math.min(1, half / r1)), Math.asin(Math.min(1, half / r0))];
     const s = new Shape();
