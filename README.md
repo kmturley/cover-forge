@@ -69,6 +69,44 @@ whose embedded DPI isn't exactly 300 is rejected outright and left out of the re
 stderr) rather than measured at an unreliable size. `scans/` is gitignored — cover art is
 copyrighted, so test images stay local and aren't committed.
 
+### Checking 3D previews against the 2D print
+
+`scripts/check-previews.ts` opens each template in the running dev server with a grid test cover, then
+screenshots the 2D sheet and the 3D model from eight fixed angles (front, rear, left, right, front-left,
+rear-left, rear-right, top). It puts them on one contact sheet per template, so gaps, stretched or
+misaligned panels, and artwork on the wrong face show up against the grid. Use it after changing a
+template's sizes or anything in `src/three/`.
+
+```sh
+npm run dev                                   # in one terminal
+npm run check:previews                        # in another: every template
+npm run check:previews -- minidisc cd-        # only templates whose id or name contains these
+npm run check:previews -- --list              # list template ids
+npm run check:previews -- --cover art.png     # your own front cover instead of the grid
+npm run check:previews -- --views front,rear,left --jobs 2 --url http://localhost:5174
+```
+
+Results go to `compare/previews/` (git-ignored): `index.html` shows every contact sheet and any page
+errors, `<template>.png` is one sheet, and `<template>/` holds the single captures. The script exits
+non-zero if any template fails to load or logs an error.
+
+What to look for on each sheet:
+
+- **Rear and sides:** the back and spines should show the same grid cells, logos and text as the 2D,
+  in the same places, with nothing stretched (grid squares stay square) and no clear or coloured
+  strips where the print should reach the edge.
+- **Corners:** grid lines should run straight on round a fold with no gap or jump.
+- **Front:** the front panel should sit where the real case shows it. A band is only right if the
+  real case has one (e.g. a hinge or tray).
+- **Orientation:** text on the 3D spine should read the same way as in 2D; the back is seen from
+  behind, so its left edge on the sheet is on the model's right.
+
+The camera is placed through a dev-only hook (`window.__coverForge3D` in `src/three/PreviewScene.tsx`),
+so the script works against `npm run dev`, not a production build. It needs Playwright, which isn't
+an app dependency: install it once with `npm i -D playwright && npx playwright install chromium`, or
+set `PLAYWRIGHT_MODULE` to an existing copy's `index.mjs`. WebGL runs in software (SwiftShader), so a
+full run takes several minutes; filter to the templates you changed while iterating.
+
 ## Deploy (GitHub Pages)
 
 Pull requests run `.github/workflows/ci.yml` (type-check, lint, tests and a build). `.github/workflows/deploy.yml` type-checks, lints, tests and builds on every push to `main`, then publishes `dist/` to GitHub Pages. One-time setup:

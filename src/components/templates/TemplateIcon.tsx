@@ -40,6 +40,28 @@ const ICONS: Record<TemplateKind, ReactNode> = {
       <path d="M9 16h6" />
     </>,
   ),
+  betamax: svg(
+    <>
+      <rect x="6" y="4" width="12" height="16" rx="1" />
+      <path d="M6 7h12" />
+      <circle cx="12" cy="12" r="2.2" />
+      <path d="M9.5 17h5" />
+    </>,
+  ),
+  minidisc: svg(
+    <>
+      <rect x="4.5" y="4" width="15" height="16" rx="1.5" />
+      <path d="M4.5 9h6v-5" />
+      <circle cx="13.5" cy="13.5" r="3.2" />
+    </>,
+  ),
+  'card-box': svg(
+    <>
+      <rect x="6" y="3" width="12" height="18" rx="1" />
+      <path d="M6 7h12" />
+      <path d="M12 11.5l2 2.5-2 2.5-2-2.5z" />
+    </>,
+  ),
   cd: svg(
     <>
       <rect x="3" y="3" width="18" height="18" rx="1.5" />

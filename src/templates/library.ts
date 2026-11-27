@@ -41,13 +41,16 @@ const GROUP_OF: Record<TemplateKind, LibraryGroup> = {
   bluray: 'Movies & TV',
   uhd: 'Movies & TV',
   vhs: 'Movies & TV',
+  betamax: 'Movies & TV',
   cd: 'Music',
   vinyl: 'Music',
   cassette: 'Music',
+  minidisc: 'Music',
   floppy: 'Labels, cards & NFC',
   'nfc-card': 'Labels, cards & NFC',
   'nfc-sticker': 'Labels, cards & NFC',
   'nfc-box': 'Labels, cards & NFC',
+  'card-box': 'Labels, cards & NFC',
 };
 
 /** Extra search words per game platform, so "sony", "nintendo" or "microsoft" find them. */
@@ -81,7 +84,12 @@ const STANDARDS: { name: string; front: [number, number]; spine?: number; back?:
   { name: 'Blu-ray Case (14 mm)', front: [129.5, 161], spine: 14 },
   { name: 'Blu-ray 4-Disc Case', front: [128, 149], spine: 15 },
   { name: 'CD Jewel Case', front: [120, 120], spine: 6.5, back: [137, 118] },
+  { name: '8 cm Slim Case', front: [82.6, 85.7], spine: 5.2 },
   { name: 'VHS Sleeve', front: [105, 190], spine: 25 },
+  { name: 'Betamax Sleeve', front: [98, 159], spine: 27 },
+  { name: 'MiniDisc Case', front: [68, 73], spine: 5.5 },
+  { name: 'MiniDisc Album Case', front: [73, 105], spine: 9.3 },
+  { name: 'Poker Deck Box', front: [66, 91], spine: 18 },
   { name: 'Cassette J-Card', front: [65.1, 101.6], spine: 12.7 },
   { name: '12" LP Sleeve', front: [314, 314], spine: 3 },
   { name: '10" Record Sleeve', front: [262, 262], spine: 3 },
@@ -146,7 +154,7 @@ export function splitId(id: string): { base: string; piece: Piece | null } {
 }
 
 /** Kinds that are a box already: their own template is the Box piece, and there is no insert. */
-const BOX_KINDS = new Set<TemplateKind>(['vhs', 'nfc-box']);
+const BOX_KINDS = new Set<TemplateKind>(['vhs', 'betamax', 'nfc-box', 'card-box']);
 
 /** Cases that are the platform's original box: the print is the box itself, so Box is their only Type (no insert, no slipcover). */
 const BOX_CASES = new Set(['game-case-nes', 'game-case-snes']);

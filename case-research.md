@@ -915,3 +915,147 @@ as shares of the 130 mm the turned panel is wide. Only the Branded dress does th
 Positions were measured on the template's alpha channel and placed as fractions. Not yet run through the compare script
 or overlaid on the template. The Landscape render has not been compared with a custom landscape cover.
 
+
+## 22. MiniDisc
+
+Two cases, so two templates (`minidisc-std` and `minidisc-album`), as the 12", 10" and 7" vinyl are three.
+
+### Standard case (blank and home-recorded discs)
+
+| Source | What it says |
+| :--- | :--- |
+| [Wikipedia, J-card (MiniDisc J-cards)](https://en.wikipedia.org/wiki/J-card) | "73 mm tall, with a 68 mm front panel, a 5.5 mm spine and an 11 mm rear tab, giving an unfolded card of about 84.5 by 73 mm". Fold-out versions add panels of 66 and 64 mm behind the front. The article cites a duplicator's J-card template PDF (Band CDs), which refused automated fetches, so it was not read directly |
+| Wikipedia, same article | the MiniDisc cartridge is 68 × 72 × 5 mm |
+| [VHS Slipcover Maker, MiniDisc J-card](https://vhs.texs.org/en/minidisc-jcard) | blank template "84.5 × 73 mm" (3.33 × 2.87 in). Its printable PDF has no panel sizes written on it; measured against the stated 84.5 mm width, its fold lines split the card **11.01 \| 5.50 \| 67.99 mm** |
+
+| [GlassOnTin/minidisc-cover](https://github.com/GlassOnTin/minidisc-cover) (README) | the same card read the other way round: "73 x 84 mm and folded", "0-68 mm the front face", "68-73 mm the top edge, where the title goes. 5 mm is the case thickness", "73-84 mm tucks inside and is never seen": a 73 wide × 68 tall front (the disc's own 72 × 68 shape) with the spine along the **top** edge |
+
+| A dimensioned J-card template and a printed example (No Man's Sky, *Music for an Infinite Universe*; both supplied in the issue) | "Rear tab" 11mm \| "Spine" 5.5mm \| "Front cover" 68mm, 73mm tall, portrait, with a further fold line after the front for a fold-out panel. The printed card has the title running down both the spine and the rear tab, so the tab carries artwork |
+
+Three sources agree. The template is the J-card: **11 + 5.5 + 68 × 73 mm** (back tab | spine | front), like the cassette's,
+with the spine down the side. GlassOnTin's tool has the same sizes but puts the spine along the top edge; the template keeps
+it on the side (decided in the issue), so the print is the same strip either way and only the 3D preview differs.
+
+Also looked at and not used: [batgranny/md-cover-creator](https://github.com/batgranny/md-cover-creator) (every size editable;
+its defaults, a 67.5 × 60 mm front and 3 mm spine, match no MiniDisc source) and
+[TeamZissou2025/minidisc-cover-designer](https://github.com/TeamZissou2025/minidisc-cover-designer) (labels for the disc
+itself, 37 × 53 mm and 60 × 3 mm spine labels, which this issue leaves out). The case's own outside
+size was not found, so the 3D preview uses the card's size, as the cassette's does. The fold-out panels are not offered yet.
+
+### Full-size (album) case
+
+| Source | What it says |
+| :--- | :--- |
+| [Retro Style Media, full-size MiniDisc case](https://www.retrostylemedia.co.uk/product/full-size-minidisc-case-with-a-clear-inner-tray) | "Outer case dimensions: 110mm x 90mm x 14mm", "the same outer dimensions as an original album case". Templates: rear tray insert "106mm wide x 101.5mm high"; roll-fold cover insert "+5 panels, up to 428mm wide x 105mm high" |
+
+The case is portrait, 90 wide × 110 tall × 14 deep, and is built like a CD jewel case: a tray card behind the disc with its
+spine flaps folded round each side, and a booklet behind the lid. The seller's printable templates (the rear tray inlay and
+the outer roll-fold cover PDFs linked from the product page) have no numbers in them, so their lines were measured, scaled by
+the sizes the page states (106 mm and 428 mm wide; the measured heights come out at 101.5 and 105 mm, which checks the scale):
+
+- **rear tray inlay, 106 × 101.5 mm**: fold lines 9.3 mm in from the left and 9.4 mm in from the right, so **spine flaps of
+  9.3 mm** and a **back of 87.4 mm**;
+- **roll-fold cover, 428 × 105 mm**: six panels, not five ("front panel", then "+1" to "+5"; "+1 … shows on the inside of the
+  case when opened"), of **73.1**, 71.9, 71.9, 71.0, 70.4 and 70.1 mm, narrower towards the inside so they nest when folded.
+
+A second, independent source agrees: [VHS Slipcover Maker's MiniDisc cover spec](https://vhs.texs.org/en/minidisc-cover)
+gives the front cover panel as "72.9mm × 104.9mm" and the full roll-fold as "up to 6 panels, each fold slightly narrower than
+the last", "427.9mm × 104.9mm", for "the taller first-generation MiniDisc jewel cases". Its [printing guide](https://vhs.texs.org/en/printing-guide)
+lists the MiniDisc tray card at 106 × 102 mm and the blank-case J-card at 84 × 73 mm (3 panels, up to 5), matching the sizes above.
+
+**Conflicting source, not yet resolved.** minidisc.me (the maker of these replacement cases; Retro Style Media says its
+cases come from them) publishes a dimensioned "Minidisc 2022 Template Backline Card" (supplied in the issue): trim
+**108.8 × 103.2 mm**, folded **11.2 | 86.4 | 11.2 mm**. That is 2.8 mm wider and 1.7 mm taller than the 106 × 101.5 mm the
+other two sources give, with 1.9 mm wider spine flaps. It may be for a later version of the case. The template keeps
+106 × 101.5 mm (9.3 | 87.4 | 9.3), which two sources agree on; measuring a real case's tray card would settle it.
+
+The template prints the tray card (9.3 | 87.4 | 9.3 × 101.5 mm) and the cover panel, **73 × 105 mm**. The inner booklet
+panels are not offered yet.
+
+### How the 3D preview is laid out
+
+From a front-on photo of a real album case (R.E.M., *Up*; supplied in the issue), measured at about 5.8 px/mm using the
+case's 90 × 110 mm outside:
+
+| Feature | Measured |
+| :--- | :--- |
+| booklet | about 73.6 × 106 mm: matches the template's 73 × 105 |
+| above / below the booklet | 1.7 / 2.2 mm |
+| left of the booklet (spine side) | 11.7 mm: an opaque dark grey **hinge bar about 5.3 mm wide**, full height, then about 6 mm of clear case with the tray's wall showing dark through it |
+| right of the booklet (opening side) | 4.6 mm: a dark strip seen through the clear edge, then about 1 mm of clear rim |
+
+Two photos of a printed album case from the duplicator (black inner tray; supplied in the issue) show the same layout: a
+near-black band about 11 mm wide on the hinge side and about 5 mm on the opening side, a clear rim and lid lip, and from behind
+the tray card's back sitting inside the case with a border round it. The dark bands are the inner tray seen through the clear
+lid, so their colour is the tray's (replacement cases are sold with trays in several colours; black is the usual).
+
+So the preview draws a clear case with, inside it, the black inner tray on the front and back under the printed parts: the
+booklet near the opening edge, with the lid's black 5.3 mm hinge down the spine side of the front.
+
+**The 3D body is sized to the print, not to the case's 90 × 110 × 14 mm outside.** Drawn at the real outside size, every
+printed part is smaller than the face it sits on (the back 87.4 × 101.5 on a 90 × 110 face, the 9.3 mm flaps on 14 mm
+sides), so the preview showed bands of tray and clear plastic round the back and on the spines, and stretched the flaps by
+about 18 %, none of which the 2D template shows. Front, rear and side screenshots compared with the 2D made this plain.
+The tray card is one sheet folded round the case, so the body is the size it wraps exactly: with a 1.5 mm corner radius,
+**about 88.0 wide × 9.9 deep**, so the back covers the flat of the back and half of each rounded back corner, and each
+flap the other half of that corner, the flat of its side and half of the front corner. Each arc shows exactly its own length
+of artwork, so nothing is stretched across. The printed height is the booklet's, **105 mm**, the tallest part, and the body
+is **108 mm**: the 1.5 mm rounded top and bottom edges are left as clear rim, so nothing flat stands proud of them. The
+101.5 mm card is stretched 3.4 % to 105 mm, and the black tray and hinge are 105 mm too, so the tops and bottoms of the
+booklet, tray, hinge and spines line up. Drawn at its true height, the card stopped 1.75 mm short of the booklet at each end,
+which looked like a misalignment from every angle. The black tray covers the flat of the front and the front half of each
+front corner, where it meets the flaps, so no clear edge shows between them. Seen from behind, the sheet's left flap is on the case's +x (opening) side, so the flaps are
+placed on the sides they really fold to. The booklet is 3.6 mm in from the opening edge (the photo's 4.6 mm less the clear
+rim this body leaves off), so about 11.4 mm of hinge and tray shows on the spine side of the front, as in the photo: the
+73 mm booklet is narrower than the 87.4 mm back, so the front can't be covered edge to edge on any size of body. The
+picker's 3D comparison and its size sorting use this body too, so they show the album case about 2 mm narrower, 2 mm
+shorter and 4 mm thinner than the real case.
+
+## 23. Betamax
+
+| Source | What it says |
+| :--- | :--- |
+| [Home Video wiki, Packaging](https://homevideo.fandom.com/wiki/Packaging) | "Betamax Slipcase 98mm x 159mm x 27mm" (VHS 107 × 190 × 27 mm in the same table). A fan wiki |
+| [Bags Unlimited, BoxPro Betamax box protector](https://www.bagsunlimited.com/boxpro-betamax-cartridge-case-box-protector-12-mil-crystal-clear-archival-apet3-78-x-6-14-x-1-18ins) | an archival protector for a Betamax box, 3⅞ × 6¼ × 1⅛ in (98.4 × 158.8 × 28.6 mm) inside: just bigger than the 98 × 159 × 27 mm box it holds. The size is from the listing's title; its page returned no text |
+| [Wikipedia, Betamax](https://en.wikipedia.org/wiki/Betamax) | the cassette is 15.6 × 9.6 × 2.5 cm |
+
+The two box sizes agree, and the box is 3 mm longer and 2 mm wider and deeper than the 156 × 96 × 25 mm cassette. The template
+is the same straight-tuck box as the VHS one at **98 × 159 × 27 mm**.
+
+## 24. Card deck box
+
+| Source | What it says |
+| :--- | :--- |
+| [The Custom Boxes, Playing Card Dimensions](https://www.thecustomboxes.co.uk/blog/playing-card-dimensions/) | poker cards are 63 × 88 mm (2.5 × 3.5 in); a standard 54-card deck's tuck box is about 66 × 91 × 18 mm |
+| [The Game Crafter, Poker Tuck Box (90 cards)](https://thegamecrafter.com/make/products/PokerTuckBox90) / [(36 cards)](https://thegamecrafter.com/make/products/PokerTuckBox36) | 66 × 91 × 37 mm finished for 90 cards; 64 × 89 × 14 mm inside for 36 |
+| [Vanishing Inc., blank poker-sized tuck box](https://www.vanishingincmagic.com/magic-accessories/blank-poker-sized-tuck-box-by-propdog/) | 93 × 66 × 18 mm |
+
+The face is 66 × 91 mm in every source but one (93 mm tall); the depth depends on how many cards and how thick they are. The
+template is a straight-tuck box at **66 × 91 × 18 mm**, for a standard 54-card deck.
+
+## 25. 8 cm Mini CD / Mini DVD (slim case)
+
+Smaller jewel cases hold 8 cm discs, which were used for CD singles, Mini DVDs, some console games (the GameCube's
+optical disc is 8 cm) and homebrew releases. [Wikipedia, Optical disc packaging](https://en.wikipedia.org/wiki/Optical_disc_packaging)
+mentions them but gives no size. Two kinds are sold today:
+
+| Source | What it says |
+| :--- | :--- |
+| A maker's product photos (case 11-T02, supplied in the issue) | slim 8 cm case "with tray": **93 × 90 × 5.2 mm** (93 across, hinge included; 90 tall) |
+| A duplicator's listing (slimline jewel case for 3 in / 80 mm discs, supplied in the issue) | "Measures 3-5/8 x 3-1/2"" (92.1 × 88.9 mm); "Clear lid holds 3-2/8 x 3-3/8" insert card" (**82.6 × 85.7 mm**) |
+| The same maker's photos (case 11-T01) | a standard 8 cm jewel case with a separate tray, **98 × 90 × 7.5 mm**. No insert sizes found |
+
+The two slim-case sizes agree to a millimetre. As on a 12 cm case, the card loses more width than height to the lid's frame
+and hinge: 93 − 82.6 = 10.4 mm across against 90 − 85.7 = 4.3 mm down (a CD jewel case loses 22 and 5 mm), so the front is
+**82.6 wide × 85.7 tall**.
+
+The template prints it as one strip folded round the hinge, as slim 12 cm CD inserts often are: **back 91 | spine 5.2 |
+front 82.6, all 85.7 mm tall**. Derived, not stated by a source: the spine is the case's 5.2 mm depth (guides for slim
+12 cm cases say its spine is about as wide as the case is thick, about 5 mm), and the back spans the whole back of the case,
+its 93 mm less a 1 mm frame each side. Check both against a real case; a tray that is not see-through hides the back.
+
+The slim case is one moulded piece (tray and back together), so unlike a CD jewel case it has no separate tray card and only
+the one spine, at the hinge. The 7.5 mm 8 cm case with a separate tray would have a tray card with a spine flap each side,
+like the 12 cm jewel case's.
+
+The 7.5 mm standard case with a tray (98 × 90 × 7.5 mm) is not offered yet: its booklet and tray card sizes are unknown.

@@ -33,7 +33,7 @@ export interface PanelRect {
 /** What is printed for a case: its own insert or label, a sleeve round the case, or a box that holds it. */
 export type Piece = 'insert' | 'slipcover' | 'box';
 
-export type TemplateKind = 'bluray' | 'uhd' | 'dvd' | 'vhs' | 'cd' | 'cassette' | 'floppy' | 'nfc-card' | 'nfc-sticker' | 'nfc-box' | 'vinyl' | 'game-case';
+export type TemplateKind = 'bluray' | 'uhd' | 'dvd' | 'vhs' | 'betamax' | 'cd' | 'minidisc' | 'cassette' | 'floppy' | 'nfc-card' | 'nfc-sticker' | 'nfc-box' | 'card-box' | 'vinyl' | 'game-case';
 
 /** Which 3D face a panel is mapped onto (BoxGeometry face order). */
 export type BoxFace = '+x' | '-x' | '+y' | '-y' | '+z' | '-z';
@@ -58,12 +58,25 @@ export type PreviewSpec =
       faces: Partial<Record<BoxFace, PanelId>>;
       /** A sleeve with open ends (a slipcover): the top and bottom are left out, and the inside shows. */
       hollow?: boolean;
-      /** Artwork covering only part of a face (e.g. a cassette's back flap), against one edge of it. */
-      decals?: { panel: PanelId; face: '-z'; align: 'min-x' | 'max-x' }[];
+      /** Artwork covering only part of a face (a cassette's back flap, a slim case's front card beside its hinge), against one edge of it. */
+      decals?: { panel: PanelId; face: '-z' | '+z'; align: 'min-x' | 'max-x'; /** How far in from that edge, mm (0: against it). */ marginMm?: number }[];
       casing: PreviewMaterial;
       /** Whether the printed faces are glossy film (cases) or plain card (sleeves). */
       glossy: boolean;
       radiusMm: number;
+      /** An opaque hinge bar down the front of the case beside the spine edge (a jewel-style case's lid hinge), `widthMm` across. */
+      hinge?: { widthMm: number; color: string };
+      /**
+       * A coloured inner tray seen through a clear case: drawn on the front and back inside a clear rim `rimMm` wide, under the
+       * printed parts, so only the rim reads as clear plastic.
+       */
+      tray?: { color: string; rimMm: number };
+      /**
+       * The back and both sides are one tray card folded round the back corners (a jewel-style case's rear tray card): drawn as
+       * one continuous wrap at the card's height, across the flat of the back, round the rounded corners and across the flat of
+       * each side, instead of separate pieces. `faces['-x']`/`faces['+x']` name the flaps; the back is the `back` panel.
+       */
+      wrapTray?: boolean;
     }
   | {
       /** A flat body (card or disk) with the front panel printed on its face, optionally as a smaller label. */
