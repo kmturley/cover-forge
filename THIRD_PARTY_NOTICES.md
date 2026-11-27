@@ -18,10 +18,3 @@ Simple Icons removes marks at their owners' request, so the Xbox and Nintendo ma
 The SVG files in `src/brands/svg/` (PlayStation, Nintendo DS, 3DS, Game Boy, Game Boy Color, Game Boy Advance, the Nintendo Entertainment System lockup and wordmark, the Nintendo oval, Switch, Switch 2, Wii, Wii U, GameCube, the original Xbox, Xbox 360, Xbox One and Xbox Series X, the DVD Video, Blu-ray Disc, VHS, Betamax, Compact Disc, MiniDisc, Compact Cassette and contactless (NFC) symbol and the PC CD-ROM logo, plus the swoosh artwork `xbox360-waves.png`) were source from wiki pages and are
 turned into `src/brands/logos.generated.ts` by `npm run gen:brands`. They are used only to draw the "Branded" header and spine of the matching
 platform. They are trademarks of their respective owners (Sony Interactive Entertainment, Nintendo); CoverForge is not affiliated with or endorsed by them.
-
-## 3D model: CD jewel case
-
-The jewel case's plastic parts in the 3D preview (`src/assets/models/jewel-case.glb`) are from
-["Compact disc and case"](https://www.blendswap.com/blend/1986) by effe on BlendSwap, released under
-[CC0 1.0](https://creativecommons.org/publicdomain/zero/1.0/). They are closed, trimmed to the lid, base and tray, and re-exported by
-`scripts/models/export-jewel-case.py`.
