@@ -17,6 +17,7 @@
  *   npm run check:previews -- --views front,rear   # only these views (front, rear, left, right, front-left, rear-left, rear-right, top,
  *                                                  # top-front-left, top-front-right, top-rear-left, top-rear-right)
  *   npm run check:previews -- --scale 2            # capture at 2× pixel density, to zoom into corners
+ *   npm run check:previews -- --no-inserts         # the bare cases, with the printed inserts hidden (3D only)
  *   npm run check:previews -- --url http://localhost:5174 --out /tmp/previews --jobs 1
  *
  * It needs Playwright, which is not a dependency of the app. If `import('playwright')` fails, install it once with
@@ -50,7 +51,7 @@ const VIEWS: Record<string, Vec3> = {
 };
 
 function parseArgs(argv: string[]) {
-  const opts = { url: 'http://localhost:5173', out: 'compare/previews', cover: '', views: Object.keys(VIEWS), jobs: 2, scale: 1, list: false, filters: [] as string[] };
+  const opts = { url: 'http://localhost:5173', out: 'compare/previews', cover: '', views: Object.keys(VIEWS), jobs: 2, scale: 1, inserts: true, list: false, filters: [] as string[] };
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
     const next = () => {
@@ -64,6 +65,7 @@ function parseArgs(argv: string[]) {
     else if (a === '--views') opts.views = next().split(',').map((v) => v.trim()).filter(Boolean);
     else if (a === '--jobs') opts.jobs = Math.max(1, Number(next()) || 1);
     else if (a === '--scale') opts.scale = Math.min(4, Math.max(1, Number(next()) || 1));
+    else if (a === '--no-inserts') opts.inserts = false;
     else if (a === '--list') opts.list = true;
     else if (a.startsWith('--')) throw new Error(`Unknown option ${a}`);
     else opts.filters.push(a.toLowerCase());
@@ -146,6 +148,10 @@ async function main() {
       await page.waitForFunction(() => 'setCamera' in ((window as unknown as { __coverForge3D?: object }).__coverForge3D ?? {}), null, { timeout: 15000 });
       // Artwork and images load after the model appears.
       await page.waitForTimeout(2500);
+      if (!opts.inserts) {
+        await page.getByText('Inserts', { exact: true }).click();
+        await page.waitForTimeout(500);
+      }
       for (const view of opts.views) {
         await page.evaluate((p: Vec3) => (window as unknown as { __coverForge3D: { setCamera(p: Vec3): void } }).__coverForge3D.setCamera(p), VIEWS[view]);
         await page.waitForTimeout(500);

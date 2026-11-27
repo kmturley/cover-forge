@@ -47,6 +47,34 @@ export interface PreviewMaterial {
   glossy?: boolean;
 }
 
+/** How a plastic part's surface is finished: polished (glossy), lightly textured (satin) or textured (matte). */
+export type PlasticFinish = 'glossy' | 'satin' | 'matte';
+
+/** A moulded plastic part: clear (see-through, optionally tinted) or a solid colour, with its surface finish. */
+export interface PlasticPart {
+  color: string;
+  clear: boolean;
+  finish: PlasticFinish;
+}
+
+/**
+ * A case built in layers, as the real one is, front to back: the clear lid; the booklet behind it; the disc tray (black or
+ * clear) inside the base, with the tray card behind it, its flaps folded round the tray's ends; and the clear base. The printed
+ * pieces sit inside the plastic at their own size, each with a plain paper back.
+ */
+export interface CaseConstruction {
+  kind: 'jewel';
+  /** The lid and base: the outer shell. */
+  shell: PlasticPart;
+  /** The disc tray inside the base. */
+  tray: PlasticPart;
+  /** Thickness of the shell's front and back walls, and of its side walls (outside the tray card's flaps), mm. */
+  wallMm: number;
+  sideWallMm: number;
+  /** The booklet's distance in from the opening (+x) edge, mm; the rest of the width is the lid's hinge side. */
+  bookletMarginMm: number;
+}
+
 /** How the 3D viewport models a template. Sizes are in mm. */
 export type PreviewSpec =
   | {
@@ -85,6 +113,11 @@ export type PreviewSpec =
        * black-tray jewel case) instead of filling the flat of the case's sides.
        */
       wrapHeightMm?: number;
+      /**
+       * A case modelled from its real parts instead of a printed box (see `CaseConstruction`). The box's size is then the real
+       * case's outside size, and `faces` still names its spines (for the comparison and measurements).
+       */
+      construction?: CaseConstruction;
     }
   | {
       /** A flat body (card or disk) with the front panel printed on its face, optionally as a smaller label. */

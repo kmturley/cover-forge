@@ -84,6 +84,8 @@ npm run check:previews -- minidisc cd-        # only templates whose id or name 
 npm run check:previews -- --list              # list template ids
 npm run check:previews -- --cover art.png     # your own front cover instead of the grid
 npm run check:previews -- --views front,rear,left --jobs 2 --url http://localhost:5174
+# the bare cases, printed inserts hidden, to check the plastic against a real empty case:
+npm run check:previews -- --no-inserts --out compare/bare
 # corners only, at 2× pixel density to zoom in on the edges:
 npm run check:previews -- --views top-front-left,top-front-right,top-rear-left,top-rear-right --scale 2 --out compare/corners
 ```

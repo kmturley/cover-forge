@@ -5,11 +5,15 @@ import { BackSide, CylinderGeometry, MeshStandardMaterial, PlaneGeometry, type B
 import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js';
 import type { PanelId, TemplateConfig } from '../types/template';
 import { FACE_ORDER, createBodyGeometry, createCornerArc, createPanelStrip, createWrappedPanelGeometry, createLabelGeometry, createLabelSliceGeometry, createSlabBodyGeometry, createSlabFaceGeometry, bodyPrintedFaces, insetFaces, insetPlacement, labelWrap, modelSizeMm, previewScale, SLEEVE_WALL_MM } from './PreviewGeometry';
+import { JewelCase } from './JewelCase';
 import { Measurements3D } from './Measurements3D';
 import { createBodyMaterial, createSleeveMaterial } from './PreviewMaterials';
 
 /** Three-quarter view showing the left edge (-X), top edge (+Y) and front (+Z). Tune via the console log. */
 export const DEFAULT_CAMERA_POSITION: [number, number, number] = [-2.2, 1.1, 2.6];
+
+/** The 3D viewer's background, the same grey as the panel round it. */
+const VIEWER_BACKGROUND = '#33363d';
 
 type Piece = { geometry: BufferGeometry; position: [number, number, number]; rotation: [number, number, number] };
 
@@ -67,8 +71,21 @@ const fmt = (v: { x: number; y: number; z: number }) => `[${v.x.toFixed(2)}, ${v
 /**
  * The 3D model of a template: a case/box, or a card/disk with an optional separate label. Built in mm; `scale` turns mm
  * into scene units (by default the preview's own, so any case fills the view; a comparison passes one scale for all).
+ * `showInserts` false leaves out everything printed, so the bare case can be checked on its own.
  */
-export function Model({ texture, template, scale }: { texture: Texture; template: TemplateConfig; scale?: number }) {
+export function Model({ texture, template, scale, showInserts = true }: { texture: Texture; template: TemplateConfig; scale?: number; showInserts?: boolean }) {
+  const spec = template.preview;
+  if (spec.kind === 'box' && spec.construction)
+    return (
+      <group scale={scale ?? previewScale(spec)}>
+        <JewelCase texture={texture} template={template} spec={spec} construction={spec.construction} showInserts={showInserts} />
+      </group>
+    );
+  return <PrintedModel texture={texture} template={template} scale={scale} showInserts={showInserts} />;
+}
+
+/** A case, box, card or disk drawn as a printed body (see Model). */
+function PrintedModel({ texture, template, scale, showInserts }: { texture: Texture; template: TemplateConfig; scale?: number; showInserts: boolean }) {
   const spec = template.preview;
   const geometry = useMemo(() => (spec.kind === 'slab' ? createSlabBodyGeometry(spec) : createBodyGeometry(template, spec)), [template, spec]);
 
@@ -122,9 +139,9 @@ export function Model({ texture, template, scale }: { texture: Texture; template
   // One material per face: the printed sleeve where a panel is mapped, otherwise the body.
   const materials = useMemo(() => {
     if (spec.kind === 'slab') return body; // slabs are one solid body; their printed faces are separate pieces
-    const printed = bodyPrintedFaces(template, spec);
+    const printed = showInserts ? bodyPrintedFaces(template, spec) : {};
     return FACE_ORDER.map((f) => (printed[f] ? sleeve : body));
-  }, [template, spec, sleeve, body]);
+  }, [template, spec, sleeve, body, showInserts]);
   const metal = useMemo(() => new MeshStandardMaterial({ color: '#b9bcc2', metalness: 0.9, roughness: 0.35 }), []);
   // The inside of an open-ended sleeve: a slightly smaller copy of the shell, seen from behind through the open ends.
   const hollow = spec.kind === 'box' && spec.hollow ? spec : undefined;
@@ -195,9 +212,10 @@ export function Model({ texture, template, scale }: { texture: Texture; template
         // On the front face, out to the spine edge, just proud of the surface.
         <mesh material={hingeMaterial} geometry={hingeGeometry!} position={[-spec.widthMm / 2 + (hinge.fromMm ?? trayInset(spec)) + hinge.widthMm / 2, 0, spec.depthMm / 2 + HINGE_DEPTH_MM / 2 - 0.2]} />
       )}
-      {pieces.map((p, i) => (
-        <mesh key={i} geometry={p.geometry} material={sleeve} position={p.position} rotation={p.rotation} />
-      ))}
+      {showInserts &&
+        pieces.map((p, i) => (
+          <mesh key={i} geometry={p.geometry} material={sleeve} position={p.position} rotation={p.rotation} />
+        ))}
       {shutter && (
         // Slides over the top edge, so it shows on both faces and is a little thicker than the body. The window is dark.
         <>
@@ -224,7 +242,7 @@ export function Model({ texture, template, scale }: { texture: Texture; template
   );
 }
 
-export function PreviewScene({ texture, template, autoRotate = false, showMeasurements = false }: { texture: Texture; template: TemplateConfig; autoRotate?: boolean; showMeasurements?: boolean }) {
+export function PreviewScene({ texture, template, autoRotate = false, showMeasurements = false, showInserts = true }: { texture: Texture; template: TemplateConfig; autoRotate?: boolean; showMeasurements?: boolean; showInserts?: boolean }) {
   const controls = useRef<ElementRef<typeof OrbitControls>>(null);
   const [, height] = modelSizeMm(template.preview);
   // Logged after each drag/zoom so a good angle can be copied into DEFAULT_CAMERA_POSITION.
@@ -252,8 +270,10 @@ export function PreviewScene({ texture, template, autoRotate = false, showMeasur
   }, []);
   return (
     <Canvas camera={{ fov: 40, position: DEFAULT_CAMERA_POSITION }} dpr={[1, 2]}>
+      {/* The viewer's own grey, drawn in the scene so clear plastic shows it through itself instead of a blank. */}
+      <color attach="background" args={[VIEWER_BACKGROUND]} />
       <Environment preset="city" />
-      <Model texture={texture} template={template} />
+      <Model texture={texture} template={template} showInserts={showInserts} />
       {showMeasurements && <Measurements3D spec={template.preview} template={template} />}
       <ContactShadows position={[0, (-height * previewScale(template.preview)) / 2 - 0.02, 0]} opacity={0.5} blur={2.5} scale={6} />
       <OrbitControls

@@ -306,3 +306,22 @@ describe('template ids', () => {
     expect(sizes).toMatchSnapshot();
   });
 });
+
+describe('jewel case construction', () => {
+  it('is the real case size, with the tray card filling the inside between the side walls and the booklet inside the lid', () => {
+    for (const [kind, id] of [['cd', 'jewel'], ['game-case', 'ps1']] as const) {
+      const t = buildTemplate(kind, id);
+      const spec = t.preview as Extract<typeof t.preview, { kind: 'box' }>;
+      const c = spec.construction!;
+      const [back, front, spine] = ['back', 'front', 'spine'].map((p) => t.panels.find((q) => q.id === p)!);
+      expect([spec.widthMm, spec.heightMm, spec.depthMm], `${kind}/${id}`).toEqual([142, 125, 10]);
+      expect(back.widthMm + 2 * c.sideWallMm).toBeCloseTo(spec.widthMm);
+      expect(back.heightMm).toBeLessThanOrEqual(spec.heightMm - 2 * c.wallMm);
+      expect(front.widthMm + c.bookletMarginMm).toBeLessThan(spec.widthMm - c.sideWallMm);
+      expect(spine.widthMm).toBeLessThan(spec.depthMm - 2 * c.wallMm);
+      expect(c.shell.clear).toBe(true);
+    }
+    expect((buildTemplate('cd', 'jewel').preview as { construction?: { tray: { clear: boolean } } }).construction?.tray.clear).toBe(true);
+    expect((buildTemplate('game-case', 'ps1').preview as { construction?: { tray: { clear: boolean } } }).construction?.tray.clear).toBe(false);
+  });
+});

@@ -47,6 +47,8 @@ export interface AppState {
   view: ViewMode;
   /** UI-only (not persisted): slowly spins the 3D model as a hands-free product demo. */
   autoRotate: boolean;
+  /** 3D only: draw the printed inserts (off shows the bare case, to check it against a real one). */
+  showInserts: boolean;
   shared: SharedSettings;
   /** Named designs on top of the Default one (`shared`); an item picks one with `designId`. See engine/designs.ts. */
   designs: Design[];
@@ -95,6 +97,7 @@ export type Action =
   | { type: 'setShowMeasurements'; show: boolean }
   | { type: 'setView'; view: ViewMode }
   | { type: 'setAutoRotate'; autoRotate: boolean }
+  | { type: 'setShowInserts'; show: boolean }
   | { type: 'updatePanel'; id: string | null; panel: PanelId; patch: Partial<PanelSettings>; design?: string; coalesce?: string }
   | { type: 'updateSpine'; id: string | null; patch: Partial<SpineSettings>; design?: string }
   /** Layer edits. `id` as for updatePanel: null edits a design (`design`, else the selected item's), a string edits that item's changes. */
@@ -146,6 +149,7 @@ export const initialState: AppState = {
   showMeasurements: false,
   view: '3d',
   autoRotate: false,
+  showInserts: true,
   shared: {
     panels: {},
     spine: { fontFamily: 'Helvetica, Arial, sans-serif', color: '#ffffff' },
@@ -340,6 +344,8 @@ function apply(state: AppState, action: Action): AppState {
       return { ...state, view: action.view };
     case 'setAutoRotate':
       return { ...state, autoRotate: action.autoRotate };
+    case 'setShowInserts':
+      return { ...state, showInserts: action.show };
     case 'updatePanel': {
       if (action.id === null) {
         return editDesign(state, action.design ?? targetDesignId(state), (level) => ({

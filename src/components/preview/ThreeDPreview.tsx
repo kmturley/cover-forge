@@ -19,7 +19,7 @@ function markStale(t: Texture): void {
 }
 
 export function ThreeDPreview() {
-  const { template, shared, designs, assets, showGuides, showMeasurements, autoRotate } = useAppState();
+  const { template, shared, designs, assets, showGuides, showMeasurements, autoRotate, showInserts } = useAppState();
   const item = useSelectedItem();
   const baseRef = useRef<HTMLCanvasElement | null>(null);
   const pulse = useSelectionPulse();
@@ -98,7 +98,7 @@ export function ThreeDPreview() {
 
   return (
     <div className="three-wrap">
-      <PreviewScene texture={texture} template={template} autoRotate={autoRotate} showMeasurements={showMeasurements} />
+      <PreviewScene texture={texture} template={template} autoRotate={autoRotate} showMeasurements={showMeasurements} showInserts={showInserts} />
     </div>
   );
 }
