@@ -281,7 +281,7 @@ function trayCardBody(back: number, flap: number, r: number): { widthMm: number;
 const JEWEL_RADIUS = 1.5;
 
 /**
- * A CD jewel case: the rear tray card [spine | back | spine], whose two spine flaps both carry the title,
+ * A CD jewel case: the rear tray card [opening-side spine | back | hinge-side spine], whose two flaps both carry the title,
  * then the front booklet — front last/rightmost, same convention as every other case (`wrap()`'s
  * back | spine | front). Music CDs and PS1 games both use it.
  *
@@ -308,9 +308,11 @@ function jewelCase(kind: TemplateKind, name: string, variantId: string): Templat
       {
         dir: 'row',
         specs: [
-          { id: 'spine', label: 'Spine (left)', w: flap, h: 118, text: 'vertical' },
+          // The opening-side flap first: seen from behind, the sheet's left flap folds round to the opening side, so the
+          // primary spine, the one on the hinge side that faces out on a shelf, is the sheet's right flap.
+          { id: 'spineRight', label: 'Spine (opening side)', w: flap, h: 118, text: 'vertical' },
           { id: 'back', label: 'Back (tray card)', w: back, h: 118 },
-          { id: 'spineRight', label: 'Spine (right)', w: flap, h: 118, text: 'vertical' },
+          { id: 'spine', label: 'Spine (hinge side)', w: flap, h: 118, text: 'vertical' },
         ],
       },
       { dir: 'row', specs: [{ id: 'front', label: 'Front (booklet)', w: booklet, h: booklet }] },
@@ -319,8 +321,8 @@ function jewelCase(kind: TemplateKind, name: string, variantId: string): Templat
       kind: 'box',
       ...trayCardBody(back, flap, r),
       heightMm: booklet + 2 * r,
-      // The tray card's flaps on the sides they fold to: seen from behind, the sheet's left flap is on the case's +x side.
-      faces: { '-x': 'spineRight', '+x': 'spine' },
+      // The tray card's flaps on the sides they fold to: the primary spine on the hinge side (-x), like every other case.
+      faces: { '-x': 'spine', '+x': 'spineRight' },
       // The booklet just inside the lid's edge on the opening side; the spare width, about 15 mm, shows the tray and hinge.
       decals: [{ panel: 'front', face: '+z', align: 'max-x', marginMm: 2.5 }],
       wrapTray: true,
@@ -404,9 +406,11 @@ function miniDiscAlbumCase(): TemplateConfig {
       {
         dir: 'row',
         specs: [
-          { id: 'spine', label: 'Spine (left)', w: flap, h: tray.h, text: 'vertical' },
+          // The opening-side flap first: seen from behind, the sheet's left flap folds round to the opening side, so the
+          // primary spine, the one on the hinge side that faces out on a shelf, is the sheet's right flap.
+          { id: 'spineRight', label: 'Spine (opening side)', w: flap, h: tray.h, text: 'vertical' },
           { id: 'back', label: 'Back (tray card)', w: tray.w - 2 * flap, h: tray.h },
-          { id: 'spineRight', label: 'Spine (right)', w: flap, h: tray.h, text: 'vertical' },
+          { id: 'spine', label: 'Spine (hinge side)', w: flap, h: tray.h, text: 'vertical' },
         ],
       },
       { dir: 'row', specs: [{ id: 'front', label: 'Front (booklet)', w: booklet.w, h: booklet.h }] },
@@ -415,8 +419,8 @@ function miniDiscAlbumCase(): TemplateConfig {
       kind: 'box',
       ...trayCardBody(back, flap, r),
       heightMm: booklet.h + 2 * r,
-      // The tray card's flaps on the sides they fold to: seen from behind, the sheet's left flap is on the case's +x side.
-      faces: { '-x': 'spineRight', '+x': 'spine' },
+      // The tray card's flaps on the sides they fold to: the primary spine on the hinge side (-x), like every other case.
+      faces: { '-x': 'spine', '+x': 'spineRight' },
       // Placed as on a real album case (case-research.md §22): the booklet at its own size, about 3.6 mm in from the opening
       // edge (the photo's 4.6 mm less the clear rim this body leaves off), and the spare width, about 11.4 mm, on the hinge side.
       decals: [{ panel: 'front', face: '+z', align: 'max-x', marginMm: 3.6 }],

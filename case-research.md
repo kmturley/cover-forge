@@ -1015,8 +1015,9 @@ is **108 mm**: the 1.5 mm rounded top and bottom edges are left as clear rim, so
 101.5 mm card is stretched 3.4 % to 105 mm, and the black tray and hinge are 105 mm too, so the tops and bottoms of the
 booklet, tray, hinge and spines line up. Drawn at its true height, the card stopped 1.75 mm short of the booklet at each end,
 which looked like a misalignment from every angle. The black tray covers the flat of the front and the front half of each
-front corner, where it meets the flaps, so no clear edge shows between them. Seen from behind, the sheet's left flap is on the case's +x (opening) side, so the flaps are
-placed on the sides they really fold to. The booklet is 3.6 mm in from the opening edge (the photo's 4.6 mm less the clear
+front corner, where it meets the flaps, so no clear edge shows between them. Seen from behind, the sheet's left flap folds
+round to the opening side and its right flap to the hinge, so the template puts the primary spine, the one on the hinge side
+that faces out on a shelf, on the right of the tray card and the opening-side copy on the left. The booklet is 3.6 mm in from the opening edge (the photo's 4.6 mm less the clear
 rim this body leaves off), so about 11.4 mm of hinge and tray shows on the spine side of the front, as in the photo: the
 73 mm booklet is narrower than the 87.4 mm back, so the front can't be covered edge to edge on any size of body. The
 picker's 3D comparison and its size sorting use this body too, so they show the album case about 2 mm narrower, 2 mm
