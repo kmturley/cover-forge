@@ -1,5 +1,5 @@
 import { useEffect, useMemo } from 'react';
-import { BoxGeometry, ExtrudeGeometry, FrontSide, MeshPhysicalMaterial, MeshStandardMaterial, Path, Shape, type BufferGeometry, type Material, type Texture } from 'three';
+import { AddEquation, BoxGeometry, CustomBlending, ExtrudeGeometry, FrontSide, MeshPhysicalMaterial, MeshStandardMaterial, OneFactor, Path, Shape, ZeroFactor, type BufferGeometry, type Material, type Texture } from 'three';
 import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js';
 import type { CaseConstruction, PanelId, PlasticFinish, PlasticPart, TemplateConfig } from '../types/template';
 import { createPanelStrip } from './PreviewGeometry';
@@ -12,31 +12,47 @@ type Piece = { geometry: BufferGeometry; position: [number, number, number]; rot
 const ROUGHNESS: Record<PlasticFinish, number> = { glossy: 0.04, satin: 0.32, matte: 0.6 };
 
 /**
- * The outer shell's plastic. Clear polystyrene (the lid and base of a jewel case) is see-through, refracting a little: it
- * shows everything inside it, and catches reflections on its faces and edges. It doesn't write depth, so the clear parts
- * inside it (drawn after it) still show.
+ * Clear polystyrene, polished or textured: drawn as its reflections only, added over whatever is behind it, so the case and
+ * everything in it show through at their own colour and the faces and rounded edges catch the light (most at a glancing angle,
+ * as real plastic does). It writes no depth, so clear parts behind it still show.
  */
+function createClearPlastic(part: PlasticPart): MeshPhysicalMaterial {
+  return new MeshPhysicalMaterial({
+    color: '#000000',
+    roughness: ROUGHNESS[part.finish],
+    // One surface reflection, about 4 % head on (polystyrene's), stronger at a glancing angle; every clear face adds its own.
+    ior: 1.57,
+    envMapIntensity: 0.7,
+    transparent: true,
+    // Adds its light to the colour behind it and leaves the alpha alone, so it also works over a transparent canvas (the
+    // case picker's comparison, drawn over the page's own background).
+    blending: CustomBlending,
+    blendEquation: AddEquation,
+    blendSrc: OneFactor,
+    blendDst: OneFactor,
+    blendSrcAlpha: ZeroFactor,
+    blendDstAlpha: OneFactor,
+    depthWrite: false,
+  });
+}
+
+/** A coloured plastic part, solid. */
+function createSolidPlastic(part: PlasticPart): MeshPhysicalMaterial {
+  return new MeshPhysicalMaterial({ color: part.color, roughness: ROUGHNESS[part.finish], clearcoat: part.finish === 'glossy' ? 0.6 : 0, clearcoatRoughness: 0.1 });
+}
+
+/** The outer shell's plastic (the lid and base of a jewel case). */
 export function createShellMaterial(part: PlasticPart): MeshPhysicalMaterial {
-  return part.clear
-    ? new MeshPhysicalMaterial({ color: part.color, transmission: 1, roughness: ROUGHNESS[part.finish], ior: 1.57, thickness: 0.6, specularIntensity: 1, clearcoat: 1, clearcoatRoughness: 0.03, envMapIntensity: 1.6, depthWrite: false })
-    : new MeshPhysicalMaterial({ color: part.color, roughness: ROUGHNESS[part.finish], clearcoat: part.finish === 'glossy' ? 1 : 0, clearcoatRoughness: 0.05 });
+  return part.clear ? createClearPlastic(part) : createSolidPlastic(part);
 }
 
-/**
- * A part inside the shell: the same plastic as the shell when clear (so a clear tray is the black one's moulding in clear
- * plastic), or a solid colour. Clear inner parts are drawn after the shell (see INNER_ORDER), so they show through it.
- */
+/** A part inside the shell: the same clear plastic as the shell (so a clear tray is the black one's moulding in clear plastic), or a solid colour. */
 export function createInnerPlasticMaterial(part: PlasticPart): MeshPhysicalMaterial {
-  return part.clear
-    ? new MeshPhysicalMaterial({ color: part.color, transmission: 1, roughness: ROUGHNESS[part.finish], ior: 1.57, thickness: 1, specularIntensity: 1, clearcoat: 1, clearcoatRoughness: 0.03, envMapIntensity: 1.6 })
-    : new MeshPhysicalMaterial({ color: part.color, roughness: ROUGHNESS[part.finish], clearcoat: part.finish === 'glossy' ? 0.6 : 0, clearcoatRoughness: 0.1 });
+  return part.clear ? createClearPlastic(part) : createSolidPlastic(part);
 }
 
-/**
- * Draw order for see-through parts inside the shell. Clear plastic is drawn from what's behind it, and that never includes
- * other clear plastic; drawn after the shell (which doesn't write depth), a clear tray shows over it instead of vanishing.
- */
-const INNER_ORDER = 1;
+/** Draw order for clear parts inside the shell: before it, as they are behind it. */
+const INNER_ORDER = -1;
 
 /** How far a printed piece sits in from the plastic wall it lies against, mm, and how far its paper back is behind it. */
 const GAP = 0.06;

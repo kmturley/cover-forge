@@ -1,10 +1,10 @@
 import { useEffect, useMemo, useRef, useState, type ElementRef, type RefObject } from 'react';
 import { Canvas, useThree } from '@react-three/fiber';
-import { ContactShadows, Environment, Html, OrbitControls } from '@react-three/drei';
-import { CanvasTexture, LinearFilter, LinearMipmapLinearFilter, SRGBColorSpace, type OrthographicCamera, type Texture } from 'three';
+import { ContactShadows, Html, OrbitControls } from '@react-three/drei';
+import { CanvasTexture, LinearFilter, LinearMipmapLinearFilter, NeutralToneMapping, SRGBColorSpace, type OrthographicCamera, type Texture } from 'three';
 import { useAppState } from '../../context/AppContext';
 import { preloadItem, renderCover } from '../../engine/CanvasRenderer';
-import { Model } from '../../three/PreviewScene';
+import { Model, StudioLighting } from '../../three/PreviewScene';
 import type { MediaItem } from '../../types/media';
 import { layoutRow, type Facing, type Placed, type SizedEntry } from '../../templates/compare';
 import { withOwnBranding } from './useThumbnails';
@@ -222,9 +222,9 @@ export function TemplateLibrary3D({ groups, all, item, current, focused, onFocus
       {placed.length === 0 ? (
         <p className="empty-hint">{empty}</p>
       ) : (
-        <Canvas orthographic frameloop="demand" dpr={[1, 1.5]} camera={{ position: [0, 1.4, 10], near: 0.1, far: 100 }} onPointerMissed={() => onFocus(null)}>
+        <Canvas orthographic frameloop="demand" dpr={[1, 1.5]} gl={{ toneMapping: NeutralToneMapping }} camera={{ position: [0, 1.4, 10], near: 0.1, far: 100 }} onPointerMissed={() => onFocus(null)}>
           <Redraw on={`${version}|${layoutKey}|${focused}|${hovered}`} />
-          <Environment preset="city" />
+          <StudioLighting />
           <FitRow lengthMm={lengthMm} heightMm={tallest} controls={controls} layoutKey={layoutKey} />
           <Row placed={placed} textures={textures} facing={facing} focused={focused} hovered={hovered} current={current} onFocus={onFocus} onHover={setHovered} onPick={onPick} />
           {groupMarks.map((g) => (

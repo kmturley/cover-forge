@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, type ElementRef } from 'react';
 import { Canvas } from '@react-three/fiber';
-import { ContactShadows, Environment, OrbitControls } from '@react-three/drei';
-import { BackSide, CylinderGeometry, MeshStandardMaterial, PlaneGeometry, type BufferGeometry, type Texture } from 'three';
+import { ContactShadows, Environment, Lightformer, OrbitControls } from '@react-three/drei';
+import { BackSide, CylinderGeometry, MeshStandardMaterial, NeutralToneMapping, PlaneGeometry, type BufferGeometry, type Texture } from 'three';
 import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js';
 import type { PanelId, TemplateConfig } from '../types/template';
 import { FACE_ORDER, createBodyGeometry, createCornerArc, createPanelStrip, createWrappedPanelGeometry, createLabelGeometry, createLabelSliceGeometry, createSlabBodyGeometry, createSlabFaceGeometry, bodyPrintedFaces, insetFaces, insetPlacement, labelWrap, modelSizeMm, previewScale, SLEEVE_WALL_MM } from './PreviewGeometry';
@@ -242,6 +242,29 @@ function PrintedModel({ texture, template, scale, showInserts }: { texture: Text
   );
 }
 
+/**
+ * Neutral studio lighting, as product photos are lit: soft white panels above, at both sides and in front, round a dark room.
+ * Clear plastic shows clean white highlights from them instead of a city's colours, and the print is lit evenly. Built in
+ * code, so nothing is downloaded.
+ */
+export function StudioLighting() {
+  return (
+    <Environment resolution={256} frames={1}>
+      <color attach="background" args={['#1c1d21']} />
+      {/* A key panel overhead, a strip at each side, two fills high and to the sides in front, and a broad dim one straight
+          ahead (bright enough to light the print and give clear plastic a faint sheen head on, not so bright it glares). A
+          dim one behind lights the back. */}
+      <Lightformer form="rect" intensity={2.4} position={[0, 6, 1]} target={[0, 0, 0]} scale={[8, 5, 1]} />
+      <Lightformer form="rect" intensity={1.2} position={[-6, 1.5, 1.5]} target={[0, 0, 0]} scale={[6, 3, 1]} />
+      <Lightformer form="rect" intensity={1.2} position={[6, 1.5, 1.5]} target={[0, 0, 0]} scale={[6, 3, 1]} />
+      <Lightformer form="rect" intensity={2.4} position={[-4.5, 4, 5]} target={[0, 0, 0]} scale={[3, 3, 1]} />
+      <Lightformer form="rect" intensity={2.4} position={[4.5, 4, 5]} target={[0, 0, 0]} scale={[3, 3, 1]} />
+      <Lightformer form="rect" intensity={0.45} position={[0, 0.5, 7]} target={[0, 0, 0]} scale={[10, 6, 1]} />
+      <Lightformer form="rect" intensity={0.8} position={[0, 3, -7]} target={[0, 0, 0]} scale={[9, 4, 1]} />
+    </Environment>
+  );
+}
+
 export function PreviewScene({ texture, template, autoRotate = false, showMeasurements = false, showInserts = true }: { texture: Texture; template: TemplateConfig; autoRotate?: boolean; showMeasurements?: boolean; showInserts?: boolean }) {
   const controls = useRef<ElementRef<typeof OrbitControls>>(null);
   const [, height] = modelSizeMm(template.preview);
@@ -269,10 +292,13 @@ export function PreviewScene({ texture, template, autoRotate = false, showMeasur
     };
   }, []);
   return (
-    <Canvas camera={{ fov: 40, position: DEFAULT_CAMERA_POSITION }} dpr={[1, 2]}>
+    // Neutral tone mapping (Khronos PBR Neutral, made for product renders) leaves colours as they are below the highlights,
+    // so the print reads as it does in 2D and clear plastic shows the background at its own colour. The default filmic curve
+    // darkened and dulled both.
+    <Canvas camera={{ fov: 40, position: DEFAULT_CAMERA_POSITION }} dpr={[1, 2]} gl={{ toneMapping: NeutralToneMapping }}>
       {/* The viewer's own grey, drawn in the scene so clear plastic shows it through itself instead of a blank. */}
       <color attach="background" args={[VIEWER_BACKGROUND]} />
-      <Environment preset="city" />
+      <StudioLighting />
       <Model texture={texture} template={template} showInserts={showInserts} />
       {showMeasurements && <Measurements3D spec={template.preview} template={template} />}
       <ContactShadows position={[0, (-height * previewScale(template.preview)) / 2 - 0.02, 0]} opacity={0.5} blur={2.5} scale={6} />
