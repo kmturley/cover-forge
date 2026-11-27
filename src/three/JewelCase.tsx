@@ -97,8 +97,11 @@ const TRAY = {
   /** The tray's end on the hinge side: a strip this wide. The whole tray fills the base's inside height, a snug fit. */
   stripMm: 14,
   cornerMm: 1.5,
-  /** The disc's centre, a little to the opening side of the case's middle, and the rim of its well (cut off by the tray's top and bottom edges). */
-  disc: { x: 4, wellMm: [60.2, 61] as const },
+  /**
+   * The rim of the disc well, centred on the main tray (beside the strip, never under it), as wide as it can be within the
+   * main tray: its sides just touch the strip and the opening end, and its top and bottom run off the tray's edges.
+   */
+  disc: { wellMm: 61, rimMm: 0.8 },
   /** The hub: a raised round platform with a rosette of slots through it, the gaps between the teeth that grip the disc. */
   hub: { platformMm: 13, holeMm: 2.6, slotMm: 7, slotWidthMm: 1.6, slots: 8 },
   /** The lid's four booklet tabs, at the top and bottom edges, at these distances from the middle. */
@@ -158,14 +161,15 @@ function trayParts(W: number, H: number, D: number, c: CaseConstruction, trayDep
   const inner = { x0: -W / 2 + c.sideWallMm + 0.3, x1: W / 2 - c.sideWallMm - 0.5, h: H - 2 * c.wallMm - 0.6 };
   const z = -D / 2 + c.wallMm + GAP + 0.1;
   const stripX1 = inner.x0 + TRAY.stripMm;
-  const { x: dx } = TRAY.disc;
+  const dx = (stripX1 + inner.x1) / 2;
   const main = roundedRect((stripX1 + inner.x1) / 2, 0, inner.x1 - stripX1, inner.h, TRAY.cornerMm);
   main.holes.push(rosette(dx, 0));
   const platform = new Shape();
   platform.absarc(dx, 0, TRAY.hub.platformMm, 0, Math.PI * 2, false);
   platform.holes.push(rosette(dx, 0));
   // The well's rim: the two sides of the ring that lie on the tray, where its top and bottom run off the tray's edges.
-  const [r0, r1] = TRAY.disc.wellMm;
+  const r1 = Math.min(TRAY.disc.wellMm, (inner.x1 - stripX1) / 2 - 0.3);
+  const r0 = r1 - TRAY.disc.rimMm;
   const half = inner.h / 2 - 0.5;
   const wellArcs = [0, Math.PI].map((mid) => {
     const [a1, a0] = [Math.asin(Math.min(1, half / r1)), Math.asin(Math.min(1, half / r0))];
