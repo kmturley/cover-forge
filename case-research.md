@@ -999,12 +999,16 @@ about 18 %, none of which the 2D template shows. Front, rear and side screenshot
 The tray card is one sheet folded round the case, so the body is the size it wraps exactly: with a 1.5 mm corner radius,
 **about 88.0 wide × 9.9 deep**, so the back covers the flat of the back and half of each rounded back corner, and each
 flap the other half of that corner, the flat of its side and half of the front corner. Each arc shows exactly its own length
-of artwork, so nothing is stretched. The height is the booklet's, **105 mm**, the tallest part, leaving the 101.5 mm card
-1.75 mm short top and bottom. Seen from behind, the sheet's left flap is on the case's +x (opening) side, so the flaps are
+of artwork, so nothing is stretched across. The printed height is the booklet's, **105 mm**, the tallest part, and the body
+is **108 mm**: the 1.5 mm rounded top and bottom edges are left as clear rim, so nothing flat stands proud of them. The
+101.5 mm card is stretched 3.4 % to 105 mm, and the black tray and hinge are 105 mm too, so the tops and bottoms of the
+booklet, tray, hinge and spines line up. Drawn at its true height, the card stopped 1.75 mm short of the booklet at each end,
+which looked like a misalignment from every angle. The black tray covers the flat of the front and the front half of each
+front corner, where it meets the flaps, so no clear edge shows between them. Seen from behind, the sheet's left flap is on the case's +x (opening) side, so the flaps are
 placed on the sides they really fold to. The booklet is 3.6 mm in from the opening edge (the photo's 4.6 mm less the clear
 rim this body leaves off), so about 11.4 mm of hinge and tray shows on the spine side of the front, as in the photo: the
 73 mm booklet is narrower than the 87.4 mm back, so the front can't be covered edge to edge on any size of body. The
-picker's 3D comparison and its size sorting use this body too, so they show the album case about 2 mm narrower, 5 mm
+picker's 3D comparison and its size sorting use this body too, so they show the album case about 2 mm narrower, 2 mm
 shorter and 4 mm thinner than the real case.
 
 ## 23. Betamax

@@ -366,8 +366,9 @@ function miniDiscAlbumCase(): TemplateConfig {
   const back = tray.w - 2 * flap;
   // The 3D body is sized so the tray card wraps it exactly, as the 2D shows it: the back across the flat of the back and half
   // of each rounded back corner, each flap across the rest of that corner, the flat of its side and half the front corner,
-  // with nothing stretched. Height is the booklet's, the tallest part. (The real case is 90 × 110 × 14 mm; drawn at that size
-  // the print could only cover part of it.)
+  // with nothing stretched. Height is the booklet's, the tallest part, plus the rounded top and bottom edges, which are left as
+  // clear rim so everything printed sits on the flat and lines up. (The real case is 90 × 110 × 14 mm; drawn at that size the
+  // print could only cover part of it.)
   const r = MINIDISC_ALBUM_RADIUS;
   const halfCorner = (Math.PI * r) / 4;
   return assemble({
@@ -389,7 +390,7 @@ function miniDiscAlbumCase(): TemplateConfig {
     preview: {
       kind: 'box',
       widthMm: back + 2 * r - 2 * halfCorner,
-      heightMm: booklet.h,
+      heightMm: booklet.h + 2 * r,
       depthMm: flap + 2 * r - 2 * halfCorner,
       // The tray card's flaps on the sides they fold to: seen from behind, the sheet's left flap is on the case's +x side.
       faces: { '-x': 'spineRight', '+x': 'spine' },
