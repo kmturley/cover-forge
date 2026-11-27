@@ -11,16 +11,25 @@ const near = (a: { xMm: number; yMm: number; widthMm: number; heightMm: number }
 const box = (xStart: number, xEnd: number, yStart: number, yEnd: number) => ({ xStart, xEnd, yStart, yEnd });
 
 describe('computePlacement', () => {
-  it('fills the whole panel, bleed included, by default: centred, cropped, never distorted', () => {
-    // A portrait 2:3 cover: as wide as the area, overflowing it vertically.
+  it('fills the trimmed panel by default, not its bleed, and carries its edges out into the bleed', () => {
+    // A portrait 2:3 cover: as wide as the trimmed panel, overflowing it vertically. Cover art has no bleed of its own,
+    // so none of it is lost past the trim; the bleed is filled from the image's edges when drawn.
     const pl = computePlacement(t, front, 600, 900, DEFAULT_TRANSFORM);
     const area = paintRect(t, front);
     expect(pl.area).toEqual(area);
-    expect(pl.widthMm).toBeCloseTo(area.widthMm);
+    expect(pl.widthMm).toBeCloseTo(front.widthMm);
     expect(pl.heightMm / pl.widthMm).toBeCloseTo(1.5);
-    expect(pl.xMm).toBeCloseTo(0);
-    expect(pl.yMm).toBeCloseTo((area.heightMm - pl.heightMm) / 2);
+    expect(pl.area.xMm + pl.xMm).toBeCloseTo(front.xMm);
+    expect(pl.area.yMm + pl.yMm + pl.heightMm / 2).toBeCloseTo(front.yMm + front.heightMm / 2);
+    near(pl.box, front);
     near(pl.clip, area);
+    expect(pl.extendEdges).toBe(true);
+  });
+
+  it('fits a whole image inside the trimmed panel when set to fit, with no edges carried into the bleed', () => {
+    const pl = computePlacement(t, front, 600, 900, { ...DEFAULT_TRANSFORM, fit: 'fit' });
+    expect(pl.heightMm).toBeCloseTo(front.heightMm);
+    expect(pl.extendEdges).toBeUndefined();
   });
 
   it('fills a box: covers it, centred on it, and is cropped to it', () => {

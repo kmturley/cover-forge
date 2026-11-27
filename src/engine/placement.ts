@@ -21,18 +21,26 @@ export interface Placement {
   box: RectMm;
   /** What the image is clipped to, in canvas mm: its box when it fills it, else the paint area. Never past the paint area. */
   clip: RectMm;
+  /**
+   * Set when the image fills the panel automatically: it is sized to the trimmed panel, and the bleed round it (the paint
+   * area outside the trim) is filled by stretching the image's edges out (see draw.ts), since cover art has no bleed of its own.
+   */
+  extendEdges?: boolean;
 }
 
 /**
- * Where an image sits in its panel. It is sized to its box (the whole panel, bleed included, by default) without
- * distortion: `fill` covers the box and is cropped to it, `fit` shows the whole image inside it. Centred either way.
+ * Where an image sits in its panel. It is sized to its box without distortion: `fill` covers the box and is cropped to it,
+ * `fit` shows the whole image inside it. Centred either way. By default the box is the trimmed panel, so cover art (which
+ * comes without bleed) is never cut into; a filling image then carries its edges out into the bleed.
  */
 export function computePlacement(t: TemplateConfig, panel: PanelRect, naturalWidth: number, naturalHeight: number, tr: PanelTransform): Placement {
   const area = paintRect(t, panel);
   if (tr.box === undefined) return legacyPlacement(area, naturalWidth, naturalHeight, tr);
-  const box = tr.box ? boxRect(panel, tr.box) : area;
+  const auto = tr.box === null;
+  const box = tr.box ? boxRect(panel, tr.box) : { xMm: panel.xMm, yMm: panel.yMm, widthMm: panel.widthMm, heightMm: panel.heightMm };
   const fitted = tr.fit === 'fit';
   const img = fitted ? fitInside(box, naturalWidth / naturalHeight) : fillOver(box, naturalWidth / naturalHeight, tr.focus);
+  const extendEdges = auto && !fitted;
   return {
     fit: img.widthMm / naturalWidth,
     widthMm: img.widthMm,
@@ -41,7 +49,8 @@ export function computePlacement(t: TemplateConfig, panel: PanelRect, naturalWid
     yMm: img.yMm - area.yMm,
     area,
     box,
-    clip: fitted ? area : intersect(box, area),
+    clip: fitted || extendEdges ? area : intersect(box, area),
+    ...(extendEdges && { extendEdges }),
   };
 }
 
