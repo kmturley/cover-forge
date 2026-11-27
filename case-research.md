@@ -73,7 +73,12 @@ Built like the MiniDisc album case's (§22). The 3D body is sized so the tray ca
 across the back and half of each rounded back corner and each 6.5 mm flap round the rest: **about 137.6 wide × 7.1 deep**,
 and **123 mm tall**, the booklet's 120 mm plus the 1.5 mm rounded top and bottom edges. The 118 mm tray card is stretched
 1.7 % to the booklet's height so their tops line up. The booklet sits at its own size 2.5 mm in from the opening edge, with
-the black tray and the lid's hinge in the remaining 15 mm on the spine side. Drawn at the real 142 × 125 × 10 mm (or the
+the tray and the lid's hinge in the remaining 15 mm on the spine side. A straight-on photo of a music CD in its original
+packaging (OK Computer, supplied in review) checks this: taking its booklet as 120.6 mm, the visible case is about 137 mm
+wide, with about 13.4 mm beside the booklet on the spine side and 2.8 mm on the opening side. There the tray is clear: the
+spine side reads as pale clear plastic over the tray and the back of the tray card, with a thin darker line about 2 mm from
+the booklet's edge, so the music CD case is drawn that way. PlayStation jewel cases had black trays, so the PS1 case keeps a
+black tray and a 5 mm black hinge. Drawn at the real 142 × 125 × 10 mm (or the
 125 × 120 × 10 mm body used before), the back card was squashed by 9 % onto the back, the booklet stretched across the whole
 front, and the spine cards stopped 1 mm short of the top. The case picker's comparison and size sorting use this body, so they
 show the jewel case about 4 mm narrower, 2 mm shorter and 3 mm thinner than the real case.

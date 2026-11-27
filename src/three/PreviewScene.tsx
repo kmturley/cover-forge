@@ -192,7 +192,7 @@ export function Model({ texture, template, scale }: { texture: Texture; template
       {hinge && hingeMaterial && spec.kind === 'box' && (
         // The lid's hinge: a bar at the front of the spine edge, just proud of the body so it covers the faces it sits on.
         // On the front face, out to the spine edge, just proud of the surface.
-        <mesh material={hingeMaterial} geometry={hingeGeometry!} position={[-spec.widthMm / 2 + trayInset(spec) + hinge.widthMm / 2, 0, spec.depthMm / 2 + HINGE_DEPTH_MM / 2 - 0.2]} />
+        <mesh material={hingeMaterial} geometry={hingeGeometry!} position={[-spec.widthMm / 2 + (hinge.fromMm ?? trayInset(spec)) + hinge.widthMm / 2, 0, spec.depthMm / 2 + HINGE_DEPTH_MM / 2 - 0.2]} />
       )}
       {pieces.map((p, i) => (
         <mesh key={i} geometry={p.geometry} material={sleeve} position={p.position} rotation={p.rotation} />

@@ -293,12 +293,19 @@ const JEWEL_RADIUS = 1.5;
  *
  * The 3D preview is built like the MiniDisc album case's: the body is sized so the tray card wraps it at true width
  * (about 137.6 × 7.1 mm), the booklet's 120 mm plus the rounded top and bottom edges tall, and the tray card is stretched
- * to the booklet's height so their tops line up. The booklet sits at its own size by the opening edge, with the black tray
- * and the lid's hinge on the spine side, as on a real case. (The real case is 142 × 125 × 10 mm; drawn at that size the
+ * to the booklet's height so their tops line up. The booklet sits at its own size by the opening edge, with the tray
+ * (clear for CDs, black for PS1) and the lid's hinge on the spine side, as on a real case. (The real case is 142 × 125 × 10 mm; drawn at that size the
  * back card would be squashed onto the back and the booklet stretched across the front.)
  */
-function jewelCase(kind: TemplateKind, name: string, variantId: string): TemplateConfig {
+/** The tray inside a jewel case: clear for music CDs (as most were sold), black for PlayStation games. */
+type JewelTray = 'clear' | 'black';
+
+function jewelCase(kind: TemplateKind, name: string, variantId: string, tray: JewelTray): TemplateConfig {
   const [back, flap, booklet, r] = [137, 6.5, 120, JEWEL_RADIUS];
+  const body = trayCardBody(back, flap, r);
+  const margin = 2.5;
+  // Where the booklet's left edge sits, in from the spine edge (about 15 mm).
+  const bookletFrom = body.widthMm - margin - booklet;
   return assemble({
     kind,
     name,
@@ -319,17 +326,27 @@ function jewelCase(kind: TemplateKind, name: string, variantId: string): Templat
     ],
     preview: {
       kind: 'box',
-      ...trayCardBody(back, flap, r),
+      ...body,
       heightMm: booklet + 2 * r,
       // The tray card's flaps on the sides they fold to: the primary spine on the hinge side (-x), like every other case.
       faces: { '-x': 'spine', '+x': 'spineRight' },
       // The booklet just inside the lid's edge on the opening side; the spare width, about 15 mm, shows the tray and hinge.
-      decals: [{ panel: 'front', face: '+z', align: 'max-x', marginMm: 2.5 }],
+      decals: [{ panel: 'front', face: '+z', align: 'max-x', marginMm: margin }],
       wrapTray: true,
-      hinge: { widthMm: 5, color: '#08090a' },
-      tray: { color: '#111214', rimMm: 0.5 },
-      // Clear plastic over the black tray: it reads dark, not milky, at the rounded edges.
-      casing: { color: '#16181c', transmission: 0.35, roughness: 0.12 },
+      ...(tray === 'clear'
+        ? {
+            // A clear tray (as in photos of music CDs in their original packaging): beside the booklet the lid shows the pale
+            // tray and the back of the tray card, with only a thin darker line about 2 mm from the booklet's edge.
+            hinge: { widthMm: 2, color: '#8a9099', fromMm: bookletFrom - 2 - 2 },
+            tray: { color: '#e2e5e9', rimMm: 0.5 },
+            casing: { color: '#d9dde2', transmission: 0.8, roughness: 0.15 },
+          }
+        : {
+            hinge: { widthMm: 5, color: '#08090a' },
+            tray: { color: '#111214', rimMm: 0.5 },
+            // Clear plastic over the black tray: it reads dark, not milky, at the rounded edges.
+            casing: { color: '#16181c', transmission: 0.35, roughness: 0.12 },
+          }),
       glossy: true,
       radiusMm: r,
     },
@@ -628,7 +645,7 @@ export const TEMPLATE_DEFS: TemplateDef[] = [
       { id: 'jewel', label: 'CD Jewel Case' },
       { id: 'mini-slim', label: 'Mini CD / DVD' },
     ],
-    build: (id) => (id === 'mini-slim' ? miniCdSlimCase() : jewelCase('cd', 'CD Jewel Case', 'jewel')),
+    build: (id) => (id === 'mini-slim' ? miniCdSlimCase() : jewelCase('cd', 'CD Jewel Case', 'jewel', 'clear')),
   },
   {
     kind: 'cassette',
@@ -833,7 +850,7 @@ export const TEMPLATE_DEFS: TemplateDef[] = [
     build: (id) => {
       const v = GAME_CASE[id] ?? GAME_CASE['ps4'];
       const variantId = GAME_CASE[id] ? id : 'ps4';
-      if (v.jewel) return jewelCase('game-case', v.label, variantId);
+      if (v.jewel) return jewelCase('game-case', v.label, variantId, 'black');
       return wrap('game-case', v.label, variantId, v.w, v.h, v.spine,
         wrapPreview(v.w, v.h, v.spine, { color: v.color, roughness: 0.3 }, true, 2));
     },
