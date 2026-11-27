@@ -72,8 +72,8 @@ copyrighted, so test images stay local and aren't committed.
 ### Checking 3D previews against the 2D print
 
 `scripts/check-previews.ts` opens each template in the running dev server with a grid test cover, then
-screenshots the 2D sheet and the 3D model from eight fixed angles (front, rear, left, right, front-left,
-rear-left, rear-right, top). It puts them on one contact sheet per template, so gaps, stretched or
+screenshots the 2D sheet and the 3D model from fixed angles (front, rear, left, right, front-left,
+rear-left, rear-right, top, and each top corner from above). It puts them on one contact sheet per template, so gaps, stretched or
 misaligned panels, and artwork on the wrong face show up against the grid. Use it after changing a
 template's sizes or anything in `src/three/`.
 
@@ -84,6 +84,8 @@ npm run check:previews -- minidisc cd-        # only templates whose id or name 
 npm run check:previews -- --list              # list template ids
 npm run check:previews -- --cover art.png     # your own front cover instead of the grid
 npm run check:previews -- --views front,rear,left --jobs 2 --url http://localhost:5174
+# corners only, at 2× pixel density to zoom in on the edges:
+npm run check:previews -- --views top-front-left,top-front-right,top-rear-left,top-rear-right --scale 2 --out compare/corners
 ```
 
 Results go to `compare/previews/` (git-ignored): `index.html` shows every contact sheet and any page
@@ -95,7 +97,9 @@ What to look for on each sheet:
 - **Rear and sides:** the back and spines should show the same grid cells, logos and text as the 2D,
   in the same places, with nothing stretched (grid squares stay square) and no clear or coloured
   strips where the print should reach the edge.
-- **Corners:** grid lines should run straight on round a fold with no gap or jump.
+- **Corners:** grid lines should run straight on round a fold with no gap or jump. From the top-corner
+  views, the tops of the front, spine and back should line up, and nothing printed should stand proud
+  of the case's rounded edges.
 - **Front:** the front panel should sit where the real case shows it. A band is only right if the
   real case has one (e.g. a hinge or tray).
 - **Orientation:** text on the 3D spine should read the same way as in 2D; the back is seen from
@@ -129,7 +133,7 @@ The build uses relative asset paths (`base: './'`), so it works under `https://<
 - **3D:** `src/three/` builds a rounded box or card/disk from each template's preview spec and maps the flat artwork onto it.
 - **Sheets:** `src/export/imposition.ts` packs items on plain paper; `src/export/sheets.ts` places them on die-cut Avery sheets, centred on each label and cropped to it.
 - **Codes:** QR codes are drawn from the module matrix and barcodes from standard encoders, so they scan (verified by decoding rendered output). A code that doesn't fit inside its panel's safe area is omitted. The QR default is `steam://run/{appId}`, which launches the game in the Steam app. Barcodes print real EAN-13/UPC-A digits if you type them (the check digit is verified); without digits a number from the reserved in-store range is generated, because there is no free title-to-barcode lookup.
-- **Dimensions:** Blu-ray panels are 128 × 149 mm (spine 11 mm), DVD 129.5 × 183 mm (spine 14 mm, or 7 mm slim). Sizes no longer offered (Blu-ray Elite 12.5 mm and EU 14 mm, the 9 mm DVD slim) still open at their original size in older saves and links, VHS box 105 × 190 × 25 mm (portrait, spine on the long side), cassette J-card 65.1 + 12.7 + 25.4 × 101.6 mm, CD booklet 120 × 120 mm with a 137 mm tray card. These follow the figures published by cover-template suppliers ([printdvdcover.com](https://www.printdvdcover.com/blu-ray-elite-case-cover-layout.php), [CoverStitch](https://coverstitch.io/dimensions.html), a duplicator's [Blu-ray trapsheet spec](https://www.duplication.com/printspecs/blu-ray.php)); suppliers differ by 1–2 mm, so measure your own insert if it has to be exact. Bleed is 3 mm for cases and 1 mm for labels and cards. Slipcovers and boxes are built from the case's outside size (`src/templates/pieces.ts`, sourced in [case-research.md](case-research.md)) plus 1.5 mm (slipcover) or 2 mm (box) of room on each dimension. **Those two allowances are assumptions, not published figures**, and a cassette case's outside size (not researched) is worked out from its insert; measure your own case if it has to be exact. A slipcover or box can be bigger than the paper, and the print-sheet preview then says it needs a larger printer or paper size.
+- **Dimensions:** Blu-ray panels are 128 × 149 mm (spine 11 mm), DVD 129.5 × 183 mm (spine 14 mm, or 7 mm slim). Sizes no longer offered (Blu-ray Elite 12.5 mm and EU 14 mm, the 9 mm DVD slim) still open at their original size in older saves and links, VHS box 105 × 190 × 25 mm (portrait, spine on the long side), cassette J-card 65.1 + 12.7 + 25.4 × 101.6 mm, CD booklet 120 × 120 mm with a 137 mm tray card. These follow the figures published by cover-template suppliers ([printdvdcover.com](https://www.printdvdcover.com/blu-ray-elite-case-cover-layout.php), [CoverStitch](https://coverstitch.io/dimensions.html), a duplicator's [Blu-ray trapsheet spec](https://www.duplication.com/printspecs/blu-ray.php)); suppliers differ by 1–2 mm, so measure your own insert if it has to be exact. Bleed is 3 mm for cases and 1 mm for labels and cards. Cover images are sized to the trimmed panel, since art from the cover APIs has no bleed of its own, and their outermost pixels are stretched out across the bleed so a slightly off cut leaves no white edge. Slipcovers and boxes are built from the case's outside size (`src/templates/pieces.ts`, sourced in [case-research.md](case-research.md)) plus 1.5 mm (slipcover) or 2 mm (box) of room on each dimension. **Those two allowances are assumptions, not published figures**, and a cassette case's outside size (not researched) is worked out from its insert; measure your own case if it has to be exact. A slipcover or box can be bigger than the paper, and the print-sheet preview then says it needs a larger printer or paper size.
 - **3D:** cards, stickers and disks are extruded from their real outline (CR80 corners are 3.18 mm; a sticker is a circle; a floppy has the cut corner, shutter with window and drive hub), with the artwork following that outline.
 - **Uploads:** custom images are stored untouched in the browser's IndexedDB (a browser can't keep a path to your file), so nothing is scaled. They live in that browser only and aren't part of a saved session's JSON.
 - **Links:** `src/context/share.ts` packs the session JSON with deflate and URL-safe base64 into `?c=…` (about 1.4 KB for one game). The address bar is cleaned after it is read, so later edits and reloads aren't overridden. Over about 6,000 characters the app suggests *Save* instead.

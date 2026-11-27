@@ -1,8 +1,8 @@
 /**
  * Checks that each template's 3D preview matches its 2D print: opens every template in the running dev server with a grid
- * test cover, screenshots the 2D sheet and the 3D model from fixed angles (front, rear, both sides, three corners and the
- * top), and puts them side by side on one contact sheet per template. Gaps, stretching, misaligned panels and artwork on the
- * wrong face are easy to spot against the grid.
+ * test cover, screenshots the 2D sheet and the 3D model from fixed angles (front, rear, both sides, three corners, the
+ * top and each top corner from above), and puts them side by side on one contact sheet per template. Gaps, stretching,
+ * misaligned panels and artwork on the wrong face are easy to spot against the grid.
  *
  * It writes, under `compare/previews/` (git-ignored):
  *   <template>/2d.png, <template>/3d-<view>.png   the single captures
@@ -14,7 +14,9 @@
  *   npm run check:previews -- minidisc cd-         # only templates whose id or name contains one of these
  *   npm run check:previews -- --list               # list the template ids and stop
  *   npm run check:previews -- --cover art.png      # use your own front cover instead of the grid
- *   npm run check:previews -- --views front,rear   # only these views (front, rear, left, right, front-left, rear-left, rear-right, top)
+ *   npm run check:previews -- --views front,rear   # only these views (front, rear, left, right, front-left, rear-left, rear-right, top,
+ *                                                  # top-front-left, top-front-right, top-rear-left, top-rear-right)
+ *   npm run check:previews -- --scale 2            # capture at 2× pixel density, to zoom into corners
  *   npm run check:previews -- --url http://localhost:5174 --out /tmp/previews --jobs 1
  *
  * It needs Playwright, which is not a dependency of the app. If `import('playwright')` fails, install it once with
@@ -40,10 +42,15 @@ const VIEWS: Record<string, Vec3> = {
   'rear-left': [-R * 0.7, 0.25, -R * 0.7],
   'rear-right': [R * 0.7, 0.25, -R * 0.7],
   top: [0.001, R, 0.4],
+  // From above each top corner, where the front, spines, back and the case's rounded edges meet: gaps and overhangs show here.
+  'top-front-left': [-R * 0.5, R * 0.47, R * 0.6],
+  'top-front-right': [R * 0.5, R * 0.47, R * 0.6],
+  'top-rear-left': [-R * 0.5, R * 0.47, -R * 0.6],
+  'top-rear-right': [R * 0.5, R * 0.47, -R * 0.6],
 };
 
 function parseArgs(argv: string[]) {
-  const opts = { url: 'http://localhost:5173', out: 'compare/previews', cover: '', views: Object.keys(VIEWS), jobs: 2, list: false, filters: [] as string[] };
+  const opts = { url: 'http://localhost:5173', out: 'compare/previews', cover: '', views: Object.keys(VIEWS), jobs: 2, scale: 1, list: false, filters: [] as string[] };
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
     const next = () => {
@@ -56,6 +63,7 @@ function parseArgs(argv: string[]) {
     else if (a === '--cover') opts.cover = resolve(next());
     else if (a === '--views') opts.views = next().split(',').map((v) => v.trim()).filter(Boolean);
     else if (a === '--jobs') opts.jobs = Math.max(1, Number(next()) || 1);
+    else if (a === '--scale') opts.scale = Math.min(4, Math.max(1, Number(next()) || 1));
     else if (a === '--list') opts.list = true;
     else if (a.startsWith('--')) throw new Error(`Unknown option ${a}`);
     else opts.filters.push(a.toLowerCase());
@@ -121,7 +129,7 @@ async function main() {
     mkdirSync(dir, { recursive: true });
     const errors: string[] = [];
     // A fresh context each time: no queue or settings carried over from the last template.
-    const context = await browser.newContext({ viewport: { width: 1500, height: 1000 } });
+    const context = await browser.newContext({ viewport: { width: 1500, height: 1000 }, deviceScaleFactor: opts.scale });
     const page = await context.newPage();
     // Software WebGL is slow, more so with several pages at once: allow longer than Playwright's 30 s per step.
     page.setDefaultTimeout(60000);

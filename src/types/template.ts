@@ -64,8 +64,11 @@ export type PreviewSpec =
       /** Whether the printed faces are glossy film (cases) or plain card (sleeves). */
       glossy: boolean;
       radiusMm: number;
-      /** An opaque hinge bar down the front of the case beside the spine edge (a jewel-style case's lid hinge), `widthMm` across. */
-      hinge?: { widthMm: number; color: string };
+      /**
+       * An opaque hinge bar down the front of the case on the spine side (a jewel-style case's lid hinge), `widthMm` across. It
+       * starts just inside the clear rim, or `fromMm` in from the spine edge when given (a clear case's line beside its booklet).
+       */
+      hinge?: { widthMm: number; color: string; fromMm?: number };
       /**
        * A coloured inner tray seen through a clear case: drawn on the front and back inside a clear rim `rimMm` wide, under the
        * printed parts, so only the rim reads as clear plastic.
@@ -77,6 +80,11 @@ export type PreviewSpec =
        * each side, instead of separate pieces. `faces['-x']`/`faces['+x']` name the flaps; the back is the `back` panel.
        */
       wrapTray?: boolean;
+      /**
+       * The wrapped tray card's height, mm, when it should show at its own size (centred, with the black tray framing it, as on a
+       * black-tray jewel case) instead of filling the flat of the case's sides.
+       */
+      wrapHeightMm?: number;
     }
   | {
       /** A flat body (card or disk) with the front panel printed on its face, optionally as a smaller label. */

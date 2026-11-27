@@ -67,7 +67,8 @@ describe('game case sizes (see branding-spec.md)', () => {
 
   it('prints PS1 covers for a CD jewel case', () => {
     const t = buildTemplate('game-case', 'ps1');
-    expect(t.panels.map((p) => p.id)).toEqual(['spine', 'back', 'spineRight', 'front']);
+    // The tray card's opening-side flap first, then the back, then the primary spine (the hinge side), then the booklet.
+    expect(t.panels.map((p) => p.id)).toEqual(['spineRight', 'back', 'spine', 'front']);
     expect(t.id).toBe('game-case-ps1');
   });
 });
@@ -125,9 +126,10 @@ describe('template dimensions', () => {
   it('CD: booklet and tray card are separate pieces with room for both bleeds', () => {
     const t = buildTemplate('cd');
     const [front, spine, back, spineRight] = ['front', 'spine', 'back', 'spineRight'].map((id) => t.panels.find((p) => p.id === id)!);
-    expect(front.xMm - (spineRight.xMm + spineRight.widthMm)).toBeGreaterThanOrEqual(t.bleedMm * 2);
-    expect(back.xMm).toBe(spine.xMm + spine.widthMm);
-    expect(spineRight.xMm).toBe(back.xMm + back.widthMm);
+    // [opening-side spine | back | hinge-side spine], the primary spine on the right where it folds to the hinge.
+    expect(front.xMm - (spine.xMm + spine.widthMm)).toBeGreaterThanOrEqual(t.bleedMm * 2);
+    expect(back.xMm).toBe(spineRight.xMm + spineRight.widthMm);
+    expect(spine.xMm).toBe(back.xMm + back.widthMm);
     expect(spine.widthMm + back.widthMm + spineRight.widthMm).toBe(150); // the standard tray card
     expect(neighbour(t.panels, front, 'left')).toBeUndefined(); // separate piece: not a fold
   });

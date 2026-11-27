@@ -6,7 +6,7 @@ import type { CodeLayer, Fill, ImageLayer, Layer, LayerPlacement, LegacyMm, Plac
 import { getMark, type Mark } from '../../brands';
 import { canvasPaint } from './paint';
 import { layerImageUrl, type Assets } from './images';
-import { computePlacement, paintRect } from '../placement';
+import { computePlacement, paintRect, type Placement as ImagePlacement } from '../placement';
 import { boxRect, fitInside, type RectMm } from '../box';
 import { fillSvg, sanitizeSvg, svgAspect, svgImageUrl } from '../svgTemplate';
 import { drawBorder } from '../border';
@@ -160,11 +160,50 @@ function drawImage(env: DrawEnv, l: ImageLayer, panel: PanelRect) {
   ctx.rect(pl.clip.xMm * px, pl.clip.yMm * px, pl.clip.widthMm * px, pl.clip.heightMm * px);
   ctx.clip();
   ctx.globalAlpha = tr.opacity ?? 1;
+  if (pl.extendEdges && !tr.rotationDeg) {
+    drawWithEdgeBleed(ctx, img, pl, px);
+    ctx.restore();
+    return;
+  }
   ctx.translate((pl.area.xMm + pl.xMm + pl.widthMm / 2) * px, (pl.area.yMm + pl.yMm + pl.heightMm / 2) * px);
   ctx.rotate((tr.rotationDeg * Math.PI) / 180);
   ctx.scale(pl.fit * px, pl.fit * px);
   ctx.drawImage(img, -img.naturalWidth / 2, -img.naturalHeight / 2);
   ctx.restore();
+}
+
+/**
+ * An image filling its trimmed panel, with the bleed round it filled from its own edges: the part of the image inside the
+ * trim drawn there, then its outermost row or column of pixels stretched out across the bleed on each side (and its corner
+ * pixels into the corners). Cover art has no bleed, so this keeps all of it inside the trim and still leaves no white edge if
+ * the cut is a little off. Sides with no bleed (folds) get nothing, as the paint area stops at the trim there.
+ */
+function drawWithEdgeBleed(ctx: CanvasRenderingContext2D, img: CanvasImageSource & { naturalWidth: number; naturalHeight: number }, pl: ImagePlacement, px: number) {
+  const t = pl.box;
+  const a = pl.clip;
+  const [ix, iy] = [pl.area.xMm + pl.xMm, pl.area.yMm + pl.yMm];
+  // The trim's part of the image, in source pixels.
+  const sx = ((t.xMm - ix) / pl.widthMm) * img.naturalWidth;
+  const sy = ((t.yMm - iy) / pl.heightMm) * img.naturalHeight;
+  const sw = (t.widthMm / pl.widthMm) * img.naturalWidth;
+  const sh = (t.heightMm / pl.heightMm) * img.naturalHeight;
+  const cols: [number, number, number, number][] = [
+    [sx, 1, a.xMm, t.xMm - a.xMm], // left bleed: the first column
+    [sx, sw, t.xMm, t.widthMm], // the trim
+    [sx + sw - 1, 1, t.xMm + t.widthMm, a.xMm + a.widthMm - (t.xMm + t.widthMm)], // right bleed: the last column
+  ];
+  const rows: [number, number, number, number][] = [
+    [sy, 1, a.yMm, t.yMm - a.yMm],
+    [sy, sh, t.yMm, t.heightMm],
+    [sy + sh - 1, 1, t.yMm + t.heightMm, a.yMm + a.heightMm - (t.yMm + t.heightMm)],
+  ];
+  for (const [rsy, rsh, dy, dh] of rows) {
+    if (dh <= 0) continue;
+    for (const [csx, csw, dx, dw] of cols) {
+      if (dw <= 0) continue;
+      ctx.drawImage(img, csx, rsy, csw, rsh, dx * px, dy * px, dw * px, dh * px);
+    }
+  }
 }
 
 function drawGenerated(env: DrawEnv, l: Extract<Layer, { type: 'generated' }>, panel: PanelRect) {

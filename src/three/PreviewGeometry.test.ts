@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { TEMPLATE_DEFS, buildTemplate } from '../templates';
-import { FACE_ORDER, TARGET_SIZE_UNITS, createBodyGeometry, createInsetGeometry, createLabelGeometry, createLabelSliceGeometry, createSlabBodyGeometry, createSlabFaceGeometry, insetFaces, labelWrap, modelSizeMm, panelUvRange, previewScale, printedFaces, slabOutline } from './PreviewGeometry';
+import { FACE_ORDER, TARGET_SIZE_UNITS, createBodyGeometry, createLabelGeometry, createLabelSliceGeometry, createSlabBodyGeometry, createSlabFaceGeometry, insetFaces, labelWrap, modelSizeMm, panelUvRange, previewScale, printedFaces, slabOutline, createWrappedPanelGeometry } from './PreviewGeometry';
 
 describe('panelUvRange', () => {
   it('excludes bleed and splits the texture back | spine | front', () => {
@@ -142,9 +142,10 @@ describe('slab bodies (cards, disks, stickers)', () => {
 });
 
 describe('inset faces', () => {
-  it('draws a CD\'s narrow spine cards at true size on the thicker spine', () => {
-    const t = buildTemplate('cd', 'jewel');
-    expect(insetFaces(t, t.preview).map((i) => i.face).sort()).toEqual(['+x', '-x']);
+  it('draws a spine card shorter than its face at true size, so it lines up with the front and back cards', () => {
+    // The 8 cm slim case's card is 85.7 mm tall on its 90 mm hinge; stretched to the face it would stand 2 mm above them.
+    const t = buildTemplate('cd', 'mini-slim');
+    expect(insetFaces(t, t.preview)).toEqual([{ face: '-x', panel: 'spine' }]);
   });
 
   it('leaves every other case, box and card printed straight onto its faces', () => {
@@ -153,20 +154,43 @@ describe('inset faces', () => {
       expect(insetFaces(t, t.preview), `${kind}/${id}`).toEqual([]);
     }
   });
+});
 
-  it('draws an inset plane at the panel\'s own true height, not stretched or squeezed to the body\'s', () => {
-    // The CD tray card (118 mm) is genuinely shorter than the modelled case (120 mm) — the disc-tray
-    // mechanism trims its usable height (see jewelCase()'s comment in definitions.ts). It's drawn at its
-    // own true height, centred, the same way its 6.5 mm width already reads true against the 10 mm depth
-    // (see createInsetGeometry's comment) — not stretched or squeezed to chase alignment with faces it
-    // doesn't actually share an edge with in real life.
-    const t = buildTemplate('cd', 'jewel');
-    const spine = t.panels.find((p) => p.id === 'spine')!;
-    const spec = t.preview as Extract<typeof t.preview, { kind: 'box' }>;
-    expect(spine.heightMm).toBeLessThan(spec.heightMm);
-    const geo = createInsetGeometry(t, 'spine');
+describe('wrapped panel geometry', () => {
+  const extent = (geo: ReturnType<typeof createWrappedPanelGeometry>, axis: 'X' | 'Y' | 'Z') => {
     const pos = geo.getAttribute('position');
-    const ys = Array.from({ length: pos.count }, (_, i) => pos.getY(i));
-    expect(Math.max(...ys) - Math.min(...ys)).toBeCloseTo(spine.heightMm);
+    const v = Array.from({ length: pos.count }, (_, i) => pos[`get${axis}`](i));
+    return [Math.min(...v), Math.max(...v)];
+  };
+
+  it('keeps a piece inside the face flat and at its own size', () => {
+    const t = buildTemplate('cd', 'mini-slim');
+    const spec = t.preview as Extract<typeof t.preview, { kind: 'box' }>;
+    const front = t.panels.find((p) => p.id === 'front')!;
+    const geo = createWrappedPanelGeometry(t, 'front', spec.widthMm, spec.heightMm, spec.radiusMm, 3);
+    const [x0, x1] = extent(geo, 'X');
+    expect(x1 - x0).toBeCloseTo(front.widthMm);
+    expect(x0).toBeCloseTo(3 - front.widthMm / 2);
+    for (const z of extent(geo, 'Z')) expect(z).toBeCloseTo(0);
+  });
+
+  it('turns a piece that reaches the face edge round the rounded edge, never past the body', () => {
+    // A cassette J-card's back flap: the full height of the back, from the spine edge.
+    const t = buildTemplate('cassette', 'std');
+    const spec = t.preview as Extract<typeof t.preview, { kind: 'box' }>;
+    const back = t.panels.find((p) => p.id === 'back')!;
+    const x = -spec.widthMm / 2 + back.widthMm / 2;
+    const geo = createWrappedPanelGeometry(t, 'back', spec.widthMm, spec.heightMm, spec.radiusMm, x);
+    const r = spec.radiusMm;
+    const [x0] = extent(geo, 'X');
+    const [y0, y1] = extent(geo, 'Y');
+    const [z0, z1] = extent(geo, 'Z');
+    // Half of each edge's arc: in from the corner by r(1 − sin 45°), back from the face by r(1 − cos 45°).
+    const inset = r * (1 - Math.SQRT1_2);
+    expect(x0).toBeCloseTo(-spec.widthMm / 2 + inset);
+    expect(y0).toBeCloseTo(-spec.heightMm / 2 + inset);
+    expect(y1).toBeCloseTo(spec.heightMm / 2 - inset);
+    expect(z1).toBeCloseTo(0);
+    expect(z0).toBeCloseTo(-2 * inset);
   });
 });

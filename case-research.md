@@ -67,6 +67,25 @@ evidence base than the rest of this file (3 informally-scanned fan covers, not m
 and may reflect a cover-art convention rather than the tray card's true printed dimension — flagged here rather than
 folded into the table above.
 
+### How the 3D preview is laid out
+
+Built like the MiniDisc album case's (§22). The 3D body is sized so the tray card wraps it at true size, the 137 mm back
+across the back and half of each rounded back corner and each 6.5 mm flap round the rest: **about 137.6 wide × 7.1 deep**,
+and **123 mm tall**, the booklet's 120 mm plus the 1.5 mm rounded top and bottom edges. The 118 mm tray card is stretched
+1.7 % to the booklet's height so their tops line up. The booklet sits at its own size 2.5 mm in from the opening edge, with
+the tray and the lid's hinge in the remaining 15 mm on the spine side. A straight-on photo of a music CD in its original
+packaging (OK Computer, supplied in review) checks this: taking its booklet as 120.6 mm, the visible case is about 137 mm
+wide, with about 13.4 mm beside the booklet on the spine side and 2.8 mm on the opening side. There the tray is clear: the
+spine side reads as pale clear plastic over the tray and the back of the tray card, with a thin darker line about 2 mm from
+the booklet's edge, so the music CD case is drawn that way. PlayStation jewel cases had black trays, so the PS1 case keeps a
+black tray and a 5 mm black hinge, and is drawn at the real case's 125 mm height: the tray, hinge and spine cards fill its
+flat, and the 120 mm booklet sits centred in a black frame about 2.5 mm deep at top and bottom, as in photos of PlayStation
+cases (Final Fantasy VII, front and back, supplied in review). The tray card shows at its own 118 mm, centred, so the back
+and spines are framed in black too. Drawn at the real 142 × 125 × 10 mm (or the
+125 × 120 × 10 mm body used before), the back card was squashed by 9 % onto the back, the booklet stretched across the whole
+front, and the spine cards stopped 1 mm short of the top. The case picker's comparison and size sorting use this body, so they
+show the jewel case about 4 mm narrower, 2 mm shorter and 3 mm thinner than the real case.
+
 ---
 
 ## 2. DVD keepcase (DVD, PC, PS2, Xbox, Xbox 360, GameCube‑US, Wii, Wii U)
@@ -1004,8 +1023,9 @@ is **108 mm**: the 1.5 mm rounded top and bottom edges are left as clear rim, so
 101.5 mm card is stretched 3.4 % to 105 mm, and the black tray and hinge are 105 mm too, so the tops and bottoms of the
 booklet, tray, hinge and spines line up. Drawn at its true height, the card stopped 1.75 mm short of the booklet at each end,
 which looked like a misalignment from every angle. The black tray covers the flat of the front and the front half of each
-front corner, where it meets the flaps, so no clear edge shows between them. Seen from behind, the sheet's left flap is on the case's +x (opening) side, so the flaps are
-placed on the sides they really fold to. The booklet is 3.6 mm in from the opening edge (the photo's 4.6 mm less the clear
+front corner, where it meets the flaps, so no clear edge shows between them. Seen from behind, the sheet's left flap folds
+round to the opening side and its right flap to the hinge, so the template puts the primary spine, the one on the hinge side
+that faces out on a shelf, on the right of the tray card and the opening-side copy on the left. The booklet is 3.6 mm in from the opening edge (the photo's 4.6 mm less the clear
 rim this body leaves off), so about 11.4 mm of hinge and tray shows on the spine side of the front, as in the photo: the
 73 mm booklet is narrower than the 87.4 mm back, so the front can't be covered edge to edge on any size of body. The
 picker's 3D comparison and its size sorting use this body too, so they show the album case about 2 mm narrower, 2 mm

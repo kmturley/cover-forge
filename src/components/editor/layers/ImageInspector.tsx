@@ -130,7 +130,7 @@ export function ImageInspector({ layer, ed }: { layer: ImageLayer; ed: LayerEdit
             panel={panel}
             aspect={aspect}
             autoBox={autoBox}
-            autoLabel={mark ? 'A size and spot that suit the panel' : 'The whole panel, with its bleed'}
+            autoLabel={mark ? 'A size and spot that suit the panel' : 'The whole panel to the trim, its edges carried into the bleed'}
             onChange={(placement) => ed.update(layer.id, { placement })}
           />
           <RotationOpacity layer={layer} ed={ed} />

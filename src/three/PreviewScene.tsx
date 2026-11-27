@@ -4,7 +4,7 @@ import { ContactShadows, Environment, OrbitControls } from '@react-three/drei';
 import { BackSide, CylinderGeometry, MeshStandardMaterial, PlaneGeometry, type BufferGeometry, type Texture } from 'three';
 import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js';
 import type { PanelId, TemplateConfig } from '../types/template';
-import { FACE_ORDER, createBodyGeometry, createCornerArc, createInsetGeometry, createPanelStrip, createLabelGeometry, createLabelSliceGeometry, createSlabBodyGeometry, createSlabFaceGeometry, bodyPrintedFaces, insetFaces, insetPlacement, labelWrap, modelSizeMm, previewScale, SLEEVE_WALL_MM } from './PreviewGeometry';
+import { FACE_ORDER, createBodyGeometry, createCornerArc, createPanelStrip, createWrappedPanelGeometry, createLabelGeometry, createLabelSliceGeometry, createSlabBodyGeometry, createSlabFaceGeometry, bodyPrintedFaces, insetFaces, insetPlacement, labelWrap, modelSizeMm, previewScale, SLEEVE_WALL_MM } from './PreviewGeometry';
 import { Measurements3D } from './Measurements3D';
 import { createBodyMaterial, createSleeveMaterial } from './PreviewMaterials';
 
@@ -32,7 +32,7 @@ function trayWrap(t: TemplateConfig, spec: Extract<TemplateConfig['preview'], { 
   const arc = Math.PI / 4;
   // The length of artwork on half a corner's arc.
   const e = r * arc;
-  const h = spec.heightMm - 2 * r;
+  const h = spec.wrapHeightMm ?? spec.heightMm - 2 * r;
   const off = 0.05;
   const R = r + off;
   const [cx, cz] = [w / 2 - r, d / 2 - r];
@@ -77,15 +77,17 @@ export function Model({ texture, template, scale }: { texture: Texture; template
     const out: { geometry: BufferGeometry; position: [number, number, number]; rotation: [number, number, number] }[] = [];
     if (spec.kind === 'box') {
       if (spec.wrapTray) out.push(...trayWrap(template, spec));
-      else for (const { face, panel } of insetFaces(template, spec)) out.push({ geometry: createInsetGeometry(template, panel), ...insetPlacement(spec, face) });
+      // Pieces on part of a face, at their own size; where one reaches the end of the face's flat it wraps round the rounded edge.
+      else for (const { face, panel } of insetFaces(template, spec)) out.push({ geometry: createWrappedPanelGeometry(template, panel, spec.depthMm, spec.heightMm, spec.radiusMm), ...insetPlacement(spec, face) });
       for (const d of spec.decals ?? []) {
         const panel = template.panels.find((p) => p.id === d.panel);
         if (!panel) continue;
         const m = d.marginMm ?? 0;
         const x = d.align === 'min-x' ? -spec.widthMm / 2 + panel.widthMm / 2 + m : spec.widthMm / 2 - panel.widthMm / 2 - m;
-        // A hair off the surface (no z-fighting); on the back face it is turned to face -z, seen from behind.
-        if (d.face === '+z') out.push({ geometry: createLabelGeometry(template, d.panel), position: [x, 0, spec.depthMm / 2 + 0.05], rotation: [0, 0, 0] });
-        else out.push({ geometry: createLabelGeometry(template, d.panel), position: [x, 0, -spec.depthMm / 2 - 0.05], rotation: [0, Math.PI, 0] });
+        // A hair off the surface (no z-fighting); on the back face it is turned to face -z, seen from behind, so its x is mirrored.
+        const front = d.face === '+z';
+        const geometry = createWrappedPanelGeometry(template, d.panel, spec.widthMm, spec.heightMm, spec.radiusMm, front ? x : -x);
+        out.push({ geometry, position: [0, 0, (front ? 1 : -1) * (spec.depthMm / 2 + 0.05)], rotation: [0, front ? 0 : Math.PI, 0] });
       }
     } else if (spec.fullFace) {
       // A card or sticker: the artwork follows the body's own outline, so rounded corners show. Just proud of the surface.
@@ -144,7 +146,8 @@ export function Model({ texture, template, scale }: { texture: Texture; template
       { geometry: arc((7 * Math.PI) / 4), position: [-cx, 0, cz], rotation: [0, 0, 0] },
       { geometry: arc(0), position: [cx, 0, cz], rotation: [0, 0, 0] },
     ];
-    if (!spec.wrapTray) parts.push({ geometry: new PlaneGeometry(w - 2 * r, h), position: [0, 0, -d / 2 - 0.02], rotation: [0, Math.PI, 0] });
+    // On the back too, unless a tray card covers it all; a card drawn at its own size is framed by the tray.
+    if (!spec.wrapTray || spec.wrapHeightMm !== undefined) parts.push({ geometry: new PlaneGeometry(w - 2 * r, h), position: [0, 0, -d / 2 - 0.02], rotation: [0, Math.PI, 0] });
     return parts;
   }, [tray, spec]);
   useEffect(() => () => trayParts?.forEach((p) => p.geometry.dispose()), [trayParts]);
@@ -190,7 +193,7 @@ export function Model({ texture, template, scale }: { texture: Texture; template
       {hinge && hingeMaterial && spec.kind === 'box' && (
         // The lid's hinge: a bar at the front of the spine edge, just proud of the body so it covers the faces it sits on.
         // On the front face, out to the spine edge, just proud of the surface.
-        <mesh material={hingeMaterial} geometry={hingeGeometry!} position={[-spec.widthMm / 2 + trayInset(spec) + hinge.widthMm / 2, 0, spec.depthMm / 2 + HINGE_DEPTH_MM / 2 - 0.2]} />
+        <mesh material={hingeMaterial} geometry={hingeGeometry!} position={[-spec.widthMm / 2 + (hinge.fromMm ?? trayInset(spec)) + hinge.widthMm / 2, 0, spec.depthMm / 2 + HINGE_DEPTH_MM / 2 - 0.2]} />
       )}
       {pieces.map((p, i) => (
         <mesh key={i} geometry={p.geometry} material={sleeve} position={p.position} rotation={p.rotation} />
