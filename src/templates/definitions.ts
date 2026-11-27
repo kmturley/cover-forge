@@ -277,6 +277,9 @@ function trayCardBody(back: number, flap: number, r: number): { widthMm: number;
   return { widthMm: back + 2 * r - 2 * halfCorner, depthMm: flap + 2 * r - 2 * halfCorner };
 }
 
+/** A CD jewel case's real outside height, mm (case-research.md §1). */
+const JEWEL_CASE_H = 125;
+
 /** Corner radius of the CD jewel case's 3D body, mm. */
 const JEWEL_RADIUS = 1.5;
 
@@ -327,7 +330,10 @@ function jewelCase(kind: TemplateKind, name: string, variantId: string, tray: Je
     preview: {
       kind: 'box',
       ...body,
-      heightMm: booklet + 2 * r,
+      // With a black tray the case's real 125 mm height: the tray, hinge and spine cards fill its flat, and the booklet sits
+      // centred in a black frame about 2.5 mm deep top and bottom, as in photos of PlayStation cases. With a clear tray, only
+      // the booklet's height plus the rounded edges, so no pale band of clear plastic shows above the spines.
+      heightMm: tray === 'black' ? JEWEL_CASE_H : booklet + 2 * r,
       // The tray card's flaps on the sides they fold to: the primary spine on the hinge side (-x), like every other case.
       faces: { '-x': 'spine', '+x': 'spineRight' },
       // The booklet just inside the lid's edge on the opening side; the spare width, about 15 mm, shows the tray and hinge.
