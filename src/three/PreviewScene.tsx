@@ -32,7 +32,7 @@ function trayWrap(t: TemplateConfig, spec: Extract<TemplateConfig['preview'], { 
   const arc = Math.PI / 4;
   // The length of artwork on half a corner's arc.
   const e = r * arc;
-  const h = spec.heightMm - 2 * r;
+  const h = spec.wrapHeightMm ?? spec.heightMm - 2 * r;
   const off = 0.05;
   const R = r + off;
   const [cx, cz] = [w / 2 - r, d / 2 - r];
@@ -146,7 +146,8 @@ export function Model({ texture, template, scale }: { texture: Texture; template
       { geometry: arc((7 * Math.PI) / 4), position: [-cx, 0, cz], rotation: [0, 0, 0] },
       { geometry: arc(0), position: [cx, 0, cz], rotation: [0, 0, 0] },
     ];
-    if (!spec.wrapTray) parts.push({ geometry: new PlaneGeometry(w - 2 * r, h), position: [0, 0, -d / 2 - 0.02], rotation: [0, Math.PI, 0] });
+    // On the back too, unless a tray card covers it all; a card drawn at its own size is framed by the tray.
+    if (!spec.wrapTray || spec.wrapHeightMm !== undefined) parts.push({ geometry: new PlaneGeometry(w - 2 * r, h), position: [0, 0, -d / 2 - 0.02], rotation: [0, Math.PI, 0] });
     return parts;
   }, [tray, spec]);
   useEffect(() => () => trayParts?.forEach((p) => p.geometry.dispose()), [trayParts]);

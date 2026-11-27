@@ -339,6 +339,8 @@ function jewelCase(kind: TemplateKind, name: string, variantId: string, tray: Je
       // The booklet just inside the lid's edge on the opening side; the spare width, about 15 mm, shows the tray and hinge.
       decals: [{ panel: 'front', face: '+z', align: 'max-x', marginMm: margin }],
       wrapTray: true,
+      // With a black tray the tray card shows at its own 118 mm, framed in black like the booklet, as in photos of PS1 cases.
+      ...(tray === 'black' && { wrapHeightMm: 118 }),
       ...(tray === 'clear'
         ? {
             // A clear tray (as in photos of music CDs in their original packaging): beside the booklet the lid shows the pale

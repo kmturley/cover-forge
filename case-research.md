@@ -80,7 +80,8 @@ spine side reads as pale clear plastic over the tray and the back of the tray ca
 the booklet's edge, so the music CD case is drawn that way. PlayStation jewel cases had black trays, so the PS1 case keeps a
 black tray and a 5 mm black hinge, and is drawn at the real case's 125 mm height: the tray, hinge and spine cards fill its
 flat, and the 120 mm booklet sits centred in a black frame about 2.5 mm deep at top and bottom, as in photos of PlayStation
-cases (Final Fantasy VII, supplied in review). Drawn at the real 142 × 125 × 10 mm (or the
+cases (Final Fantasy VII, front and back, supplied in review). The tray card shows at its own 118 mm, centred, so the back
+and spines are framed in black too. Drawn at the real 142 × 125 × 10 mm (or the
 125 × 120 × 10 mm body used before), the back card was squashed by 9 % onto the back, the booklet stretched across the whole
 front, and the spine cards stopped 1 mm short of the top. The case picker's comparison and size sorting use this body, so they
 show the jewel case about 4 mm narrower, 2 mm shorter and 3 mm thinner than the real case.

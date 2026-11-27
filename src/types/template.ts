@@ -80,6 +80,11 @@ export type PreviewSpec =
        * each side, instead of separate pieces. `faces['-x']`/`faces['+x']` name the flaps; the back is the `back` panel.
        */
       wrapTray?: boolean;
+      /**
+       * The wrapped tray card's height, mm, when it should show at its own size (centred, with the black tray framing it, as on a
+       * black-tray jewel case) instead of filling the flat of the case's sides.
+       */
+      wrapHeightMm?: number;
     }
   | {
       /** A flat body (card or disk) with the front panel printed on its face, optionally as a smaller label. */
