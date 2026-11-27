@@ -72,8 +72,8 @@ copyrighted, so test images stay local and aren't committed.
 ### Checking 3D previews against the 2D print
 
 `scripts/check-previews.ts` opens each template in the running dev server with a grid test cover, then
-screenshots the 2D sheet and the 3D model from eight fixed angles (front, rear, left, right, front-left,
-rear-left, rear-right, top). It puts them on one contact sheet per template, so gaps, stretched or
+screenshots the 2D sheet and the 3D model from fixed angles (front, rear, left, right, front-left,
+rear-left, rear-right, top, and each top corner from above). It puts them on one contact sheet per template, so gaps, stretched or
 misaligned panels, and artwork on the wrong face show up against the grid. Use it after changing a
 template's sizes or anything in `src/three/`.
 
@@ -84,6 +84,8 @@ npm run check:previews -- minidisc cd-        # only templates whose id or name 
 npm run check:previews -- --list              # list template ids
 npm run check:previews -- --cover art.png     # your own front cover instead of the grid
 npm run check:previews -- --views front,rear,left --jobs 2 --url http://localhost:5174
+# corners only, at 2× pixel density to zoom in on the edges:
+npm run check:previews -- --views top-front-left,top-front-right,top-rear-left,top-rear-right --scale 2 --out compare/corners
 ```
 
 Results go to `compare/previews/` (git-ignored): `index.html` shows every contact sheet and any page
@@ -95,7 +97,9 @@ What to look for on each sheet:
 - **Rear and sides:** the back and spines should show the same grid cells, logos and text as the 2D,
   in the same places, with nothing stretched (grid squares stay square) and no clear or coloured
   strips where the print should reach the edge.
-- **Corners:** grid lines should run straight on round a fold with no gap or jump.
+- **Corners:** grid lines should run straight on round a fold with no gap or jump. From the top-corner
+  views, the tops of the front, spine and back should line up, and nothing printed should stand proud
+  of the case's rounded edges.
 - **Front:** the front panel should sit where the real case shows it. A band is only right if the
   real case has one (e.g. a hinge or tray).
 - **Orientation:** text on the 3D spine should read the same way as in 2D; the back is seen from

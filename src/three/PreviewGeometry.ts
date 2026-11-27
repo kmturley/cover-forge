@@ -1,4 +1,4 @@
-import { CylinderGeometry, ExtrudeGeometry, PlaneGeometry, Shape, ShapeGeometry, type BufferAttribute } from 'three';
+import { BufferGeometry, CylinderGeometry, ExtrudeGeometry, Float32BufferAttribute, PlaneGeometry, Shape, ShapeGeometry, type BufferAttribute } from 'three';
 import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js';
 import type { BoxFace, PanelId, PreviewSpec, TemplateConfig } from '../types/template';
 
@@ -77,8 +77,9 @@ export interface InsetFace {
 const INSET_TOLERANCE_MM = 0.6;
 
 /**
- * Side faces whose panel is narrower than the face, like a CD's 6.5 mm spine cards on its 10 mm spine. Stretching them
- * over the whole face would distort the art, so they are drawn at true size, centred, with the case showing either side.
+ * Side faces whose panel is narrower or shorter than the face, like an 8 cm slim CD case's 85.7 mm card on its 90 mm hinge.
+ * Stretching them over the whole face would distort the art and lift it out of line with the front and back, so they are
+ * drawn at true size, centred, with the case showing round them.
  * Fronts and backs always fill their face.
  */
 export function insetFaces(t: TemplateConfig, spec: PreviewSpec): InsetFace[] {
@@ -87,7 +88,9 @@ export function insetFaces(t: TemplateConfig, spec: PreviewSpec): InsetFace[] {
   for (const [face, id] of Object.entries(spec.faces) as [BoxFace, PanelId][]) {
     const panel = t.panels.find((p) => p.id === id);
     if (!panel || (face !== '+x' && face !== '-x')) continue;
-    if (panel.widthMm < spec.depthMm - INSET_TOLERANCE_MM && panel.heightMm <= spec.heightMm + INSET_TOLERANCE_MM) out.push({ face, panel: id });
+    const narrower = panel.widthMm < spec.depthMm - INSET_TOLERANCE_MM;
+    const shorter = panel.heightMm < spec.heightMm - INSET_TOLERANCE_MM;
+    if ((narrower || shorter) && panel.heightMm <= spec.heightMm + INSET_TOLERANCE_MM) out.push({ face, panel: id });
   }
   return out;
 }
@@ -96,35 +99,6 @@ export function insetFaces(t: TemplateConfig, spec: PreviewSpec): InsetFace[] {
 export function bodyPrintedFaces(t: TemplateConfig, spec: PreviewSpec): Partial<Record<BoxFace, PanelId>> {
   const insets = new Set(insetFaces(t, spec).map((i) => i.face));
   return Object.fromEntries(Object.entries(printedFaces(spec)).filter(([f]) => !insets.has(f as BoxFace)));
-}
-
-/**
- * An inset plane's geometry, drawn at the panel's own true size on both axes — the same real mm dimensions as the
- * printed piece — centred on the face. A CD's 6.5 mm spine card reads at true size on the case's 10 mm depth, case
- * showing either side; its 118 mm height similarly reads at true size against the case's 120 mm modelled height,
- * case showing top and bottom. This isn't a bug to engineer away: the tray card and the front booklet are genuinely
- * different real-world pieces (see jewelCase()'s comment in definitions.ts) that don't share an edge when assembled,
- * so there's no "correct" stretch or squeeze that would make their guide lines meet — trying to force that only
- * substitutes an invented number for the real one. Showing the true size, consistently on every axis, is what an
- * actual assembled case looks like.
- */
-/** `size` draws it at another size (the flat of a side it is stretched to fill); by default its own. */
-export function createInsetGeometry(t: TemplateConfig, id: PanelId, size?: [number, number]): PlaneGeometry {
-  const p = t.panels.find((q) => q.id === id);
-  if (!p) throw new Error(`Template has no ${id} panel`);
-  // Trimmed a hair (0.15 mm a side) so texture filtering at the card's edge never picks up the panel next to it on the sheet.
-  const trim = 0.15;
-  const r = panelUvRange(t, id);
-  const du = ((r.u1 - r.u0) * trim) / p.widthMm;
-  const dv = ((r.v1 - r.v0) * trim) / p.heightMm;
-  const range = { u0: r.u0 + du, u1: r.u1 - du, v0: r.v0 + dv, v1: r.v1 - dv };
-  const geo = new PlaneGeometry(size?.[0] ?? p.widthMm, size?.[1] ?? p.heightMm);
-  const uv = geo.getAttribute('uv') as BufferAttribute;
-  for (let i = 0; i < uv.count; i++) {
-    uv.setXY(i, range.u0 + uv.getX(i) * (range.u1 - range.u0), range.v0 + uv.getY(i) * (range.v1 - range.v0));
-  }
-  uv.needsUpdate = true;
-  return geo;
 }
 
 /** Where the plane for an inset face sits (just proud of the surface) and how it is turned to face outwards. */
@@ -278,5 +252,83 @@ export function createCornerArc(t: TemplateConfig, id: PanelId, fromMm: number, 
   const uv = geo.getAttribute('uv') as BufferAttribute;
   for (let i = 0; i < uv.count; i++) uv.setXY(i, range.u0 + uv.getX(i) * (range.u1 - range.u0), range.v0 + uv.getY(i) * (range.v1 - range.v0));
   uv.needsUpdate = true;
+  return geo;
+}
+
+/** How close (mm) a printed piece's edge must come to the flat's end of its face to be wrapped round the rounded edge. */
+const WRAP_TOLERANCE_MM = 0.05;
+
+/**
+ * One axis of a piece on a box face: where each point of its artwork lands on the face, unrolled. The flat of the face runs
+ * from -(half - r) to half - r; past it the surface turns round the rounded edge. A piece that reaches the end of the flat
+ * carries on round that edge for half its arc, as the body's own printed faces do (three's RoundedBoxGeometry gives each face
+ * half of each edge's arc), so it meets the next face's artwork with no gap and never stands proud of the curve. Its artwork
+ * is spread evenly over the length it covers.
+ */
+function wrapAxis(from: number, to: number, half: number, r: number): number[] {
+  const flat = half - r;
+  const halfArc = (Math.PI * r) / 4;
+  const lo = from <= -flat + WRAP_TOLERANCE_MM ? -flat - halfArc : from;
+  const hi = to >= flat - WRAP_TOLERANCE_MM ? flat + halfArc : to;
+  // Sample the flat ends and every arc finely, the flat in between in one step.
+  const marks = new Set<number>([lo, hi]);
+  const arcSteps = 6;
+  for (let i = 0; i <= arcSteps; i++) {
+    for (const s of [-flat - (halfArc * i) / arcSteps, flat + (halfArc * i) / arcSteps]) if (s > lo && s < hi) marks.add(s);
+  }
+  for (const s of [-flat, flat]) if (s > lo && s < hi) marks.add(s);
+  return [...marks].sort((a, b) => a - b);
+}
+
+/** A point `s` along an unrolled face axis: how far along the face it is, and how far it has turned back round the edge. */
+function unroll(s: number, half: number, r: number): { along: number; angle: number } {
+  const flat = half - r;
+  if (r <= 0 || Math.abs(s) <= flat) return { along: s, angle: 0 };
+  const angle = (Math.abs(s) - flat) / r;
+  return { along: Math.sign(s) * (flat + r * Math.sin(angle)), angle };
+}
+
+/**
+ * A panel printed on part of a box face (a decal or an inset), drawn at its own size centred at `centerX` on a face
+ * `faceW` × `faceH`, in the face's own frame (facing +z, the face's surface at z = 0). Edges that reach the end of the face's
+ * flat wrap round the rounded edge (see `wrapAxis`), so the piece meets the neighbouring face's artwork and follows the curve
+ * instead of overhanging it. Trimmed a hair all round, like the insets, so texture filtering never picks up the next panel.
+ */
+export function createWrappedPanelGeometry(t: TemplateConfig, id: PanelId, faceW: number, faceH: number, radius: number, centerX = 0): BufferGeometry {
+  const p = t.panels.find((q) => q.id === id);
+  if (!p) throw new Error(`Template has no ${id} panel`);
+  const r = Math.min(radius, faceW / 2, faceH / 2);
+  const xs = wrapAxis(centerX - p.widthMm / 2, centerX + p.widthMm / 2, faceW / 2, r);
+  const ys = wrapAxis(-p.heightMm / 2, p.heightMm / 2, faceH / 2, r);
+  const range = panelUvRange(t, id);
+  const trim = 0.15;
+  const du = ((range.u1 - range.u0) * trim) / p.widthMm;
+  const dv = ((range.v1 - range.v0) * trim) / p.heightMm;
+  const [u0, u1, v0, v1] = [range.u0 + du, range.u1 - du, range.v0 + dv, range.v1 - dv];
+  const positions: number[] = [];
+  const uvs: number[] = [];
+  for (const sy of ys) {
+    for (const sx of xs) {
+      const x = unroll(sx, faceW / 2, r);
+      const y = unroll(sy, faceH / 2, r);
+      // Turned back round the edge: back by r(1 − cos) on each axis it has turned on (a corner turns on both).
+      const z = -r * (1 - Math.cos(x.angle)) - r * (1 - Math.cos(y.angle));
+      positions.push(x.along, y.along, z);
+      uvs.push(u0 + ((sx - xs[0]) / (xs[xs.length - 1] - xs[0])) * (u1 - u0), v0 + ((sy - ys[0]) / (ys[ys.length - 1] - ys[0])) * (v1 - v0));
+    }
+  }
+  const index: number[] = [];
+  const n = xs.length;
+  for (let j = 0; j < ys.length - 1; j++) {
+    for (let i = 0; i < n - 1; i++) {
+      const a = j * n + i;
+      index.push(a, a + 1, a + n, a + 1, a + n + 1, a + n);
+    }
+  }
+  const geo = new BufferGeometry();
+  geo.setAttribute('position', new Float32BufferAttribute(positions, 3));
+  geo.setAttribute('uv', new Float32BufferAttribute(uvs, 2));
+  geo.setIndex(index);
+  geo.computeVertexNormals();
   return geo;
 }

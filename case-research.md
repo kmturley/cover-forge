@@ -67,6 +67,17 @@ evidence base than the rest of this file (3 informally-scanned fan covers, not m
 and may reflect a cover-art convention rather than the tray card's true printed dimension — flagged here rather than
 folded into the table above.
 
+### How the 3D preview is laid out
+
+Built like the MiniDisc album case's (§22). The 3D body is sized so the tray card wraps it at true size, the 137 mm back
+across the back and half of each rounded back corner and each 6.5 mm flap round the rest: **about 137.6 wide × 7.1 deep**,
+and **123 mm tall**, the booklet's 120 mm plus the 1.5 mm rounded top and bottom edges. The 118 mm tray card is stretched
+1.7 % to the booklet's height so their tops line up. The booklet sits at its own size 2.5 mm in from the opening edge, with
+the black tray and the lid's hinge in the remaining 15 mm on the spine side. Drawn at the real 142 × 125 × 10 mm (or the
+125 × 120 × 10 mm body used before), the back card was squashed by 9 % onto the back, the booklet stretched across the whole
+front, and the spine cards stopped 1 mm short of the top. The case picker's comparison and size sorting use this body, so they
+show the jewel case about 4 mm narrower, 2 mm shorter and 3 mm thinner than the real case.
+
 ---
 
 ## 2. DVD keepcase (DVD, PC, PS2, Xbox, Xbox 360, GameCube‑US, Wii, Wii U)

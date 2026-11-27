@@ -267,6 +267,20 @@ function wallet(name: string, w: number, h: number, marks: (panels: PanelRect[])
 }
 
 /**
+ * The 3D body a tray card wraps exactly, as the 2D shows it: the back across the flat of the back and half of each rounded
+ * back corner, each flap across the rest of that corner, the flat of its side and half the front corner, with nothing
+ * stretched. Used by the cases built round a tray card (CD jewel, MiniDisc album), whose real outside is larger than the
+ * print could cover.
+ */
+function trayCardBody(back: number, flap: number, r: number): { widthMm: number; depthMm: number } {
+  const halfCorner = (Math.PI * r) / 4;
+  return { widthMm: back + 2 * r - 2 * halfCorner, depthMm: flap + 2 * r - 2 * halfCorner };
+}
+
+/** Corner radius of the CD jewel case's 3D body, mm. */
+const JEWEL_RADIUS = 1.5;
+
+/**
  * A CD jewel case: the rear tray card [spine | back | spine], whose two spine flaps both carry the title,
  * then the front booklet — front last/rightmost, same convention as every other case (`wrap()`'s
  * back | spine | front). Music CDs and PS1 games both use it.
@@ -275,10 +289,16 @@ function wallet(name: string, w: number, h: number, marks: (panels: PanelRect[])
  * difference to fix, it's how real jewel cases are built: the front cover sits flat behind the clear front
  * panel with nothing else in the way, while the tray card wraps around the rotating disc-tray mechanism,
  * whose hinge/teeth along the top edge trims the card's usable height. See case-research.md's CD section
- * for the sources. The 3D preview reconciles this on its own (`createInsetGeometry` stretches the tray
- * card's texture to the modelled case height only for rendering) without needing the print dimensions to match.
+ * for the sources.
+ *
+ * The 3D preview is built like the MiniDisc album case's: the body is sized so the tray card wraps it at true width
+ * (about 137.6 × 7.1 mm), the booklet's 120 mm plus the rounded top and bottom edges tall, and the tray card is stretched
+ * to the booklet's height so their tops line up. The booklet sits at its own size by the opening edge, with the black tray
+ * and the lid's hinge on the spine side, as on a real case. (The real case is 142 × 125 × 10 mm; drawn at that size the
+ * back card would be squashed onto the back and the booklet stretched across the front.)
  */
 function jewelCase(kind: TemplateKind, name: string, variantId: string): TemplateConfig {
+  const [back, flap, booklet, r] = [137, 6.5, 120, JEWEL_RADIUS];
   return assemble({
     kind,
     name,
@@ -288,23 +308,28 @@ function jewelCase(kind: TemplateKind, name: string, variantId: string): Templat
       {
         dir: 'row',
         specs: [
-          { id: 'spine', label: 'Spine (left)', w: 6.5, h: 118, text: 'vertical' },
-          { id: 'back', label: 'Back (tray card)', w: 137, h: 118 },
-          { id: 'spineRight', label: 'Spine (right)', w: 6.5, h: 118, text: 'vertical' },
+          { id: 'spine', label: 'Spine (left)', w: flap, h: 118, text: 'vertical' },
+          { id: 'back', label: 'Back (tray card)', w: back, h: 118 },
+          { id: 'spineRight', label: 'Spine (right)', w: flap, h: 118, text: 'vertical' },
         ],
       },
-      { dir: 'row', specs: [{ id: 'front', label: 'Front (booklet)', w: 120, h: 120 }] },
+      { dir: 'row', specs: [{ id: 'front', label: 'Front (booklet)', w: booklet, h: booklet }] },
     ],
     preview: {
       kind: 'box',
-      widthMm: 125,
-      heightMm: 120,
-      depthMm: 10,
-      faces: { '-x': 'spine', '+x': 'spineRight', '+z': 'front', '-z': 'back' },
-      // Clear plastic over the black tray: it reads dark, not milky, where it shows beside the 6.5 mm spine cards.
+      ...trayCardBody(back, flap, r),
+      heightMm: booklet + 2 * r,
+      // The tray card's flaps on the sides they fold to: seen from behind, the sheet's left flap is on the case's +x side.
+      faces: { '-x': 'spineRight', '+x': 'spine' },
+      // The booklet just inside the lid's edge on the opening side; the spare width, about 15 mm, shows the tray and hinge.
+      decals: [{ panel: 'front', face: '+z', align: 'max-x', marginMm: 2.5 }],
+      wrapTray: true,
+      hinge: { widthMm: 5, color: '#08090a' },
+      tray: { color: '#111214', rimMm: 0.5 },
+      // Clear plastic over the black tray: it reads dark, not milky, at the rounded edges.
       casing: { color: '#16181c', transmission: 0.35, roughness: 0.12 },
       glossy: true,
-      radiusMm: 1.5,
+      radiusMm: r,
     },
   });
 }
@@ -370,7 +395,6 @@ function miniDiscAlbumCase(): TemplateConfig {
   // clear rim so everything printed sits on the flat and lines up. (The real case is 90 × 110 × 14 mm; drawn at that size the
   // print could only cover part of it.)
   const r = MINIDISC_ALBUM_RADIUS;
-  const halfCorner = (Math.PI * r) / 4;
   return assemble({
     kind: 'minidisc',
     name: 'MiniDisc Album',
@@ -389,9 +413,8 @@ function miniDiscAlbumCase(): TemplateConfig {
     ],
     preview: {
       kind: 'box',
-      widthMm: back + 2 * r - 2 * halfCorner,
+      ...trayCardBody(back, flap, r),
       heightMm: booklet.h + 2 * r,
-      depthMm: flap + 2 * r - 2 * halfCorner,
       // The tray card's flaps on the sides they fold to: seen from behind, the sheet's left flap is on the case's +x side.
       faces: { '-x': 'spineRight', '+x': 'spine' },
       // Placed as on a real album case (case-research.md §22): the booklet at its own size, about 3.6 mm in from the opening

@@ -4,7 +4,7 @@ import { ContactShadows, Environment, OrbitControls } from '@react-three/drei';
 import { BackSide, CylinderGeometry, MeshStandardMaterial, PlaneGeometry, type BufferGeometry, type Texture } from 'three';
 import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js';
 import type { PanelId, TemplateConfig } from '../types/template';
-import { FACE_ORDER, createBodyGeometry, createCornerArc, createInsetGeometry, createPanelStrip, createLabelGeometry, createLabelSliceGeometry, createSlabBodyGeometry, createSlabFaceGeometry, bodyPrintedFaces, insetFaces, insetPlacement, labelWrap, modelSizeMm, previewScale, SLEEVE_WALL_MM } from './PreviewGeometry';
+import { FACE_ORDER, createBodyGeometry, createCornerArc, createPanelStrip, createWrappedPanelGeometry, createLabelGeometry, createLabelSliceGeometry, createSlabBodyGeometry, createSlabFaceGeometry, bodyPrintedFaces, insetFaces, insetPlacement, labelWrap, modelSizeMm, previewScale, SLEEVE_WALL_MM } from './PreviewGeometry';
 import { Measurements3D } from './Measurements3D';
 import { createBodyMaterial, createSleeveMaterial } from './PreviewMaterials';
 
@@ -77,15 +77,17 @@ export function Model({ texture, template, scale }: { texture: Texture; template
     const out: { geometry: BufferGeometry; position: [number, number, number]; rotation: [number, number, number] }[] = [];
     if (spec.kind === 'box') {
       if (spec.wrapTray) out.push(...trayWrap(template, spec));
-      else for (const { face, panel } of insetFaces(template, spec)) out.push({ geometry: createInsetGeometry(template, panel), ...insetPlacement(spec, face) });
+      // Pieces on part of a face, at their own size; where one reaches the end of the face's flat it wraps round the rounded edge.
+      else for (const { face, panel } of insetFaces(template, spec)) out.push({ geometry: createWrappedPanelGeometry(template, panel, spec.depthMm, spec.heightMm, spec.radiusMm), ...insetPlacement(spec, face) });
       for (const d of spec.decals ?? []) {
         const panel = template.panels.find((p) => p.id === d.panel);
         if (!panel) continue;
         const m = d.marginMm ?? 0;
         const x = d.align === 'min-x' ? -spec.widthMm / 2 + panel.widthMm / 2 + m : spec.widthMm / 2 - panel.widthMm / 2 - m;
-        // A hair off the surface (no z-fighting); on the back face it is turned to face -z, seen from behind.
-        if (d.face === '+z') out.push({ geometry: createLabelGeometry(template, d.panel), position: [x, 0, spec.depthMm / 2 + 0.05], rotation: [0, 0, 0] });
-        else out.push({ geometry: createLabelGeometry(template, d.panel), position: [x, 0, -spec.depthMm / 2 - 0.05], rotation: [0, Math.PI, 0] });
+        // A hair off the surface (no z-fighting); on the back face it is turned to face -z, seen from behind, so its x is mirrored.
+        const front = d.face === '+z';
+        const geometry = createWrappedPanelGeometry(template, d.panel, spec.widthMm, spec.heightMm, spec.radiusMm, front ? x : -x);
+        out.push({ geometry, position: [0, 0, (front ? 1 : -1) * (spec.depthMm / 2 + 0.05)], rotation: [0, front ? 0 : Math.PI, 0] });
       }
     } else if (spec.fullFace) {
       // A card or sticker: the artwork follows the body's own outline, so rounded corners show. Just proud of the surface.
