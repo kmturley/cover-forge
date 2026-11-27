@@ -8,6 +8,16 @@ import { createSleeveMaterial } from './PreviewMaterials';
 type BoxSpec = Extract<TemplateConfig['preview'], { kind: 'box' }>;
 type Piece = { geometry: BufferGeometry; position: [number, number, number]; rotation: [number, number, number] };
 
+/** Polystyrene's refractive index. */
+const PLASTIC_IOR = 1.57;
+
+/**
+ * How deep something behind a clear wall looks, mm: refraction makes it look closer, the wall's thickness over the plastic's
+ * index (a 1 mm wall, about 0.64 mm). Clear plastic is drawn without refraction, so a printed piece against a wall is placed at
+ * the depth it appears at, close under the surface as on a real case.
+ */
+const apparentDepth = (wallMm: number) => wallMm / PLASTIC_IOR;
+
 /** Surface roughness for each finish: polished, lightly textured, textured. */
 const ROUGHNESS: Record<PlasticFinish, number> = { glossy: 0.04, satin: 0.32, matte: 0.6 };
 
@@ -21,7 +31,7 @@ function createClearPlastic(part: PlasticPart): MeshPhysicalMaterial {
     color: '#000000',
     roughness: ROUGHNESS[part.finish],
     // One surface reflection, about 4 % head on (polystyrene's), stronger at a glancing angle; every clear face adds its own.
-    ior: 1.57,
+    ior: PLASTIC_IOR,
     envMapIntensity: 0.7,
     transparent: true,
     // Adds its light to the colour behind it and leaves the alpha alone, so it also works over a transparent canvas (the
@@ -75,7 +85,7 @@ function insertPieces(t: TemplateConfig, spec: BoxSpec, c: CaseConstruction): { 
     backs.push({ geometry, position: [position[0] + inward[0], position[1] + inward[1], position[2] + inward[2]], rotation: [rotation[0], rotation[1] + Math.PI, rotation[2]] });
   };
   // The tray card against the inside of the base's back wall, read from behind; its flaps folded forward round the tray's ends.
-  const zb = -D / 2 + c.wallMm + GAP;
+  const zb = -D / 2 + apparentDepth(c.wallMm) + GAP;
   if (back) {
     both(createPanelStrip(t, 'back', 0, back.widthMm, [back.widthMm, back.heightMm]), [0, 0, zb], [0, Math.PI, 0], [0, 0, PAPER]);
     // Just outside the tray's ends, so card and tray never share a surface (which flickers).
@@ -87,14 +97,17 @@ function insertPieces(t: TemplateConfig, spec: BoxSpec, c: CaseConstruction): { 
   // The booklet behind the lid, its edge just inside the opening side.
   if (front) {
     const x = W / 2 - c.bookletMarginMm - front.widthMm / 2;
-    both(createPanelStrip(t, 'front', 0, front.widthMm, [front.widthMm, front.heightMm]), [x, 0, D / 2 - c.wallMm - GAP], [0, 0, 0], [0, 0, -PAPER]);
+    both(createPanelStrip(t, 'front', 0, front.widthMm, [front.widthMm, front.heightMm]), [x, 0, D / 2 - apparentDepth(c.wallMm) - GAP], [0, 0, 0], [0, 0, -PAPER]);
   }
   return { printed, backs };
 }
 
 /** Where the tray's features sit, mm, from a photo of an empty jewel case (black tray, supplied in review). */
 const TRAY = {
-  /** The tray's end on the hinge side: a strip this wide. The whole tray fills the base's inside height, a snug fit. */
+  /**
+   * The tray's end on the hinge side: a strip reaching this far in from the case's outside edge (14 of the case's 142 mm in a
+   * photo of an empty clear case). The whole tray fills the base's inside height, a snug fit.
+   */
   stripMm: 14,
   cornerMm: 1.5,
   /**
@@ -103,9 +116,10 @@ const TRAY = {
    */
   disc: { wellMm: 61, rimMm: 0.8 },
   /** The hub: a raised round platform with a rosette of slots through it, the gaps between the teeth that grip the disc. */
-  hub: { platformMm: 13, holeMm: 2.6, slotMm: 7, slotWidthMm: 1.6, slots: 8 },
-  /** The lid's four booklet tabs, at the top and bottom edges, at these distances from the middle. */
-  tabsX: [-14, 44] as const,
+  hub: { platformMm: 15, holeMm: 3.5, slotMm: 9.5, slotWidthMm: 1.1, slots: 16 },
+  /** The lid's four booklet tabs: half-round clips on the top and bottom edges, this radius, centred this far from the middle. */
+  tabMm: 6,
+  tabsX: [-37, 46] as const,
 };
 
 /** The hub's rosette: a small round hole with slots radiating from it, as one outline (a hole in the tray and the platform). */
@@ -159,17 +173,18 @@ const extrude = (shape: Shape | Shape[], depth: number) => new ExtrudeGeometry(s
 function trayParts(W: number, H: number, D: number, c: CaseConstruction, trayDepth: number) {
   // A little inside the tray card's flaps at each end, so the card and the tray never share a surface.
   const inner = { x0: -W / 2 + c.sideWallMm + 0.3, x1: W / 2 - c.sideWallMm - 0.5, h: H - 2 * c.wallMm - 0.6 };
-  const z = -D / 2 + c.wallMm + GAP + 0.1;
-  const stripX1 = inner.x0 + TRAY.stripMm;
-  const dx = (stripX1 + inner.x1) / 2;
+  const z = -D / 2 + apparentDepth(c.wallMm) + GAP + 0.1;
+  const stripX1 = -W / 2 + TRAY.stripMm;
+  // The well's rim just touches the strip; the hub is at its centre.
+  const r1 = Math.min(TRAY.disc.wellMm, (inner.x1 - stripX1) / 2);
+  const r0 = r1 - TRAY.disc.rimMm;
+  const dx = stripX1 + r1 + 0.2;
   const main = roundedRect((stripX1 + inner.x1) / 2, 0, inner.x1 - stripX1, inner.h, TRAY.cornerMm);
   main.holes.push(rosette(dx, 0));
   const platform = new Shape();
   platform.absarc(dx, 0, TRAY.hub.platformMm, 0, Math.PI * 2, false);
   platform.holes.push(rosette(dx, 0));
   // The well's rim: the two sides of the ring that lie on the tray, where its top and bottom run off the tray's edges.
-  const r1 = Math.min(TRAY.disc.wellMm, (inner.x1 - stripX1) / 2 - 0.3);
-  const r0 = r1 - TRAY.disc.rimMm;
   const half = inner.h / 2 - 0.5;
   const wellArcs = [0, Math.PI].map((mid) => {
     const [a1, a0] = [Math.asin(Math.min(1, half / r1)), Math.asin(Math.min(1, half / r0))];
@@ -182,7 +197,7 @@ function trayParts(W: number, H: number, D: number, c: CaseConstruction, trayDep
   return {
     z,
     face: z + trayDepth,
-    strip: { geometry: new BoxGeometry(TRAY.stripMm, inner.h, trayDepth), position: [inner.x0 + TRAY.stripMm / 2, 0, z + trayDepth / 2] as [number, number, number] },
+    strip: { geometry: new BoxGeometry(stripX1 - inner.x0, inner.h, trayDepth), position: [(inner.x0 + stripX1) / 2, 0, z + trayDepth / 2] as [number, number, number] },
     main: extrude(main, trayDepth),
     platform: extrude(platform, 0.6),
     well: extrude(wellArcs, 0.4),
@@ -205,13 +220,22 @@ export function JewelCase({ texture, template, spec, construction: c, showInsert
   const lid = useMemo(() => {
     const front = template.panels.find((p) => p.id === 'front');
     const zIn = D / 2 - c.wallMm - 0.4;
-    const ridgeX = front ? W / 2 - c.bookletMarginMm - front.widthMm - 2 : -W / 2 + c.sideWallMm + TRAY.stripMm + 2;
-    const tab = new BoxGeometry(9, 3, 0.8);
-    const yTab = H / 2 - c.wallMm - 1.5;
+    const ridgeX = front ? W / 2 - c.bookletMarginMm - front.widthMm - 2 : -W / 2 + TRAY.stripMm + 2;
+    // Half a disc, its flat side along the edge; the top ones turned to face down.
+    const half = new Shape();
+    half.moveTo(-TRAY.tabMm, 0);
+    half.absarc(0, 0, TRAY.tabMm, Math.PI, Math.PI * 2, false);
+    half.closePath();
+    const tab = extrude(half, 0.8);
+    const yTab = H / 2 - c.wallMm;
     return {
       ridge: { geometry: new BoxGeometry(1.2, H - 2 * c.wallMm - 2, 0.8), position: [ridgeX, 0, zIn] as [number, number, number] },
       tab,
-      tabs: TRAY.tabsX.flatMap((x) => [[x, yTab, zIn] as [number, number, number], [x, -yTab, zIn] as [number, number, number]]),
+      // Against the lid's inside face: the extrusion runs 0.8 mm forward from its back.
+      tabs: TRAY.tabsX.flatMap((x) => [
+        { position: [x, yTab, zIn - 0.4] as [number, number, number], rotation: [0, 0, 0] as [number, number, number] },
+        { position: [x, -yTab, zIn - 0.4] as [number, number, number], rotation: [0, 0, Math.PI] as [number, number, number] },
+      ]),
     };
   }, [template, W, H, D, c]);
 
@@ -254,7 +278,7 @@ export function JewelCase({ texture, template, spec, construction: c, showInsert
       <mesh geometry={tray.well} material={materials.moulding} position={[0, 0, tray.face]} renderOrder={INNER_ORDER} />
       <mesh geometry={lid.ridge.geometry} material={materials.lid} position={lid.ridge.position} renderOrder={INNER_ORDER} />
       {lid.tabs.map((p, i) => (
-        <mesh key={`t${i}`} geometry={lid.tab} material={materials.lid} position={p} renderOrder={INNER_ORDER} />
+        <mesh key={`t${i}`} geometry={lid.tab} material={materials.lid} position={p.position} rotation={p.rotation} renderOrder={INNER_ORDER} />
       ))}
       <mesh geometry={shellGeometry} material={materials.shell} />
     </>
