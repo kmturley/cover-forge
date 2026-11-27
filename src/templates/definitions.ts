@@ -284,12 +284,13 @@ const JEWEL_CASE = { w: 142, h: 125, d: 10 };
 const JEWEL_RADIUS = 1.5;
 
 /**
- * A jewel case's plastics. The lid and base are always clear polystyrene, polished. The disc tray inside is clear on most
- * music CDs (photo of OK Computer in its original packaging) and black on PlayStation games; both are satin.
+ * A jewel case's plastics. The lid and base are always clear polystyrene, polished. The disc tray inside is the same moulding
+ * either way: clear and polished on most music CDs (photo of OK Computer in its original packaging), black satin on
+ * PlayStation games.
  */
 const CLEAR_SHELL: PlasticPart = { color: '#f4f7fa', clear: true, finish: 'glossy' };
 const JEWEL_TRAYS = {
-  clear: { color: '#eef1f4', clear: true, finish: 'satin' },
+  clear: { color: '#f4f7fa', clear: true, finish: 'glossy' },
   black: { color: '#26272a', clear: false, finish: 'satin' },
 } as const satisfies Record<string, PlasticPart>;
 

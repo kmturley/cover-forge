@@ -13,8 +13,8 @@ const ROUGHNESS: Record<PlasticFinish, number> = { glossy: 0.04, satin: 0.32, ma
 
 /**
  * The outer shell's plastic. Clear polystyrene (the lid and base of a jewel case) is see-through, refracting a little: it
- * shows everything inside it, and catches reflections on its faces and edges. It doesn't write depth, so the see-through
- * parts inside it (drawn after it) still show.
+ * shows everything inside it, and catches reflections on its faces and edges. It doesn't write depth, so the clear parts
+ * inside it (drawn after it) still show.
  */
 export function createShellMaterial(part: PlasticPart): MeshPhysicalMaterial {
   return part.clear
@@ -23,14 +23,20 @@ export function createShellMaterial(part: PlasticPart): MeshPhysicalMaterial {
 }
 
 /**
- * A part inside the shell. A see-through part there is drawn as a faint transparent layer rather than with transmission,
- * which can't see through a second transmitting surface: a clear tray reads as a pale film over the tray card behind it.
+ * A part inside the shell: the same plastic as the shell when clear (so a clear tray is the black one's moulding in clear
+ * plastic), or a solid colour. Clear inner parts are drawn after the shell (see INNER_ORDER), so they show through it.
  */
-export function createInnerPlasticMaterial(part: PlasticPart, opacity = 0.28): MeshPhysicalMaterial {
+export function createInnerPlasticMaterial(part: PlasticPart): MeshPhysicalMaterial {
   return part.clear
-    ? new MeshPhysicalMaterial({ color: part.color, transparent: true, opacity, roughness: ROUGHNESS[part.finish], depthWrite: false })
+    ? new MeshPhysicalMaterial({ color: part.color, transmission: 1, roughness: ROUGHNESS[part.finish], ior: 1.57, thickness: 1, specularIntensity: 1, clearcoat: 1, clearcoatRoughness: 0.03, envMapIntensity: 1.6 })
     : new MeshPhysicalMaterial({ color: part.color, roughness: ROUGHNESS[part.finish], clearcoat: part.finish === 'glossy' ? 0.6 : 0, clearcoatRoughness: 0.1 });
 }
+
+/**
+ * Draw order for see-through parts inside the shell. Clear plastic is drawn from what's behind it, and that never includes
+ * other clear plastic; drawn after the shell (which doesn't write depth), a clear tray shows over it instead of vanishing.
+ */
+const INNER_ORDER = 1;
 
 /** How far a printed piece sits in from the plastic wall it lies against, mm, and how far its paper back is behind it. */
 const GAP = 0.06;
@@ -56,7 +62,8 @@ function insertPieces(t: TemplateConfig, spec: BoxSpec, c: CaseConstruction): { 
   const zb = -D / 2 + c.wallMm + GAP;
   if (back) {
     both(createPanelStrip(t, 'back', 0, back.widthMm, [back.widthMm, back.heightMm]), [0, 0, zb], [0, Math.PI, 0], [0, 0, PAPER]);
-    const xs = back.widthMm / 2;
+    // Just outside the tray's ends, so card and tray never share a surface (which flickers).
+    const xs = back.widthMm / 2 + GAP;
     // The flap on -x runs from the back (its edge on the sheet next to the back) towards the front; the one on +x the other way.
     if (left && leftId) both(createPanelStrip(t, leftId, 0, left.widthMm, [left.widthMm, left.heightMm]), [-xs, 0, zb + left.widthMm / 2], [0, -Math.PI / 2, 0], [PAPER, 0, 0]);
     if (right && rightId) both(createPanelStrip(t, rightId, 0, right.widthMm, [right.widthMm, right.heightMm]), [xs, 0, zb + right.widthMm / 2], [0, Math.PI / 2, 0], [-PAPER, 0, 0]);
@@ -133,7 +140,8 @@ const extrude = (shape: Shape | Shape[], depth: number) => new ExtrudeGeometry(s
  * the hub's rosette cut through it, the raised hub platform, and the rim of the disc well.
  */
 function trayParts(W: number, H: number, D: number, c: CaseConstruction, trayDepth: number) {
-  const inner = { x0: -W / 2 + c.sideWallMm, x1: W / 2 - c.sideWallMm - 0.5, h: H - 2 * c.wallMm - 1 };
+  // A little inside the tray card's flaps at each end, so the card and the tray never share a surface.
+  const inner = { x0: -W / 2 + c.sideWallMm + 0.3, x1: W / 2 - c.sideWallMm - 0.5, h: H - 2 * c.wallMm - 1 };
   const z = -D / 2 + c.wallMm + GAP + 0.1;
   const stripX1 = inner.x0 + TRAY.stripMm;
   const { x: dx } = TRAY.disc;
@@ -196,9 +204,10 @@ export function JewelCase({ texture, template, spec, construction: c, showInsert
       shell: createShellMaterial(c.shell),
       tray: createInnerPlasticMaterial(c.tray),
       strip: createInnerPlasticMaterial(strip),
-      // The moulded details read more strongly than the tray's flat face, as edges of clear plastic do.
-      moulding: createInnerPlasticMaterial(c.tray.clear ? c.tray : { ...c.tray, color: '#0c0d0f' }, 0.55),
-      lid: createInnerPlasticMaterial({ ...c.shell, color: '#9aa2ab' }, 0.45),
+      // The well's rim and the hub are a shade darker than a coloured tray's face; in clear plastic they're the same plastic.
+      moulding: createInnerPlasticMaterial(c.tray.clear ? c.tray : { ...c.tray, color: '#0c0d0f' }),
+      // The lid's ridge and tabs are part of the lid: the shell's plastic.
+      lid: createInnerPlasticMaterial(c.shell),
       sleeve: createSleeveMaterial(texture, spec.glossy),
       paper: new MeshStandardMaterial({ color: '#f1efe9', roughness: 0.92, side: FrontSide }),
     };
@@ -221,13 +230,13 @@ export function JewelCase({ texture, template, spec, construction: c, showInsert
           ))}
         </>
       )}
-      <mesh geometry={tray.strip.geometry} material={materials.strip} position={tray.strip.position} />
-      <mesh geometry={tray.main} material={materials.tray} position={[0, 0, tray.z]} />
-      <mesh geometry={tray.platform} material={materials.moulding} position={[0, 0, tray.face]} />
-      <mesh geometry={tray.well} material={materials.moulding} position={[0, 0, tray.face]} />
-      <mesh geometry={lid.ridge.geometry} material={materials.lid} position={lid.ridge.position} />
+      <mesh geometry={tray.strip.geometry} material={materials.strip} position={tray.strip.position} renderOrder={INNER_ORDER} />
+      <mesh geometry={tray.main} material={materials.tray} position={[0, 0, tray.z]} renderOrder={INNER_ORDER} />
+      <mesh geometry={tray.platform} material={materials.moulding} position={[0, 0, tray.face]} renderOrder={INNER_ORDER} />
+      <mesh geometry={tray.well} material={materials.moulding} position={[0, 0, tray.face]} renderOrder={INNER_ORDER} />
+      <mesh geometry={lid.ridge.geometry} material={materials.lid} position={lid.ridge.position} renderOrder={INNER_ORDER} />
       {lid.tabs.map((p, i) => (
-        <mesh key={`t${i}`} geometry={lid.tab} material={materials.lid} position={p} />
+        <mesh key={`t${i}`} geometry={lid.tab} material={materials.lid} position={p} renderOrder={INNER_ORDER} />
       ))}
       <mesh geometry={shellGeometry} material={materials.shell} />
     </>
