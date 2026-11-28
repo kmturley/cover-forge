@@ -829,9 +829,11 @@ export const TEMPLATE_DEFS: TemplateDef[] = [
       const variantId = GAME_CASE[id] ? id : 'ps4';
       const v = GAME_CASE[variantId];
       if (v.jewel) return jewelCase('game-case', v.label, variantId, 'black');
-      const { w, h, spine } = GAME_CASES[variantId].insert;
+      const { insert: { w, h, spine }, outside } = GAME_CASES[variantId];
+      const casing = { color: v.color, roughness: 0.3 };
+      // On the DVD keepcase the 3D shows the real case with the insert inside it; the other shells are still the insert's size.
       return wrap('game-case', v.label, variantId, w, h, spine,
-        wrapPreview(w, h, spine, { color: v.color, roughness: 0.3 }, true, 2));
+        outside === DVD_SHELL ? keepcasePreview(DVD_SHELL, spine, casing, 2) : wrapPreview(w, h, spine, casing, true, 2));
     },
   },
 ];
