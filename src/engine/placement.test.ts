@@ -32,6 +32,26 @@ describe('computePlacement', () => {
     expect(pl.extendEdges).toBeUndefined();
   });
 
+  it('fills to the cut a box that runs into the bleed but no further, so none of the art is lost past the trim', () => {
+    // The picture moved down under a 10 % header band, out to the bleed on the other three sides (as the Branded dress places it).
+    const area = paintRect(t, front);
+    const b = rectToBox(front, { xMm: area.xMm, yMm: front.yMm + front.heightMm * 0.1, widthMm: area.widthMm, heightMm: area.yMm + area.heightMm - (front.yMm + front.heightMm * 0.1) });
+    const pl = computePlacement(t, front, 600, 900, { ...DEFAULT_TRANSFORM, box: b });
+    const inside = { xMm: front.xMm, yMm: front.yMm + front.heightMm * 0.1, widthMm: front.widthMm, heightMm: front.heightMm * 0.9 };
+    expect(pl.extendEdges).toBe(true);
+    near(pl.trimBox!, inside);
+    // Sized to the part inside the trim (as wide as the trimmed panel), the bleed filled from its edges.
+    expect(pl.widthMm).toBeGreaterThanOrEqual(front.widthMm - 1e-9);
+    expect(pl.widthMm).toBeLessThan(area.widthMm - 1);
+    near(pl.clip, boxRect(front, b));
+  });
+
+  it('leaves a box taken past the bleed alone: it was sized that way on purpose, to crop in', () => {
+    const pl = computePlacement(t, front, 600, 900, { ...DEFAULT_TRANSFORM, box: box(-20, 120, -20, 120) });
+    expect(pl.extendEdges).toBeUndefined();
+    expect(pl.trimBox).toBeUndefined();
+  });
+
   it('fills a box: covers it, centred on it, and is cropped to it', () => {
     const b = box(10, 60, 20, 40);
     const pl = computePlacement(t, front, 600, 900, { ...DEFAULT_TRANSFORM, box: b });

@@ -173,13 +173,13 @@ function drawImage(env: DrawEnv, l: ImageLayer, panel: PanelRect) {
 }
 
 /**
- * An image filling its trimmed panel, with the bleed round it filled from its own edges: the part of the image inside the
- * trim drawn there, then its outermost row or column of pixels stretched out across the bleed on each side (and its corner
+ * An image filling to the cut (its trimmed panel, or the part of its box inside the trim), with the bleed round it filled
+ * from its own edges: the part of the image inside the trim drawn there, then its outermost row or column of pixels stretched out across the bleed on each side (and its corner
  * pixels into the corners). Cover art has no bleed, so this keeps all of it inside the trim and still leaves no white edge if
  * the cut is a little off. Sides with no bleed (folds) get nothing, as the paint area stops at the trim there.
  */
 function drawWithEdgeBleed(ctx: CanvasRenderingContext2D, img: CanvasImageSource & { naturalWidth: number; naturalHeight: number }, pl: ImagePlacement, px: number) {
-  const t = pl.box;
+  const t = pl.trimBox ?? pl.box;
   const a = pl.clip;
   const [ix, iy] = [pl.area.xMm + pl.xMm, pl.area.yMm + pl.yMm];
   // The trim's part of the image, in source pixels.

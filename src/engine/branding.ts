@@ -236,8 +236,11 @@ function drawFrontMark(s: Sink, m: FrontMark, area: { x: number; w: number }, p:
   const cy = extra.cyPx ?? (m.cy !== undefined ? p.yMm * px + m.cy * FH : p.yMm * px + (depth((x + box.w / 2) / px) * px) / 2);
   const y = cy - box.h / 2;
   if (m.plate) {
+    // Padded round the mark, but never past the panel's edges: a plate cut off at the trim reads as cropped.
     const pad = box.h * 0.35;
-    s.fillRect(x - pad, y - pad, box.w + pad * 2, box.h + pad * 2, m.plate);
+    const [left, right] = [Math.min(pad, x - p.xMm * px), Math.min(pad, (p.xMm + p.widthMm) * px - x - box.w)];
+    const [top, bottom] = [Math.min(pad, y - p.yMm * px), Math.min(pad, (p.yMm + p.heightMm) * px - y - box.h)];
+    s.fillRect(x - Math.max(0, left), y - Math.max(0, top), box.w + Math.max(0, left) + Math.max(0, right), box.h + Math.max(0, top) + Math.max(0, bottom), m.plate);
   }
   box.draw(x, y);
 }

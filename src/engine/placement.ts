@@ -22,25 +22,46 @@ export interface Placement {
   /** What the image is clipped to, in canvas mm: its box when it fills it, else the paint area. Never past the paint area. */
   clip: RectMm;
   /**
-   * Set when the image fills the panel automatically: it is sized to the trimmed panel, and the bleed round it (the paint
-   * area outside the trim) is filled by stretching the image's edges out (see draw.ts), since cover art has no bleed of its own.
+   * Set when the image fills to the cut: it is sized to `trimBox`, the part of its box inside the trim, and the rest of its
+   * box (the bleed) is filled by stretching the image's edges out (see draw.ts), since cover art has no bleed of its own.
    */
   extendEdges?: boolean;
+  /** With `extendEdges`: what the image is sized to, the part of its box inside the trim (canvas mm). */
+  trimBox?: RectMm;
+}
+
+const EPS = 0.01;
+
+/**
+ * A filling box that runs into the bleed but no further: it reaches past the trim on at least one side, and stays
+ * inside the paint area on every side. That box means "fill to the cut" (the default picture, or one moved down under a
+ * header band), so the art is sized to the trim and carried into the bleed by its edges, not cut off past the cut.
+ * A box taken further than the bleed was sized that way on purpose, to crop in, and is left alone.
+ */
+function fillsToCut(box: RectMm, trim: RectMm, area: RectMm): boolean {
+  const inside = box.xMm >= area.xMm - EPS && box.yMm >= area.yMm - EPS && box.xMm + box.widthMm <= area.xMm + area.widthMm + EPS && box.yMm + box.heightMm <= area.yMm + area.heightMm + EPS;
+  const past = box.xMm < trim.xMm - EPS || box.yMm < trim.yMm - EPS || box.xMm + box.widthMm > trim.xMm + trim.widthMm + EPS || box.yMm + box.heightMm > trim.yMm + trim.heightMm + EPS;
+  return inside && past;
 }
 
 /**
  * Where an image sits in its panel. It is sized to its box without distortion: `fill` covers the box and is cropped to it,
  * `fit` shows the whole image inside it. Centred either way. By default the box is the trimmed panel, so cover art (which
- * comes without bleed) is never cut into; a filling image then carries its edges out into the bleed.
+ * comes without bleed) is never cut into; a filling image then carries its edges out into the bleed. A filling box that
+ * runs into the bleed but no further does the same (see fillsToCut).
  */
 export function computePlacement(t: TemplateConfig, panel: PanelRect, naturalWidth: number, naturalHeight: number, tr: PanelTransform): Placement {
   const area = paintRect(t, panel);
   if (tr.box === undefined) return legacyPlacement(area, naturalWidth, naturalHeight, tr);
   const auto = tr.box === null;
-  const box = tr.box ? boxRect(panel, tr.box) : { xMm: panel.xMm, yMm: panel.yMm, widthMm: panel.widthMm, heightMm: panel.heightMm };
+  const trim = { xMm: panel.xMm, yMm: panel.yMm, widthMm: panel.widthMm, heightMm: panel.heightMm };
+  const box = tr.box ? boxRect(panel, tr.box) : trim;
   const fitted = tr.fit === 'fit';
-  const img = fitted ? fitInside(box, naturalWidth / naturalHeight) : fillOver(box, naturalWidth / naturalHeight, tr.focus);
-  const extendEdges = auto && !fitted;
+  // A turned image can't have its edges carried into the bleed (see draw.ts), so it keeps filling its whole box.
+  const toCut = !fitted && !auto && !tr.rotationDeg && fillsToCut(box, trim, area);
+  const sizedTo = toCut ? intersect(box, trim) : box;
+  const img = fitted ? fitInside(sizedTo, naturalWidth / naturalHeight) : fillOver(sizedTo, naturalWidth / naturalHeight, tr.focus);
+  const extendEdges = (auto && !fitted) || toCut;
   return {
     fit: img.widthMm / naturalWidth,
     widthMm: img.widthMm,
@@ -49,8 +70,9 @@ export function computePlacement(t: TemplateConfig, panel: PanelRect, naturalWid
     yMm: img.yMm - area.yMm,
     area,
     box,
-    clip: fitted || extendEdges ? area : intersect(box, area),
-    ...(extendEdges && { extendEdges }),
+    // The default picture fills the whole paint area; one filling to the cut fills its own box (bleed included).
+    clip: fitted || (auto && !fitted) ? area : intersect(box, area),
+    ...(extendEdges && { extendEdges, trimBox: sizedTo }),
   };
 }
 
