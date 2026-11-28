@@ -175,9 +175,27 @@ From `scans-report.md` and `branding-spec.md` (89 images over 23 platforms):
    before and after. `cases.test.ts` adds fit tests: every insert fits inside its case, and the jewel case's booklet and
    tray card fit inside its lid, base and tray.
 
-3. **Brand marks in mm from the trim corner.** Convert the 55 marks once, using each platform's reference size. Remove
-   `pinned`, `turnedFrom` for branding, `keepSize`, `tiedMarks`, `fitted` and the strip's `keep()`. Each mark's numbers
-   can then be checked directly against a scan measured in mm.
+3. **Brand marks in mm from the trim corner.** *(done, with one change of approach)*
+
+   The marks keep their numbers as shares of the platform's **own insert** (its `ref`, from `cases.ts`), not mm
+   literals. Those shares are exactly what `branding-spec.md` now measures, on scans fitted to the standard size, so
+   each number can be checked against the consensus directly. They become mm in one place:
+   - `dressFrame` in `branding.ts` says what the shares are taken of: the own insert's width always, and its height
+     unless the panel is shorter (then it shrinks to fit). A turned panel uses its portrait size.
+   - Marks anchor to the edge they belong to: left, right or centred across; a foot band and its marks from the bottom;
+     strip marks with the top, bottom or middle. A ® or ™ stays against its logo.
+   - `pinned`, `keepSize`, `tiedMarks`, the turned-panel adjustments in `drawFrontMark` and the strip's own pinning are
+     gone. The strip's anchoring and the tag rule remain, as plain rules in that frame.
+   - The spine keeps its single fit rule, `pinnedSpine` (with `fitted` for narrower spines).
+
+   **Result:**
+   - Every platform's own case, every turned-panel render and the 3DS-on-jewel dress are pixel-identical to before.
+   - Six golden images changed, all wider panels where the dress used to stretch a little with the width: PS1 and
+     Switch slipcovers and boxes, and the SNES dress on a DVD case and box. It now keeps its own case's mm.
+   - `dressFrame.test.ts` pins down the rule.
+   - Format logos (DVD, Blu-ray, CD) have no `ref` yet, so they still follow the panel. Giving them one is a small
+     follow-up, but it would change the DVD slim's own spine, so it needs a look first.
+
 4. **Editor: show the trim and the bleed honestly.**
    - Add an option to show the bleed in the 2D view.
    - Draw selection boxes at the trim, with the bleed part shown faintly.

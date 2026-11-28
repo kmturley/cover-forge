@@ -4,7 +4,7 @@ import { paintRect } from '../templates/geometry';
 import { brandHeight, brandPath2D, brandWidth, getBrand, getLogo, type Brand, type Logo } from '../brands';
 import { paintLogoLayers } from './logoLayers';
 import { X360_WAVES, X360_WAVES_SIZE } from './x360Waves.generated';
-import { brandingOf, pinnedSpine, tiedMarks, type Brushed, type FrontHeader, type FrontMark, type Lockup, type Paint, type Part, type SpanMark, type SpineBranding } from './official';
+import { brandingOf, pinnedSpine, type Branding, type Brushed, type FrontHeader, type FrontMark, type Lockup, type Paint, type Part, type SpanMark, type SpineBranding } from './official';
 
 /**
  * Draws the "Branded" trade dress (the data is in official.ts). The drawing code doesn't touch a canvas itself: it
@@ -201,30 +201,67 @@ function lockupName(m: Lockup): string {
   return first(m.parts) ?? 'Mark';
 }
 
-/** Front panels drawn at the platform's own size in mm (their case is taller or narrower than its own), as opposed to genuinely turned ones. */
-const pinned = new WeakSet<PanelRect>();
+/**
+ * The frame a panel's dress is laid out in, mm: the size its shares (of W and H, see official.ts) are taken of.
+ *
+ * With a `ref` (a platform's dress) it is the platform's own case, so the dress keeps its size in mm on any panel: across,
+ * always the own case's width (a wider panel leaves its extra width between left- and right-aligned marks, a narrower one
+ * brings them closer); down, the own case's height, or the panel's when that is shorter (the dress shrinks to fit rather
+ * than running off it). A turned panel is laid out on its portrait size. On the platform's own case the frame is the
+ * panel, so nothing moves. Without a `ref` (a format's small logos) the frame is the panel's own size: the dress follows it.
+ */
+export interface Frame {
+  w: number;
+  h: number;
+}
 
-/** Draws a front mark with its height, alignment and inset; `depth` gives the header's depth where it lands. */
-function drawFrontMark(s: Sink, m: FrontMark, area: { x: number; w: number }, p: PanelRect, px: number, depth: (xMm: number) => number, id: string) {
-  // On a turned panel the mark keeps its size in mm, which is a different share of the swapped width and height.
-  if (p.turnedFrom) {
-    const [kw, kh] = [p.turnedFrom.widthMm / p.widthMm, p.turnedFrom.heightMm / p.heightMm];
-    m = { ...m, h: m.h * kh, inset: (m.inset ?? 0.025) * kw, ...(m.dx !== undefined && { dx: m.dx * kw }) };
-  }
+export function dressFrame(ref: Branding['ref'], p: PanelRect): Frame {
+  const own = p.turnedFrom ?? { widthMm: p.widthMm, heightMm: p.heightMm };
+  return ref ? { w: ref.w, h: Math.min(own.heightMm, ref.h) } : { w: own.widthMm, h: own.heightMm };
+}
+
+/**
+ * Draws a front mark with its height, alignment and inset, all shares of the frame `f` (mm). Its centre is `cyPx` when
+ * given (a foot band's middle), else `cy` of the frame's height from the top, else halfway down the header where it lands
+ * (`depth`, mm). `insetMm` overrides the inset (a ® kept against its logo).
+ */
+function drawFrontMark(s: Sink, m: FrontMark, area: { x: number; w: number }, p: PanelRect, f: Frame, px: number, depth: (xMm: number) => number, id: string, extra: { cyPx?: number; insetMm?: number } = {}) {
   s.begin(id, `${lockupName(m)} mark`, p);
-  const H = p.heightMm * px;
-  let box = lockup(s, m, m.h * H);
+  const [FW, FH] = [f.w * px, f.h * px];
+  let box = lockup(s, m, m.h * FH);
   const maxW = area.w * 0.9;
-  if (box.w > maxW) box = lockup(s, m, (m.h * H * maxW) / box.w);
-  const inset = (m.inset ?? 0.025) * p.widthMm * px;
-  const x = (m.align === 'left' ? area.x + inset : m.align === 'right' ? area.x + area.w - inset - box.w : area.x + (area.w - box.w) / 2) + (m.dx ?? 0) * p.widthMm * px;
-  const cy = m.cy !== undefined ? p.yMm * px + m.cy * H : p.yMm * px + (depth((x + box.w / 2) / px) * px) / 2;
+  if (box.w > maxW) box = lockup(s, m, (m.h * FH * maxW) / box.w);
+  const inset = extra.insetMm !== undefined ? extra.insetMm * px : (m.inset ?? 0.025) * FW;
+  const x = (m.align === 'left' ? area.x + inset : m.align === 'right' ? area.x + area.w - inset - box.w : area.x + (area.w - box.w) / 2) + (m.dx ?? 0) * FW;
+  const cy = extra.cyPx ?? (m.cy !== undefined ? p.yMm * px + m.cy * FH : p.yMm * px + (depth((x + box.w / 2) / px) * px) / 2);
   const y = cy - box.h / 2;
   if (m.plate) {
     const pad = box.h * 0.35;
     s.fillRect(x - pad, y - pad, box.w + pad * 2, box.h + pad * 2, m.plate);
   }
   box.draw(x, y);
+}
+
+/**
+ * The marks of a header with each ® or ™ (`tag`) kept against the logo before it. A logo's size follows the frame's
+ * height and it keeps its alignment, so on a panel wider than the frame a centred logo moves with the centre: its tag
+ * keeps the distance it has from the logo on the platform's own case (scaled with the logo), not its own inset.
+ * Returns each mark with the inset (mm) to draw it at, when that differs from its own.
+ */
+function tiedToLogos(marks: FrontMark[], areaWMm: number, f: Frame, ref: Branding['ref']): { m: FrontMark; insetMm?: number }[] {
+  if (!ref) return marks.map((m) => ({ m }));
+  const s = f.h / ref.h;
+  let logo: FrontMark | undefined;
+  return marks.map((m) => {
+    if (!m.tag) {
+      logo = m;
+      return { m };
+    }
+    if (!logo) return { m };
+    // The logo's reference point, as a share of the frame's width in the design and in mm as drawn.
+    const [own, at] = logo.align === 'center' ? [0.5 + (logo.dx ?? 0), areaWMm / 2 + (logo.dx ?? 0) * f.w] : [(logo.inset ?? 0.025) + (logo.dx ?? 0), ((logo.inset ?? 0.025) + (logo.dx ?? 0)) * f.w];
+    return { m, insetMm: at + ((m.inset ?? 0.025) - own) * ref.w * s };
+  });
 }
 
 /** A shade-*.svg has 10 units to the mm and 3 mm of bleed past each end it has one at. */
@@ -248,19 +285,11 @@ function drawSheen(s: Sink, id: string | undefined, pieceId: string, x: number, 
 export function drawBranding(s: Sink, t: TemplateConfig, px: number): void {
   const b = brandingOf(t);
   s.save();
-  const own = t.panels.find((p) => p.id === 'front');
-  // On a front taller or narrower than the platform's own, the header keeps its size in mm (as on a turned panel) rather than following the panel.
-  let front = own;
-  if (own && b.ref && !own.turnedFrom && (own.heightMm > b.ref.h || own.widthMm < b.ref.w)) {
-    front = { ...own, turnedFrom: { widthMm: Math.max(own.widthMm, b.ref.w), heightMm: Math.min(own.heightMm, b.ref.h) } };
-    pinned.add(front);
-  }
-  const bf = b.front;
-  const header: FrontHeader = own && b.ref && !own.turnedFrom && bf.shape !== 'strip' ? { ...bf, marks: tiedMarks(bf.marks, b.ref, own.widthMm, own.heightMm) } : bf;
-  if (front) drawFront(s, t, front, header, px, 'front');
+  const front = t.panels.find((p) => p.id === 'front');
+  if (front) drawFront(s, t, front, b.front, b.ref, px, 'front');
   const back = t.panels.find((p) => p.id === 'back');
-  if (back && b.backBand && b.front.shape === 'band') drawFront(s, t, back, { ...b.front, marks: [] }, px, 'back');
-  if (back && b.back) b.back.forEach((m, i) => drawFrontMark(s, m, { x: back.xMm * px, w: back.widthMm * px }, back, px, () => 0, `back.mark-${i + 1}`));
+  if (back && b.backBand && b.front.shape === 'band') drawFront(s, t, back, { ...b.front, marks: [] }, b.ref, px, 'back');
+  if (back && b.back) b.back.forEach((m, i) => drawFrontMark(s, m, { x: back.xMm * px, w: back.widthMm * px }, back, dressFrame(undefined, back), px, () => 0, `back.mark-${i + 1}`));
   for (const p of t.panels) {
     const sp = p.text ? pinnedSpine(b, p.text === 'vertical' ? p.heightMm : p.widthMm, p.text === 'vertical' ? p.widthMm : p.heightMm) : undefined;
     if (sp) drawSpine(s, t, p, sp, px);
@@ -268,41 +297,21 @@ export function drawBranding(s: Sink, t: TemplateConfig, px: number): void {
   s.restore();
 }
 
-/** A header with its bands and tabs kept the size (in mm) they have on a portrait panel, for a panel drawn turned. */
-function keepSize(h: FrontHeader, kw: number, kh: number): FrontHeader {
-  switch (h.shape) {
-    case 'band':
-      return { ...h, depth: (x) => h.depth(x) * kh, ...(h.line && { line: { ...h.line, size: h.line.size * kh } }) };
-    case 'foot':
-      return { ...h, h: h.h * kh };
-    case 'tab':
-      return { ...h, w: Math.min(1, h.w * kw), h: h.h * kh, ...(h.wBottom !== undefined && { wBottom: Math.min(1, h.wBottom * kw) }), ...(h.lip !== undefined && { lip: h.lip * kw }), ...(h.plate && { plate: { ...h.plate, top: h.plate.top * kw, bottom: h.plate.bottom * kw } }) };
-    default:
-      return h;
-  }
-}
-
-function drawFront(s: Sink, t: TemplateConfig, p: PanelRect, header: FrontHeader, px: number, key: string) {
-  // A mark's own centre is a share of the height, which a pinned header keeps in mm.
-  const pin = (m: FrontMark): FrontMark => (pinned.has(p) && m.cy !== undefined ? { ...m, cy: m.cy * (p.turnedFrom!.heightMm / p.heightMm) } : m);
-  let h = p.turnedFrom ? keepSize(header, p.turnedFrom.widthMm / p.widthMm, p.turnedFrom.heightMm / p.heightMm) : header;
-  // A strip keeps its width in mm on a front narrower than the platform's own, or its marks (sized by the width) would shrink away from each other.
-  if (h.shape === 'strip' && pinned.has(p)) {
-    const kw = p.turnedFrom!.widthMm / p.widthMm;
-    const edge = h.edge;
-    // The curved edge (the DS's, the GBA's) is a share of the width too, so it widens with the strip, or the logo would run over it.
-    h = { ...h, w: Math.min(0.5, h.w * kw), ...(edge && { edge: { ...edge, depth: (t: number) => edge.depth(t) * kw, ...(edge.cut && { cut: { ...edge.cut, inset: edge.cut.inset * kw } }) } }) };
-  }
+function drawFront(s: Sink, t: TemplateConfig, p: PanelRect, h: FrontHeader, ref: Branding['ref'], px: number, key: string) {
+  const f = dressFrame(ref, p);
   const area = paintRect(t, p);
   // Snapped outwards to whole pixels so the paint meets its neighbour with no hairline of the base colour between them.
   const [ax, ay] = [Math.floor(area.xMm * px), Math.floor(area.yMm * px)];
   const aw = Math.ceil((area.xMm + area.widthMm) * px) - ax;
   const [x0, y0, W, H] = [p.xMm * px, p.yMm * px, p.widthMm * px, p.heightMm * px];
+  // The frame in px: shares of the width and height are taken of these (see dressFrame).
+  const [FW, FH] = [f.w * px, f.h * px];
   const panelBox = { x: x0, w: W };
+  const marks = (list: FrontMark[], areaWMm: number) => tiedToLogos(list, areaWMm, f, ref);
 
   if (h.shape === 'band') {
     // The lower edge in px at a canvas x, clamped to the trim so the bleed carries the edge's end depth.
-    const edge = (x: number) => y0 + h.depth(Math.min(1, Math.max(0, (x - x0) / W))) * H;
+    const edge = (x: number) => y0 + h.depth(Math.min(1, Math.max(0, (x - x0) / W))) * FH;
     const steps = 480;
     const xs = Array.from({ length: steps + 1 }, (_, i) => ax + (aw * i) / steps);
     const outline = (offset: number) => xs.map((x) => [x, edge(x) + offset] as const);
@@ -315,7 +324,8 @@ function drawFront(s: Sink, t: TemplateConfig, p: PanelRect, header: FrontHeader
     if (h.decor) {
       s.save();
       s.clip(band);
-      drawDecor(s, h.decor, x0, y0, W, deepest - y0, p, key, pinned.has(p) ? W - p.turnedFrom!.widthMm * px : 0);
+      // On a panel narrower than the frame the artwork squeezes to leave the logo its room.
+      drawDecor(s, h.decor, x0, y0, W, deepest - y0, p, key, Math.min(0, W - FW));
       s.restore();
     }
 
@@ -324,14 +334,14 @@ function drawFront(s: Sink, t: TemplateConfig, p: PanelRect, header: FrontHeader
       const thick = (x: number) => {
         const u = Math.min(1, Math.max(0, (x - x0) / W));
         const edgeShare = h.line!.taper ?? 1;
-        return h.line!.size * H * (edgeShare + (1 - edgeShare) * (1 - (2 * u - 1) ** 2));
+        return h.line!.size * FH * (edgeShare + (1 - edgeShare) * (1 - (2 * u - 1) ** 2));
       };
       const line: PathOp[] = [...outline(0).map(([x, y], i) => [i ? 'L' : 'M', x, y] as PathOp), ...xs.map((x) => [x, edge(x) + thick(x)] as const).reverse().map(([x, y]) => ['L', x, y] as PathOp), ['Z']];
       s.begin(`${key}.line`, 'Header line', p);
       s.fillPath(line, h.line.color);
       if (h.line.shadow) {
         // A soft edge under the line (GameCube's bevel), drawn translucent.
-        const sh = h.line.shadow.size * H;
+        const sh = h.line.shadow.size * FH;
         const shadow: PathOp[] = [...xs.map((x, i) => [i ? 'L' : 'M', x, edge(x) + thick(x)] as PathOp), ...[...xs].reverse().map((x) => ['L', x, edge(x) + thick(x) + sh] as PathOp), ['Z']];
         s.begin(`${key}.line-shadow`, 'Header line shadow', p);
         s.save();
@@ -340,53 +350,59 @@ function drawFront(s: Sink, t: TemplateConfig, p: PanelRect, header: FrontHeader
         s.restore();
       }
     }
-    h.marks.forEach((m, i) => drawFrontMark(s, pin(m), panelBox, p, px, (xMm) => h.depth(Math.min(1, Math.max(0, (xMm - p.xMm) / p.widthMm))) * p.heightMm, `${key}.mark-${i + 1}`));
+    marks(h.marks, p.widthMm).forEach(({ m, insetMm }, i) => drawFrontMark(s, m, panelBox, p, f, px, (xMm) => h.depth(Math.min(1, Math.max(0, (xMm - p.xMm) / p.widthMm))) * f.h, `${key}.mark-${i + 1}`, { insetMm }));
   } else if (h.shape === 'foot') {
-    const top = y0 + (1 - h.h) * H;
+    // Up from the bottom edge, as deep as on the platform's own case; its marks centred in it unless they say otherwise.
+    // Shares of the panel's height, from the bottom: `kH` is 1 on the platform's own case, so nothing there is recomputed.
+    const kH = FH / H;
+    const top = y0 + (1 - h.h * kH) * H;
     const bottom = (area.yMm + area.heightMm) * px;
     s.begin(`${key}.foot`, 'Footer band', p);
     s.fillRect(ax, top, aw, bottom - top, ink(h.fill, x0, top, W, bottom - top));
-    h.marks.forEach((m, i) => drawFrontMark(s, { ...m, cy: m.cy ?? 1 - h.h / 2 }, panelBox, p, px, () => 0, `${key}.mark-${i + 1}`));
+    const centre = (m: FrontMark) => (m.cy === undefined ? 1 - (h.h * kH) / 2 : kH === 1 ? m.cy : 1 - (1 - m.cy) * kH);
+    marks(h.marks, p.widthMm).forEach(({ m, insetMm }, i) => drawFrontMark(s, m, panelBox, p, f, px, () => 0, `${key}.mark-${i + 1}`, { insetMm, cyPx: y0 + centre(m) * H }));
   } else if (h.shape === 'tab') {
-    const tw = h.w * W;
-    const bw = (h.wBottom ?? h.w) * W;
-    const th = h.h * H;
+    // As wide and deep as on the platform's own case, never wider than the panel.
+    const tw = Math.min(W, h.w * FW);
+    const bw = Math.min(W, (h.wBottom ?? h.w) * FW);
+    const th = h.h * FH;
     // The edges are measured at the trim; the paint runs on up into the bleed along the same slope.
     const lead = (y0 - ay) / th;
-    const onward = (top: number, bottom: number) => (top + (top - bottom) * lead) * W;
+    const onward = (top: number, bottom: number) => (top + (top - bottom) * lead) * FW;
     if (h.plate) {
       // A pale slanted plate continuing the tab to the right, outlined along its slanted edge and bottom.
       s.begin(`${key}.plate`, 'Plate', p);
-      s.fillPath([['M', x0 + tw - 1, ay], ['L', x0 + onward(h.plate.top, h.plate.bottom), ay], ['L', x0 + h.plate.bottom * W, y0 + th], ['L', x0 + bw - 1, y0 + th], ['Z']], h.plate.fill);
+      s.fillPath([['M', x0 + tw - 1, ay], ['L', x0 + onward(h.plate.top, h.plate.bottom), ay], ['L', x0 + h.plate.bottom * FW, y0 + th], ['L', x0 + bw - 1, y0 + th], ['Z']], h.plate.fill);
       s.begin(`${key}.plate-line`, 'Plate outline', p);
-      s.strokePath([['M', x0 + onward(h.plate.top, h.plate.bottom), ay], ['L', x0 + h.plate.bottom * W, y0 + th], ['L', x0 + bw, y0 + th]], h.plate.line, Math.max(1, px * 0.1));
+      s.strokePath([['M', x0 + onward(h.plate.top, h.plate.bottom), ay], ['L', x0 + h.plate.bottom * FW, y0 + th], ['L', x0 + bw, y0 + th]], h.plate.line, Math.max(1, px * 0.1));
     }
     s.begin(`${key}.tab`, 'Header tab', p);
     s.fillPath([['M', ax, ay], ['L', x0 + onward(h.w, h.wBottom ?? h.w), ay], ['L', x0 + bw, y0 + th], ['L', ax, y0 + th], ['Z']], ink(h.fill, x0, ay, tw, th));
     if (h.lip) {
       s.begin(`${key}.tab-lip`, 'Header tab lip', p);
-      s.fillRect(ax, ay, x0 + h.lip * W - ax, y0 - ay + 1, ink(h.fill, x0, ay, tw, th));
+      s.fillRect(ax, ay, x0 + h.lip * FW - ax, y0 - ay + 1, ink(h.fill, x0, ay, tw, th));
     }
     const tabBox = { x: x0, w: bw };
-    h.marks.forEach((m, i) => drawFrontMark(s, pin(m), m.onPanel ? panelBox : tabBox, p, px, () => h.h * p.heightMm, `${key}.mark-${i + 1}`));
+    marks(h.marks, p.widthMm).forEach(({ m, insetMm }, i) => drawFrontMark(s, m, m.onPanel ? panelBox : tabBox, p, f, px, () => h.h * f.h, `${key}.mark-${i + 1}`, { insetMm }));
   } else if (h.shape === 'strip') {
-    const sw = h.w * W;
+    // As wide as on the platform's own case (its marks are sized by its width), at most half the panel.
+    const sw = Math.min(0.5 * W, h.w * FW);
     const [sy, sh] = [area.yMm * px, area.heightMm * px];
     if (h.edge) {
       // The edge is sampled down the panel: a border-coloured shape out to the edge, then the strip's own colour
       // pulled back by the border's thickness, further in a cut.
       const e = h.edge;
       const bw = (e.border?.mm ?? 0) * px;
-      const [W2, top, bottom] = [p.widthMm * px, sy, sy + sh];
+      const [top, bottom] = [sy, sy + sh];
       const clampT = (y: number) => Math.min(1, Math.max(0, (y - y0) / H));
-      const outer = (y: number) => x0 + e.depth(clampT(y)) * W2;
+      const outer = (y: number) => x0 + e.depth(clampT(y)) * FW;
       const ramp = (t: number, a: number, b: number) => Math.min(1, Math.max(0, (t - a) / (b - a)));
       const inner = (y: number) => {
         const t = clampT(y);
         const base = outer(y) - bw;
         if (!e.cut) return base;
         const k = Math.min(ramp(t, e.cut.from, e.cut.hold[0]), 1 - ramp(t, e.cut.hold[1], e.cut.to));
-        return base + (x0 + e.cut.inset * W2 - base) * k;
+        return base + (x0 + e.cut.inset * FW - base) * k;
       };
       const shape = (edge: (y: number) => number, y0 = top, y1 = bottom): PathOp[] => {
         const ops: PathOp[] = [['M', ax, y0]];
@@ -417,18 +433,19 @@ function drawFront(s: Sink, t: TemplateConfig, p: PanelRect, header: FrontHeader
       if (h.brushed) drawBrushed(s, h.brushed, `${key}.strip`, sx, rw, sy, sh, rw / px, 7, p, (y0, y1, i) => s.fillRect(sx, y0, rw, y1 - y0, i));
     }
     const stripX = h.side === 'right' ? x0 + W - sw : x0;
-    // On a front taller than the platform's own, the marks keep their size in mm: those in the top half stay with the top, those in the bottom half
-    // with the bottom and the rest with the middle (a logo that was centred stays centred).
-    const k = pinned.has(p) ? Math.min(1, p.turnedFrom!.heightMm / p.heightMm) : 1;
+    // Along the strip the marks keep their size in mm (the frame's height): on a panel taller than that, those in the top
+    // half stay with the top, those in the bottom half with the bottom and the rest with the middle (a logo that was
+    // centred stays centred).
+    const k = Math.min(1, FH / H);
     const keep = (m: SpanMark): SpanMark => {
       if (k >= 1) return m;
       const a = m.anchor ?? (m.to <= 0.5 ? 'top' : m.from >= 0.5 ? 'bottom' : 'center');
-      const f = (v: number) => (a === 'top' ? v * k : a === 'bottom' ? 1 - (1 - v) * k : 0.5 + (v - 0.5) * k);
-      return { ...m, from: f(m.from), to: f(m.to), ...(m.dxAlong && { dxAlong: m.dxAlong * k }) };
+      const along = (v: number) => (a === 'top' ? v * k : a === 'bottom' ? 1 - (1 - v) * k : 0.5 + (v - 0.5) * k);
+      return { ...m, from: along(m.from), to: along(m.to), ...(m.dxAlong && { dxAlong: m.dxAlong * k }) };
     };
     h.marks.forEach((m, i) => drawSpan(s, keep(m), { x: stripX, y: y0, across: sw, along: H }, 'vertical', px, p, `${key}.mark-${i + 1}`));
   } else {
-    h.marks.forEach((m, i) => drawFrontMark(s, m, panelBox, p, px, () => 0, `${key}.mark-${i + 1}`));
+    marks(h.marks, p.widthMm).forEach(({ m, insetMm }, i) => drawFrontMark(s, m, panelBox, p, f, px, () => 0, `${key}.mark-${i + 1}`, { insetMm }));
   }
 }
 

@@ -3,8 +3,12 @@ import { GAME_CASES } from '../templates/cases';
 
 /**
  * The "Branded" trade dress: each platform's front header, spine cap and marks, drawn as on retail covers. The values
- * follow branding-spec.md. Front sizes are fractions of the front panel (`W` wide, `H` tall); spine positions are
- * fractions of the spine's length `L`, and its marks' widths fractions of the spine's width `S`.
+ * follow branding-spec.md, which measures them as shares of each panel on scans fitted to the case's standard size.
+ *
+ * Front sizes are shares of the platform's own insert (`ref`, from cases.ts): `W` its width, `H` its height. They are
+ * turned into mm in one place, `dressFrame` in branding.ts, so the dress keeps its size in mm on any other panel (a
+ * slipcover, a box, another platform's case, a turned panel) and only shrinks to fit a shorter one. Spine positions are
+ * shares of the spine's length `L` and its marks' widths shares of its width `S`, fitted the same way by `pinnedSpine`.
  */
 
 import type { MarkEmboss, MarkShadow } from '../types/layers';
@@ -147,7 +151,7 @@ export interface Branding {
   back?: FrontMark[];
   /** Continues the front's band (fill and line, no marks) across the back cover. */
   backBand?: boolean;
-  /** The platform's own case (mm): front height, and the spine's length and width. The dress keeps its size in mm on a bigger case, pinned to the top, instead of stretching with it. */
+  /** The platform's own insert (mm, from cases.ts): front width and height, and the spine's length and width. Shares are taken of it, so the dress keeps its size in mm on any other panel (see `dressFrame` in branding.ts). */
   ref?: { w: number; h: number; spine: number; spineW: number };
 }
 
@@ -666,26 +670,6 @@ export function pinnedSpine(b: Branding, lengthMm: number, widthMm?: number): Sp
 
 /** The branding a template is drawn with, its own or the dress it was marked with. */
 export const brandingOf = (t: { kind: TemplateKind; variantId: string; dress?: string }): Branding => brandingFor(t.kind, t.variantId, t.dress);
-
-/**
- * A header's marks as drawn on a front `w` × `h` mm. Each ® or ™ stays against its logo: the logo's size follows the height (and it keeps
- * its inset), so the tag moves by the same share of the distance it has from the logo on the platform's own case.
- */
-export function tiedMarks(marks: FrontMark[], ref: { w: number; h: number }, w: number, h: number): FrontMark[] {
-  const s = Math.min(h, ref.h) / ref.h;
-  const K = Math.max(w, ref.w);
-  let logo: FrontMark | undefined;
-  return marks.map((m) => {
-    if (!m.tag) {
-      logo = m;
-      return m;
-    }
-    if (!logo) return m;
-    // The logo's reference point, as a share of W in the design and in mm as drawn.
-    const [own, at] = logo.align === 'center' ? [0.5 + (logo.dx ?? 0), w / 2 + (logo.dx ?? 0) * K] : [(logo.inset ?? 0.025) + (logo.dx ?? 0), ((logo.inset ?? 0.025) + (logo.dx ?? 0)) * K];
-    return { ...m, inset: (at + ((m.inset ?? 0.025) - own) * ref.w * s) / K };
-  });
-}
 
 /** How much to scale a spine title's automatic size by (1 unless the format asks for more). */
 export function spineTitleScale(kind: TemplateKind, variantId: string, branded: boolean): number {
