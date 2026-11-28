@@ -1,0 +1,170 @@
+# Sizing and positioning audit
+
+What every part of the app measures against, where each size is set, and how good the reference data is. Written to give
+accuracy a solid base before more visual fixes. Measured on `feature/realistic-cases` at 6862868.
+
+## Summary
+
+| Area | Verdict |
+| :--- | :--- |
+| Layer placement (2D) | Consistent: every layer is a percentage of the panel's **trim**. But layers that paint into the bleed get boxes outside 0–100 %, and the editor draws those boxes. |
+| Brand dress | Positioned from the **trim**, as fractions that mix the panel's width, height and spine length. Five separate mechanisms convert those fractions back to mm when a panel isn't the reference size. |
+| 3D textures | Correct: UVs sample the trim; no face stretches its art (checked all 127 templates and pieces). |
+| 3D shapes | Two models. The jewel case is built at the **case's** real outside size; every other case is the **paper insert** wrapped round a box, so it is smaller than the real case. |
+| Case sizes | Set in several places: the jewel case's 142 × 125 × 10 in two files, and case outsides that only slipcovers and boxes use. |
+| Reference scans | The weakest link: the image's edges are assumed to be the trim, its DPI tag is trusted, and fold lines are estimated from the app's own sizes when not found. Half the "measurements" are partly circular. |
+| Export | Correct: the page is the template, bleed included. |
+
+The biggest risk isn't the drawing code, which mostly agrees with itself. It's that the numbers going in (from scans) and
+checking the result (the app's own render, measured by the same tool) aren't reliable. So "matches the measurements" has
+meant "matches numbers that may be wrong."
+
+## 1. The PS1 screenshot
+
+Nothing in the PS1 branding is cut off. Measured from the app's PS1 front:
+
+- The strip is 18.6 mm wide, which is 15.5 % of the 120 mm front, as defined. Every mark (PS symbol, wordmark, ®, Sony)
+  sits inside the trim.
+- The strip's fill also paints the 3 mm bleed on the top, left and bottom. Its layer box is
+  `x: -2.51 % … 84.5 % from the right`, `y: -2.5 % … -2.5 %`, so the selection handles sit 3 mm outside the visible strip.
+- The 2D view clears everything outside the cut lines (`CanvasRenderer.ts:25`), so what you see is the trimmed piece, but
+  the box drawn round it is the paint area.
+
+The cause is real, though: the editor shows the trim but outlines the paint area. Any layer that runs into the bleed (side
+strips, header bands, spine fills, the cover picture, whose placement ends at `-2.5 %`) looks cropped.
+
+## 2. Coordinate frames in use
+
+| System | Frame | Units | Where |
+| :--- | :--- | :--- | :--- |
+| Template panels | Canvas, from the top-left of the sheet (bleed margin included); each panel is its trim rect | mm | `types/template.ts` `PanelRect` |
+| Paint area | Trim plus bleed on cut edges, none on folds | mm | `templates/geometry.ts:31` `paintRect` |
+| Layer placement | Percent of the panel's trim width and height; may go below 0 or over 100 into the bleed | % | `engine/layers/placement.ts`, `engine/box.ts` |
+| Auto-filled picture | Sized to the trim; its edge pixels are stretched across the bleed | mm | `engine/placement.ts:33`, `engine/layers/draw.ts:176` |
+| Brand dress | Fractions from the trim corner: band `w`/`h` of panel W/H; front marks `h` of H, `inset` and `dx` of W, `cy` of H; strip and spine marks `from`/`to` of length, `across`/`dx` of width | fraction | `engine/official.ts` (25 platforms, 55 marks) |
+| Brand fills | Run from the trim out into the bleed | px | `engine/branding.ts:296`, `:516` |
+| 3D textures | UVs over each panel's trim | 0–1 | `three/PreviewGeometry.ts:16` |
+| 3D model size | The insert's own panels (front width × height × spine); the jewel case uses its outside size | mm | `preview` in `templates/definitions.ts` |
+| 2D measurements | Trim | mm | `engine/MeasurementOverlay.ts` |
+| PDF and raster export | The whole canvas, bleed included | mm | `export/pdfExport.ts:76` |
+| Scan measuring | The image's edges taken as the trim; mm from the image's DPI tag | mm, % | `scripts/measure-covers.ts:4` |
+
+**Takeaways:**
+
+- Trim is the de facto frame everywhere except the scan measuring script, which can't know whether an image has bleed and
+  assumes none.
+- Fractions mix axes. A front mark's height is a share of the panel's height while its inset is a share of the width, so
+  on a panel of another shape the mark moves and resizes unevenly. That is why these compensations exist:
+  - `pinned` and `turnedFrom` (`branding.ts:252`);
+  - `keepSize` (`branding.ts:272`);
+  - `tiedMarks` (`official.ts:679`);
+  - `fitted` for spines (`official.ts:636`);
+  - the strip's `keep()` (`branding.ts:423`).
+
+  Each fixes one case (a taller front, a narrower one, a turned panel, a longer spine). Storing marks in mm from the trim
+  corner would make all five unnecessary.
+
+## 3. Where sizes are set
+
+| Size | Set in | Also in | Problem |
+| :--- | :--- | :--- | :--- |
+| Jewel case outside 142 × 125 × 10 | `definitions.ts:281` `JEWEL_CASE` | `pieces.ts:75` `JEWEL` | Duplicated |
+| Jewel case parts (base 122.8, hinge 12, tray, well, tabs) | `three/JewelCase.tsx` `CASE` | none | 3D only; the 2D template doesn't know them (for example the booklet's 3 mm margin is set separately as `bookletMarginMm`) |
+| Tray card's side walls | `definitions.ts:339` `sideWallMm: (142 − 137) / 2` | none | Derived from the card, not the case |
+| Case outsides (DVD 135 × 190, Blu-ray 135 × 171, DS 136 × 124 × 19, …) | `pieces.ts:39` `GAME_OUTER` | `case-research.md` (prose) | Used for slipcovers and boxes only; the 3D insert preview ignores them |
+| Insert sizes and spines | `definitions.ts` (`GAME_CASE`, `DVD`, `BLURAY`, …) | `case-research.md` | Two copies kept in sync by hand |
+| MiniDisc, 8 cm slim, cassette, Betamax and card-box shells | `definitions.ts:355–496` | none | One-off constants, each with its own shape |
+| Brand marks | `official.ts` | `branding-spec.md` (generated from scans) | Tuned by hand toward the scans, never checked against them automatically |
+
+**3D size versus the real case** (all cases except the jewel case model the paper):
+
+| Case | 3D model | Real case outside | Difference |
+| :--- | :--- | :--- | :--- |
+| DVD (PS2, Wii, Xbox, …) | 129.5 × 183 × 14 | 135 × 190 × 14 | −5.5 × −7 |
+| Blu-ray (PS3/4/5) | 129.5 × 149/161 × 14 | 135 × 171 | −5.5 × −10/−22 |
+| Xbox One / Series | 128 × 149 × 11 | 135 × 170 | −7 × −21 |
+| Switch | 99 × 161 × 10 | 105 × 170 | −6 × −9 |
+| DS / GB / GBC / GBA | 130 × 116 × 16 | 136 × 124 × 19 | −6 × −8 × −3 |
+| 3DS | 130 × 116 × 12 | 136 × 124 × 12.5 | −6 × −8 × −0.5 |
+| PS Vita | 99 × 125 × 9 | 105 × 135 × 11 | −6 × −10 × −2 |
+
+This is the "2D sized correctly, 3D not" you've seen. The 3D shows the insert as if it were the case. The case's plastic
+border, and the insert sitting inside it, are missing.
+
+## 4. Reference data quality
+
+From `scans-report.md` and `branding-spec.md` (89 images over 23 platforms):
+
+- **Fold lines estimated in 43 of 89 images.** When no fold is found, the script places it using the app's own spine
+  width and assumes the front and back are equal width. The app then agrees with those rows because it supplied the
+  numbers. DS and Wii show `+0.0` everywhere for that reason.
+- **The DPI tag is trusted.** Every image tagged at a DPI other than 300 is rejected, but those that claim 300 aren't
+  checked:
+  - Xbox 360: two of three scans come out at about 363 × 242 mm against a real 273 × 182, so they were scanned at about
+    400 DPI.
+  - Switch 2: one scan is 209 mm wide and two are 243 mm, for the same insert.
+  - Those platforms' Mode rows are then 30–45 mm off, and the app looks "wrong" by that much.
+- **Bleed is never declared.** The script assumes the image edge is the trim. A fan template that includes bleed, or a
+  scan cropped inside the trim, shifts every percentage. Xbox Series X scans are 156 mm tall against a 148 mm template.
+- **PS1 scans don't agree.**
+  - The strip measures 6.8 %, 16.2 %, 9.7 % and 15.8 % of the front width; the "Mode" of 12.8 % is the median of
+    disagreeing values.
+  - The scans are 117.2–117.9 mm tall when the tray card is 118 and the booklet 120.
+- **The app's own render is mismeasured.** The comparison reports the app's PS1 strip as 10.8 % when it draws 15.5 %. The
+  render has a near-black page background (#111) under a black strip, and an empty band under the shorter tray card,
+  which the edge detection misreads. So `app − Mode` can't be trusted in either direction.
+- **The summary statistic is weak.** "Mode, else median" over 3–4 images, one of them a fan template, includes outliers
+  rather than rejecting them.
+
+## 5. Checked and fine
+
+- 3D faces match their panels in all 127 templates and pieces: no art is stretched.
+- Every layer, brand mark and auto-filled picture measures from the same trim rect.
+- The cover picture is fitted to the trim, so cover art (which has no bleed) is never cropped by the bleed.
+- 2D measurement labels show trim sizes.
+- Export includes the bleed; sheet layouts cap it at half the gap to the next label.
+
+## 6. Recommended order of fixes
+
+1. **Make the references trustworthy first.**
+   - Give each scan a small sidecar file: which case it is, whether it includes bleed and how much, and a physical size
+     it can be checked against (or its true DPI).
+   - Derive the scale from known physical sizes rather than the DPI tag.
+   - Leave rows with estimated fold lines out of the statistics, and stop estimating folds from the app's own sizes.
+   - Measure the app's render on a neutral background, trim only.
+   - Require two agreeing sources before a number counts.
+
+   **Done** (the measuring tools; no scan has been checked by hand yet):
+   - `scripts/scan-manifest.json` records, per scan: an exclusion, bleed, true DPI or trimmed height, and hand-checked
+     fold positions. It is committed even though `scans/` isn't.
+   - Each scan's size is checked against the case (±2.5 %). Scale-suspect rows are listed but don't count: currently
+     2 Switch 2, 2 Xbox 360, 1 Xbox and all 3 Xbox Series X scans.
+   - Rows with estimated folds count only for overall width and height.
+   - The summary row is now a **consensus**: the median of the largest group agreeing within 1 mm or 1 point, shown as
+     `value (agree/counted)`, and `—` when fewer than two agree.
+   - The app's render is mid grey where nothing is printed. Its PS1 strip now measures 15.4 % (it drew 15.5 % all along;
+     it was misread as 10.8 %).
+
+   **Result:** the overall sizes mostly agree, but back, spine, front and branding values now have no consensus for
+   most platforms. That is the honest position: those numbers came from estimated folds. The next step is to check
+   folds by hand for the scans that matter, starting with PS1, and to confirm the Xbox Series X height (the scans say
+   156 mm, the app 149).
+2. **One case spec per physical case.** Record its outside size, its printed pieces and their positions in the case, and
+   a source for each number. Templates (`definitions.ts`), slipcovers and boxes (`pieces.ts`) and the 3D model all read
+   from it. This removes the duplicates in section 3.
+3. **Brand marks in mm from the trim corner.** Convert the 55 marks once, using each platform's reference size. Remove
+   `pinned`, `turnedFrom` for branding, `keepSize`, `tiedMarks`, `fitted` and the strip's `keep()`. Each mark's numbers
+   can then be checked directly against a scan measured in mm.
+4. **Editor: show the trim and the bleed honestly.**
+   - Add an option to show the bleed in the 2D view.
+   - Draw selection boxes at the trim, with the bleed part shown faintly.
+   - Keep layer percentages inside 0–100 % of the trim, and give bleed overflow as its own setting.
+5. **3D: model the case, not the paper.** Use the case spec's outside size for the shell, and place the insert inside it
+   at its real size (as the jewel case now does). Keepcases need a clear sleeve over the insert; the DS-style cases need
+   their own shell.
+6. **Tolerance tests.** Turn `compare:covers` into tests with a tolerance for each field, for example: size ±0.5 mm;
+   band ±0.3 mm; logo box ±0.5 mm; colour difference ≤ 10. Add fit tests for each 3D case (the insert inside the case,
+   the booklet inside the lid's window).
+
+The PS1 jewel case is a good pilot for 2–6: its case spec is mostly measured already (section 3), and it has the most
+recent references.

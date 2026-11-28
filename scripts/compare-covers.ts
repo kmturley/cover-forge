@@ -4,7 +4,7 @@
  * the app and the images separately.
  *
  * For every folder under `scans/` that matches a game-case template it writes, under `compare/` (git-ignored):
- *   <platform>/app.png        the app's render (Branded on, no artwork), cropped to trim, 300 DPI
+ *   <platform>/app.png        the app's render (Branded on, no artwork, mid grey where nothing is printed), cropped to trim, 300 DPI
  *   <platform>/app.json       where its back|spine and spine|front folds are, in pixels
  *   <platform>.png            header and spine area, stacked: app, template, then an overlay of the app against the
  *                             template (red = only the app prints it, cyan = only the template does, yellow = both
@@ -12,7 +12,7 @@
  *                             each scan follows too.
  *   <platform>-full.png       the whole wrap of each of those, in a grid
  * then re-runs scripts/measure-covers.ts, which finds `compare/<platform>/app.json` and adds an `app (rendered)` row
- * and an `app − Mode` row to scans-report.md and branding-spec.md, measured with the same code as the scans.
+ * and an `app − Consensus` row to scans-report.md and branding-spec.md, measured with the same code as the scans.
  *
  * Usage:
  *   npm run compare:covers                  # every platform
@@ -21,7 +21,9 @@
  *   npm run compare:covers -- --no-reports  # images only; don't refresh the two reports
  *
  * By default the images hold only the app render, the template and their overlay: that is what the app is meant to
- * match, it is quick, and the files stay small. The reports still measure the app against the scans' Mode either way.
+ * match, it is quick, and the files stay small. The reports still measure the app against the scans' consensus either way.
+ *
+ * Where nothing is printed the render is mid grey (NEUTRAL), not the app's near-black base, so dark bands can be measured.
  *
  * The render is the app's real `renderCover`, run in Node with a Skia canvas (@napi-rs/canvas) rather than a browser.
  * Shapes, gradients and brand icons are exact; text (the "Wii U" / "NINTENDO" wordmarks and so on) is laid out by
@@ -51,6 +53,24 @@ const LABEL_H = 26;
 
 const shared = { panels: {}, spine: { fontFamily: 'Helvetica, Arial, sans-serif', color: '#ffffff' } };
 
+/**
+ * What the app's render shows where nothing is printed, in place of the app's near-black base: a mid grey that no
+ * dress uses, so a black strip or band (PS1's, PS2's) has an edge to measure against.
+ */
+const NEUTRAL: [number, number, number] = [128, 128, 128];
+const BASE = parseInt(BASE_BACKGROUND.replace('#', ''), 16);
+const BASE_RGB: [number, number, number] = [(BASE >> 16) & 255, (BASE >> 8) & 255, BASE & 255];
+
+/** Turns the app's empty base colour (exactly) into NEUTRAL; everything the dress draws keeps its colour. */
+function neutralise(ctx: ReturnType<ReturnType<typeof createCanvas>['getContext']>, width: number, height: number): void {
+  const img = ctx.getImageData(0, 0, width, height);
+  const d = img.data;
+  for (let i = 0; i < d.length; i += 4) {
+    if (d[i] === BASE_RGB[0] && d[i + 1] === BASE_RGB[1] && d[i + 2] === BASE_RGB[2]) [d[i], d[i + 1], d[i + 2]] = NEUTRAL;
+  }
+  ctx.putImageData(img, 0, 0);
+}
+
 interface Source {
   label: string;
   /** PNG, RGBA, at the app wrap's pixel size; a template keeps its transparency. */
@@ -63,6 +83,7 @@ function renderAppWrap(t: TemplateConfig): { png: Buffer; width: number; height:
   const { width, height } = canvasSizePx(t);
   const full = createCanvas(width, height);
   renderCover(full.getContext('2d') as unknown as CanvasRenderingContext2D, { template: t, item: null, shared, banner: true, showGuides: false } as never, t.dpiScale);
+  neutralise(full.getContext('2d'), width, height);
 
   const byId = new Map(t.panels.map((p) => [p.id, p]));
   const order = (t.variantId === 'ps1' ? ['spine', 'back', 'spineRight', 'front'] : ['back', 'spine', 'front']).map((id) => byId.get(id as never)!);
@@ -71,6 +92,9 @@ function renderAppWrap(t: TemplateConfig): { png: Buffer; width: number; height:
   const wrapH = Math.round(Math.max(...order.map((p) => p.heightMm * px)));
   const wrap = createCanvas(wrapW, wrapH);
   const wctx = wrap.getContext('2d');
+  // A jewel case's tray card is shorter than its booklet: the strip below it is empty, not printed.
+  wctx.fillStyle = `rgb(${NEUTRAL.join(',')})`;
+  wctx.fillRect(0, 0, wrapW, wrapH);
   let x = 0;
   let x1 = 0;
   let x2 = 0;
@@ -95,8 +119,7 @@ const fit = (file: string, width: number, height: number): Promise<Buffer> =>
 async function overlay(app: Buffer, template: Buffer, width: number, height: number): Promise<{ png: Buffer; score: Score }> {
   const a = await sharp(app).ensureAlpha().raw().toBuffer();
   const t = await sharp(template).ensureAlpha().raw().toBuffer();
-  const bg = parseInt(BASE_BACKGROUND.replace('#', ''), 16);
-  const [br, bgc, bb] = [(bg >> 16) & 255, (bg >> 8) & 255, bg & 255];
+  const [br, bgc, bb] = NEUTRAL;
   const out = Buffer.alloc(width * height * 3);
   const score: Score = { onlyApp: 0, onlyTemplate: 0, differs: 0, same: 0 };
   // Only the header and spine cap area is branding: the top STRIP_FRACTION of the wrap.

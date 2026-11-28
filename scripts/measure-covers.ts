@@ -42,6 +42,70 @@ import { existsSync, globSync, readdirSync, readFileSync, statSync, writeFileSyn
 import { basename, dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import sharp from 'sharp';
+import { buildTemplateById } from '../src/templates/index.ts';
+
+/**
+ * What is known about one source image beyond its pixels, from scripts/scan-manifest.json (keyed `<folder>/<file>`).
+ * The scans themselves are git-ignored; this file is not, so what has been checked by hand is kept and reviewed.
+ */
+interface SourceInfo {
+  /** Left out of the report, with this reason. */
+  exclude?: string;
+  /** Bleed round the trim on every side, mm: cropped off before measuring (the default assumes the image edge is the trim). */
+  bleedMm?: number;
+  /** The image's real resolution, when its DPI tag is wrong. */
+  dpi?: number;
+  /** The trimmed image's real height, mm (measured with a ruler, or a part of known size): sets the scale instead of the DPI tag. */
+  trimHeightMm?: number;
+  /** Fold positions checked by hand, mm from the trim's left edge: [back|spine, spine|front], or a jewel case's three seams. */
+  foldsMm?: number[];
+  note?: string;
+}
+
+const MANIFEST = 'scripts/scan-manifest.json';
+
+function loadManifest(): Record<string, SourceInfo> {
+  if (!existsSync(MANIFEST)) return {};
+  const raw = JSON.parse(readFileSync(MANIFEST, 'utf8')) as Record<string, unknown>;
+  return Object.fromEntries(Object.entries(raw).filter(([k]) => !k.startsWith('$'))) as Record<string, SourceInfo>;
+}
+
+/** Scan folder names that differ from the app's variant id. */
+const FOLDER_TO_TEMPLATE: Record<string, string> = { wiiu: 'wii-u', psvita: 'ps-vita', xbox360: 'xbox-360', xboxone: 'xbox-one', xboxseriesx: 'xbox-series' };
+
+/**
+ * The trimmed height a folder's scans should have, mm: the tallest printed piece of the case they're for. Used only as a
+ * sanity check on each scan's scale (a scan tagged 300 DPI but scanned at 400 comes out a third too big), never as a
+ * measurement: a scan more than SCALE_TOLERANCE off it is reported but left out of the consensus.
+ */
+function expectedHeightMm(group: string): number | null {
+  const g = group.toLowerCase();
+  try {
+    const t = buildTemplateById(g === 'cd' ? 'cd-jewel' : `game-case-${FOLDER_TO_TEMPLATE[g] ?? g}`);
+    return Math.max(...t.panels.map((p: { heightMm: number }) => p.heightMm));
+  } catch {
+    return null;
+  }
+}
+const SCALE_TOLERANCE = 0.025;
+
+/**
+ * The value most of the images agree on: the largest group of values all within `tol` of each other, if at least two
+ * images are in it, and the median of that group. Outliers (a mis-detected fold, a scan of another edition) fall outside
+ * it instead of pulling the result, and one image alone is not a consensus.
+ */
+function consensus(values: (number | null)[], tol: number): { value: number; agree: number; of: number } | null {
+  const v = values.filter((x): x is number => x !== null).sort((a, b) => a - b);
+  let best: number[] = [];
+  for (let i = 0; i < v.length; i++) {
+    let j = i;
+    while (j + 1 < v.length && v[j + 1] - v[i] <= tol) j++;
+    if (j - i + 1 > best.length) best = v.slice(i, j + 1);
+  }
+  return best.length >= 2 ? { value: median(best), agree: best.length, of: v.length } : null;
+}
+/** How far apart values may be and still agree: mm for sizes, percentage points for shares of a panel. */
+const TOL = { mm: 1, pct: 1 };
 
 const IMAGE_EXTS = new Set(['.jpg', '.jpeg', '.png', '.tif', '.tiff', '.webp']);
 const MM_PER_INCH = 25.4;
@@ -134,7 +198,7 @@ interface ImageResult {
   file: string;
   /** 'template' = fan-made transparent template, measured from its alpha channel. 'app' = the app's own render of
    * this case (scripts/compare-covers.ts), measured with its fold positions known; it is reported beside the folder's
-   * Mode row and never counted in it. */
+   * consensus row and never counted in it. */
   kind: 'scan' | 'template' | 'app';
   widthPx: number;
   heightPx: number;
@@ -147,8 +211,15 @@ interface ImageResult {
   frontMm: number | null;
   /** The second spine flap, jewel cases only (see JEWEL_CASE_GROUPS) — null for every other case shape. */
   spine2Mm: number | null;
-  /** 'detected' from the image itself, 'estimated' from a known spine width, or 'none' (neither worked). */
-  spineSource: 'detected' | 'estimated' | 'known' | 'none';
+  /**
+   * 'detected' from the image itself, 'manual' from the manifest (checked by hand), 'known' for the app's own render,
+   * 'estimated' from a known spine width (left out of the consensus: it is the app's number, not the scan's), or 'none'.
+   */
+  spineSource: 'detected' | 'manual' | 'estimated' | 'known' | 'none';
+  /** Where the mm scale comes from: the file's DPI tag, or the manifest (a declared DPI or trimmed height). */
+  scaleSource: 'tag' | 'declared';
+  /** Why this row is left out of the consensus (a suspect scale), or null when it counts. */
+  distrust: string | null;
   bandHeightPct: number | null;
   bandShape: 'flat' | 'gradient' | 'none';
   bandColorHex: string | null;
@@ -1005,22 +1076,33 @@ function applyFrontBand(result: ImageResult, band: HeaderBand | null, heightPx: 
 }
 
 /** `knownFold`: where the seams are, when the layout is known rather than found — two x positions (back|spine, spine|front)
- * or, for a jewel case, three (spine | back | spine | front). */
-async function measure(file: string, group: string, knownFold?: number[], kind: 'scan' | 'app' = 'scan'): Promise<ImageResult> {
-  const image = sharp(file);
-  const meta = await image.metadata();
-  const widthPx = meta.width!;
-  const heightPx = meta.height!;
-  const { dpi, confidence } = dpiConfidence(meta.density);
-
+ * or, for a jewel case, three (spine | back | spine | front). `info`: what the manifest records about the image. */
+async function measure(file: string, group: string, knownFold?: number[], kind: 'scan' | 'app' = 'scan', info: SourceInfo = {}): Promise<ImageResult> {
+  const meta = await sharp(file).metadata();
   const notes: string[] = [];
+  // The scale: a DPI or trimmed height declared in the manifest wins over the file's own tag.
+  const bleed = info.bleedMm ?? 0;
+  const declared = info.dpi ?? (info.trimHeightMm ? (meta.height! * MM_PER_INCH) / (info.trimHeightMm + 2 * bleed) : undefined);
+  const tagged = dpiConfidence(meta.density);
+  const { dpi, confidence } = declared ? { dpi: declared, confidence: 'ok' as DpiConfidence } : tagged;
+  if (declared) notes.push(info.dpi ? `Scale declared: ${info.dpi} DPI.` : `Scale declared: trimmed height ${info.trimHeightMm} mm (${declared.toFixed(0)} DPI).`);
   if (confidence !== 'ok') {
     notes.push(`DPI is ${meta.density ?? 'missing'}, not ${REQUIRED_DPI}; rejected.`);
   }
   const profileNote = colourProfileNote(meta.icc);
   if (profileNote) notes.push(profileNote);
 
+  // The bleed is cropped off, so every position below is measured from the trim.
+  const bleedPx = dpi ? Math.round((bleed / MM_PER_INCH) * dpi) : 0;
+  const widthPx = meta.width! - 2 * bleedPx;
+  const heightPx = meta.height! - 2 * bleedPx;
+  const image = bleedPx ? sharp(file).extract({ left: bleedPx, top: bleedPx, width: widthPx, height: heightPx }) : sharp(file);
+  if (bleedPx) notes.push(`${bleed} mm bleed cropped off.`);
+  if (info.note) notes.push(info.note);
+
   const toMm = (px: number) => (dpi ? (px / dpi) * MM_PER_INCH : null);
+  const manual = !knownFold && info.foldsMm && dpi ? info.foldsMm.map((mm) => Math.round((mm / MM_PER_INCH) * dpi)) : undefined;
+  if (manual) knownFold = manual;
   const result: ImageResult = {
     file,
     kind,
@@ -1035,6 +1117,8 @@ async function measure(file: string, group: string, knownFold?: number[], kind: 
     frontMm: null,
     spine2Mm: null,
     spineSource: 'none',
+    scaleSource: declared ? 'declared' : 'tag',
+    distrust: null,
     bandHeightPct: null,
     bandShape: 'none',
     bandColorHex: null,
@@ -1043,6 +1127,14 @@ async function measure(file: string, group: string, knownFold?: number[], kind: 
     branding: null,
     notes,
   };
+
+  // A scan whose size is far from the case's is at the wrong scale (or has a border or bleed nobody declared): its mm
+  // values are wrong and its percentages are taken from the wrong edges, so it is shown but not counted.
+  const expected = kind === 'scan' ? expectedHeightMm(group) : null;
+  if (expected && result.heightMm && Math.abs(result.heightMm / expected - 1) > SCALE_TOLERANCE) {
+    result.distrust = `Scale suspect: ${result.heightMm.toFixed(1)} mm tall where ${group}'s pieces are ${expected} mm; declare its bleed, DPI or trimmed height in ${MANIFEST}.`;
+    notes.push(result.distrust);
+  }
 
   if (confidence !== 'ok') return result;
 
@@ -1054,15 +1146,15 @@ async function measure(file: string, group: string, knownFold?: number[], kind: 
     return result;
   }
 
-  const { data, info } = await image.removeAlpha().raw().toBuffer({ resolveWithObject: true });
-  const img: RawImage = { width: info.width, height: info.height, channels: info.channels, data };
+  const { data, info: pixels } = await image.removeAlpha().raw().toBuffer({ resolveWithObject: true });
+  const img: RawImage = { width: pixels.width, height: pixels.height, channels: pixels.channels, data };
 
   if (JEWEL_CASE_GROUPS.has(group.toLowerCase())) {
     if (!dpi) return result;
     const gray = toGray(img);
     const [x1, x2, x3] = knownFold && knownFold.length === 3 ? knownFold : findJewelCaseSeams(gray, img.width, img.height, dpi);
     if (knownFold && knownFold.length === 3) {
-      result.spineSource = 'known';
+      result.spineSource = manual ? 'manual' : 'known';
     } else {
       result.spineSource = 'estimated';
       notes.push(
@@ -1087,7 +1179,7 @@ async function measure(file: string, group: string, knownFold?: number[], kind: 
   let fold = findFoldLines(gray, img.width, img.height);
   if (knownFold) {
     fold = [knownFold[0], knownFold[1]];
-    result.spineSource = 'known';
+    result.spineSource = manual ? 'manual' : 'known';
   } else if (fold) {
     result.spineSource = 'detected';
   } else {
@@ -1219,6 +1311,8 @@ async function measureTemplate(file: string, group: string, scanWidthMm: number 
     frontMm: null,
     spine2Mm: null,
     spineSource: 'none',
+    scaleSource: 'tag',
+    distrust: null,
     bandHeightPct: null,
     bandShape: 'none',
     bandColorHex: null,
@@ -1327,37 +1421,35 @@ async function measureTemplate(file: string, group: string, scanWidthMm: number 
 }
 
 const fmt = (v: number | null, digits = 1) => (v === null ? '—' : v.toFixed(digits));
-/** The single most frequent value (exact, unrounded) if one value repeats and wins outright; otherwise the median. */
-function modeOrMedian(values: number[]): number {
-  const counts = new Map<number, number>();
-  for (const v of values) counts.set(v, (counts.get(v) ?? 0) + 1);
-  const ranked = [...counts.entries()].sort((a, b) => b[1] - a[1]);
-  return ranked[0][1] > 1 && ranked[0][1] > (ranked[1]?.[1] ?? 0) ? ranked[0][0] : median(values);
-}
-const modeOrMedianOrNull = (values: (number | null)[]) => {
-  const present = values.filter((v): v is number => v !== null);
-  return present.length ? modeOrMedian(present) : null;
-};
-
 const appLabel = (r: ImageResult) => (r.kind === 'app' ? 'app (rendered)' : basename(r.file));
 const deltaNum = (a: number | null, b: number | null) => (a === null || b === null ? '—' : `${a - b >= 0 ? '+' : ''}${(a - b).toFixed(1)}`);
 const deltaStr = (a: string | null, b: string | null) => (a === null || b === null ? '—' : a === b ? '=' : '≠');
 /** How far apart two colours are (0 = identical, 441 = black vs white). */
 const deltaHex = (a: string | null, b: string | null) => (a && b ? String(Math.round(colorDistance(hexToColor(a), hexToColor(b)))) : '—');
 
+/** Rows whose scale is trusted: they count towards a size. */
+const scaled = (r: ImageResult) => r.distrust === null;
+/** Rows whose folds were found or checked, not estimated from the app's own spine: they count towards anything measured from a fold. */
+const folded = (r: ImageResult) => scaled(r) && r.spineSource !== 'estimated' && r.spineSource !== 'none';
+/** A consensus cell: the agreed value and how many of the counted rows agree, or — when fewer than two agree. */
+const agreed = (c: ReturnType<typeof consensus>) => (c ? `${c.value.toFixed(1)} (${c.agree}/${c.of})` : '—');
+
 function buildReport(groups: Map<string, ImageResult[]>): string {
   const lines: string[] = ['# Cover scan measurements', ''];
   lines.push(
     "Generated by `scripts/measure-covers.ts`. Assumes each source image is a single, " +
-      'pre-cropped full wrap (back | spine | front) with no border beyond the trim edge. ' +
+      'pre-cropped full wrap (back | spine | front) with no border beyond the trim edge, unless the manifest declares its bleed. ' +
       'Fold lines are found by edge detection, not assumed; header bands are detected as either ' +
       'a flat colour or a smooth vertical gradient (by where real cover art/photo texture starts, ' +
       "not by colour alone) — sloped/curved headers still need a follow-up pass. " +
       'All colours are sRGB: an embedded ICC profile is converted to sRGB when the image is read (flagged in Notes), and an image with no profile is assumed to be sRGB already. ' +
       `Scans and templates whose embedded DPI isn't exactly ${REQUIRED_DPI} are rejected outright and don't appear below (see stderr). ` +
       'Rows named `template.*` are fan-made transparent templates: their layout is read from the alpha channel and ' +
-      'their header band/colours with the same code as the scans. Each table has one summary row across every row in it, template included: the mode (most frequent exact value) where one value repeats and wins outright, otherwise the median. ' +
-      'If `npm run compare:covers` has been run, a table also shows `app (rendered)`, the app\'s own render of that case measured with its fold positions known, and `app − Mode` (mm or percentage points; `=`/`≠` for shapes; a colour distance, 0 to 441, for colours). It is never part of the Mode.',
+      'their header band/colours with the same code as the scans. ' +
+      '**Consensus** is the value most rows agree on: the largest group within ' + `${TOL.mm} mm (sizes) or ${TOL.pct} point (shares of a panel)` + ' of each other, its median, shown with how many of the counted rows agree (`3/4`); fewer than two agreeing is no consensus (—). ' +
+      'Rows that don\'t count are still listed: a **scale suspect** row (its size is more than ' + `${SCALE_TOLERANCE * 100}`+ ' % off the case\'s, so its DPI tag, bleed or crop is wrong) counts for nothing, and a row whose fold lines were **estimated** (placed from the app\'s own spine width, so circular) counts only for its overall width and height. ' +
+      `What a scan can't tell by itself (its bleed, its real DPI or trimmed height, hand-checked fold positions, or a reason to leave it out) is declared in ${MANIFEST}. ` +
+      'If `npm run compare:covers` has been run, a table also shows `app (rendered)`, the app\'s own render of that case measured with its fold positions known, and `app − Consensus` (mm or percentage points; `=`/`≠` for shapes; a colour distance, 0 to 441, for colours). It never counts towards the consensus.',
   );
   lines.push('');
 
@@ -1376,35 +1468,45 @@ function buildReport(groups: Map<string, ImageResult[]>): string {
       `| ${fmt(r.backMm)} | ${fmt(r.spineMm)} | ${fmt(r.spine2Mm)} | ${fmt(r.frontMm)} | ${r.spineSource} | ${fmt(r.bandHeightPct)} ` +
       `| ${r.bandShape} | ${r.bandColorHex ?? '—'} | ${r.bandEndColorHex ?? '—'} | ${fmt(r.spineCapPct)} | ${r.notes.join('; ')} |`;
     for (const r of results) lines.push(rowFor(r));
+    const size = (pick: (r: ImageResult) => number | null) => consensus(results.filter(scaled).map(pick), TOL.mm);
+    const fromFold = (pick: (r: ImageResult) => number | null, tol = TOL.mm) => consensus(results.filter(folded).map(pick), tol);
+    const sums = {
+      width: size((r) => r.widthMm),
+      height: size((r) => r.heightMm),
+      back: fromFold((r) => r.backMm),
+      spine: fromFold((r) => r.spineMm),
+      spine2: fromFold((r) => r.spine2Mm),
+      front: fromFold((r) => r.frontMm),
+      band: fromFold((r) => r.bandHeightPct, TOL.pct),
+      cap: fromFold((r) => r.spineCapPct, TOL.pct),
+    };
+    const counted = results.filter(folded);
     lines.push(
-      `| **Mode** | | **${fmt(modeOrMedianOrNull(results.map((r) => r.widthMm)))}** ` +
-        `| **${fmt(modeOrMedianOrNull(results.map((r) => r.heightMm)))}** ` +
-        `| **${fmt(modeOrMedianOrNull(results.map((r) => r.backMm)))}** ` +
-        `| **${fmt(modeOrMedianOrNull(results.map((r) => r.spineMm)))}** ` +
-        `| **${fmt(modeOrMedianOrNull(results.map((r) => r.spine2Mm)))}** ` +
-        `| **${fmt(modeOrMedianOrNull(results.map((r) => r.frontMm)))}** | ` +
-        `| **${fmt(modeOrMedianOrNull(results.map((r) => r.bandHeightPct)))}** | | ` +
-        `**${modeOrMedianHexColor(results.map((r) => r.bandColorHex)) ?? '—'}** ` +
-        `| **${modeOrMedianHexColor(results.map((r) => r.bandEndColorHex)) ?? '—'}** ` +
-        `| **${fmt(modeOrMedianOrNull(results.map((r) => r.spineCapPct)))}** | |`,
+      `| **Consensus** | | **${agreed(sums.width)}** | **${agreed(sums.height)}** | **${agreed(sums.back)}** | **${agreed(sums.spine)}** ` +
+        `| **${agreed(sums.spine2)}** | **${agreed(sums.front)}** | | **${agreed(sums.band)}** | | ` +
+        `**${modeOrMedianHexColor(counted.map((r) => r.bandColorHex)) ?? '—'}** | **${modeOrMedianHexColor(counted.map((r) => r.bandEndColorHex)) ?? '—'}** ` +
+        `| **${agreed(sums.cap)}** | |`,
     );
     if (app && results.length) {
       lines.push(rowFor(app));
-      const m = (pick: (r: ImageResult) => number | null) => modeOrMedianOrNull(results.map(pick));
+      const v = (c: ReturnType<typeof consensus>) => c?.value ?? null;
       lines.push(
-        `| *app − Mode* | | ${deltaNum(app.widthMm, m((r) => r.widthMm))} | ${deltaNum(app.heightMm, m((r) => r.heightMm))} ` +
-          `| ${deltaNum(app.backMm, m((r) => r.backMm))} | ${deltaNum(app.spineMm, m((r) => r.spineMm))} | ${deltaNum(app.spine2Mm, m((r) => r.spine2Mm))} ` +
-          `| ${deltaNum(app.frontMm, m((r) => r.frontMm))} | | ${deltaNum(app.bandHeightPct, m((r) => r.bandHeightPct))} ` +
-          `| ${deltaStr(app.bandShape, modeString(results.map((r) => r.bandShape)))} | ${deltaHex(app.bandColorHex, modeOrMedianHexColor(results.map((r) => r.bandColorHex)))} ` +
-          `| ${deltaHex(app.bandEndColorHex, modeOrMedianHexColor(results.map((r) => r.bandEndColorHex)))} | ${deltaNum(app.spineCapPct, m((r) => r.spineCapPct))} | |`,
+        `| *app − Consensus* | | ${deltaNum(app.widthMm, v(sums.width))} | ${deltaNum(app.heightMm, v(sums.height))} ` +
+          `| ${deltaNum(app.backMm, v(sums.back))} | ${deltaNum(app.spineMm, v(sums.spine))} | ${deltaNum(app.spine2Mm, v(sums.spine2))} ` +
+          `| ${deltaNum(app.frontMm, v(sums.front))} | | ${deltaNum(app.bandHeightPct, v(sums.band))} ` +
+          `| ${deltaStr(app.bandShape, modeString(counted.map((r) => r.bandShape)))} | ${deltaHex(app.bandColorHex, modeOrMedianHexColor(counted.map((r) => r.bandColorHex)))} ` +
+          `| ${deltaHex(app.bandEndColorHex, modeOrMedianHexColor(counted.map((r) => r.bandEndColorHex)))} | ${deltaNum(app.spineCapPct, v(sums.cap))} | |`,
       );
     } else if (app) {
       lines.push(rowFor(app));
     }
-    const detected = results.filter((r) => r.spineSource === 'detected').length;
-    const estimated = results.filter((r) => r.spineSource === 'estimated').length;
+    const by = (src: ImageResult['spineSource']) => results.filter((r) => r.spineSource === src).length;
+    const suspect = results.filter((r) => !scaled(r)).length;
     lines.push('');
-    lines.push(`Fold lines detected from the image in ${detected}/${results.length}; estimated from a known spine width in ${estimated}/${results.length}.`);
+    lines.push(
+      `Fold lines detected in ${by('detected')}/${results.length}, checked by hand in ${by('manual')}/${results.length}, estimated (not counted) in ${by('estimated')}/${results.length}.` +
+        (suspect ? ` Scale suspect (not counted) in ${suspect}/${results.length}.` : ''),
+    );
     lines.push('');
   }
 
@@ -1482,7 +1584,7 @@ function modeString(values: (string | null)[]): string | null {
 }
 
 /** The whole of branding-spec.md: what is printed on the front header and spine, per folder, one column per
- * attribute so the Mode row can be taken column by column. */
+ * attribute so the consensus can be taken column by column. */
 function buildBrandingReport(groups: Map<string, ImageResult[]>): string {
   const lines: string[] = ['# Branding measurements', ''];
   lines.push(
@@ -1509,12 +1611,13 @@ function buildBrandingReport(groups: Map<string, ImageResult[]>): string {
   lines.push('- **logo colour**: the median colour of the logo\'s pixels.');
   lines.push('');
   lines.push(
-    'Each table ends in one **Mode** row across every row in it, template included: the most frequent exact value where ' +
-      'one value repeats and wins outright, otherwise the median. Detection is approximate: a logo touching the band\'s ' +
-      "edge, a fold line that was estimated instead of detected (see Spine source), or artwork close to the band colour " +
-      'can move a number. All colours are sRGB: an embedded ICC profile is converted to sRGB when the image is read (flagged in Notes), and an image with no profile is assumed to be sRGB already. ' +
+    '**Consensus** is the value most rows agree on: the largest group within ' + `${TOL.mm} mm (sizes) or ${TOL.pct} point (shares of a panel)` + ' of each other, its median, shown with how many of the counted rows agree (`3/4`); fewer than two agreeing is no consensus (—). ' +
+      'Rows that don\'t count are still listed: a **scale suspect** row (its size is more than ' + `${SCALE_TOLERANCE * 100}`+ ' % off the case\'s, so its DPI tag, bleed or crop is wrong) counts for nothing, and a row whose fold lines were **estimated** (placed from the app\'s own spine width, so circular) counts only for its overall width and height. ' +
+      `What a scan can't tell by itself (its bleed, its real DPI or trimmed height, hand-checked fold positions, or a reason to leave it out) is declared in ${MANIFEST}. ` +
+      'Detection is approximate: a logo touching the band\'s edge, or artwork close to the band colour, can move a number. ' +
+      'All colours are sRGB: an embedded ICC profile is converted to sRGB when the image is read (flagged in Notes), and an image with no profile is assumed to be sRGB already. ' +
       `Scans and templates whose DPI isn't exactly ${REQUIRED_DPI} are rejected, and images whose layout wasn't located have no row. ` +
-      'If `npm run compare:covers` has been run, a table also shows `app (rendered)`, the app\'s own render of that case, and `app − Mode` (percentage points; `=`/`≠` for text; a colour distance, 0 to 441, for colours). It is never part of the Mode.',
+      'If `npm run compare:covers` has been run, a table also shows `app (rendered)`, the app\'s own render of that case, and `app − Consensus` (percentage points; `=`/`≠` for text; a colour distance, 0 to 441, for colours). It never counts towards the consensus.',
   );
   lines.push('');
 
@@ -1534,24 +1637,27 @@ function buildBrandingReport(groups: Map<string, ImageResult[]>): string {
       return `| ${appLabel(r)} | ${BRANDING_COLUMNS.map((c) => fmtCell(c.get(r, b))).join(' | ')} | ${extra.join('; ')} |`;
     };
     for (const r of rows) lines.push(brandingRow(r));
-    const summary = BRANDING_COLUMNS.map((c) => {
-      const values = rows.map((r) => c.get(r, r.branding!));
-      if (c.kind === 'num') return fmtCell(modeOrMedianOrNull(values as (number | null)[]));
-      if (c.kind === 'hex') return modeOrMedianHexColor(values as (string | null)[]) ?? '—';
-      return modeString(values as (string | null)[]) ?? '—';
+    // Only rows whose folds were found or checked count: every branding measurement is taken from the front's or spine's edges.
+    const counted = rows.filter(folded);
+    const sums = BRANDING_COLUMNS.map((c) => {
+      const values = counted.map((r) => c.get(r, r.branding!));
+      if (c.kind === 'num') return consensus(values as (number | null)[], TOL.pct);
+      if (c.kind === 'hex') return modeOrMedianHexColor(values as (string | null)[]);
+      return modeString(values as (string | null)[]);
     });
-    if (rows.length) lines.push(`| **Mode** | ${summary.map((v) => `**${v}**`).join(' | ')} | |`);
+    const summary = sums.map((x) => (x === null ? '—' : typeof x === 'string' ? x : agreed(x)));
+    if (rows.length) lines.push(`| **Consensus** | ${summary.map((v) => `**${v}**`).join(' | ')} | |`);
     if (app) {
       lines.push(brandingRow(app));
       if (rows.length) {
         const delta = BRANDING_COLUMNS.map((c, i) => {
           const a = c.get(app, app.branding!);
-          const m = summary[i] === '—' ? null : summary[i];
-          if (c.kind === 'num') return deltaNum(a as number | null, m === null ? null : Number(m));
-          if (c.kind === 'hex') return deltaHex(a as string | null, m);
-          return deltaStr(a as string | null, m);
+          const m = sums[i];
+          if (c.kind === 'num') return deltaNum(a as number | null, m && typeof m === 'object' ? m.value : null);
+          if (c.kind === 'hex') return deltaHex(a as string | null, m as string | null);
+          return deltaStr(a as string | null, m as string | null);
         });
-        lines.push(`| *app − Mode* | ${delta.join(' | ')} | |`);
+        lines.push(`| *app − Consensus* | ${delta.join(' | ')} | |`);
       }
     }
     lines.push('');
@@ -1578,12 +1684,20 @@ async function main() {
   }
 
   const isTemplate = (f: string) => basename(f).split('.')[0].toLowerCase() === TEMPLATE_BASENAME;
+  const manifest = loadManifest();
+  const infoOf = (f: string) => manifest[`${basename(dirname(f))}/${basename(f)}`] ?? {};
+  const excluded: string[] = [];
   const groups = new Map<string, ImageResult[]>();
   const add = (group: string, r: ImageResult) => groups.set(group, [...(groups.get(group) ?? []), r]);
   let rejected = 0;
   for (const file of files.filter((f) => !isTemplate(f))) {
     const group = basename(dirname(file));
-    const result = await measure(file, group);
+    const info = infoOf(file);
+    if (info.exclude) {
+      excluded.push(`${group}/${basename(file)}: ${info.exclude}`);
+      continue;
+    }
+    const result = await measure(file, group, undefined, 'scan', info);
     if (result.dpiConfidence !== 'ok') {
       rejected++;
       console.error(`Rejected ${file}: DPI is ${result.dpi ?? 'missing'}, not ${REQUIRED_DPI}.`);
@@ -1601,7 +1715,9 @@ async function main() {
       console.error(`Rejected ${file}: DPI is ${density ?? 'missing'}, not ${REQUIRED_DPI}.`);
       continue;
     }
-    const scanWidth = modeOrMedianOrNull((groups.get(group) ?? []).map((r) => r.widthMm));
+    // Only for a template whose own DPI tag is unusable: its mm values follow the scans' width (its percentages don't).
+    const widths = (groups.get(group) ?? []).filter(scaled).map((r) => r.widthMm).filter((w): w is number => w !== null);
+    const scanWidth = consensus(widths, TOL.mm)?.value ?? (widths.length ? median(widths) : null);
     const result = await measureTemplate(file, group, scanWidth);
     if (result.spineSource === 'none' && result.backMm === null && result.notes.some((n) => n.endsWith('skipped.'))) {
       console.error(`Skipped template ${file}: ${result.notes.join(' ')}`);
@@ -1623,7 +1739,8 @@ async function main() {
     add(group, await measure(png, group, x3 === undefined ? [x1, x2] : [x1, x2, x3], 'app'));
   }
 
-  const report = buildReport(groups);
+  let report = buildReport(groups);
+  if (excluded.length) report += `\n## Excluded in ${MANIFEST}\n\n${excluded.map((e) => `- ${e}`).join('\n')}\n`;
   writeFileSync(out, report);
   console.error(`Wrote ${out}`);
   writeFileSync(brandingOut, buildBrandingReport(groups));

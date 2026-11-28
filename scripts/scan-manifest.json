@@ -1,0 +1,3 @@
+{
+  "$doc": "What scripts/measure-covers.ts can't tell from a scan's pixels, keyed <folder>/<file> under scans/. Fields: exclude (a reason: left out of the report), bleedMm (bleed round the trim on every side, cropped off before measuring), dpi (the real resolution, when the file's tag is wrong), trimHeightMm (the trimmed image's real height, sets the scale instead of the tag), foldsMm (fold positions checked by hand, mm from the trim's left edge: back|spine and spine|front, or a jewel case's three seams), note. Only add what has been checked against the image or the physical piece."
+}
