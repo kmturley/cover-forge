@@ -265,17 +265,17 @@ export const GAME_CASE_BRANDING: Record<string, Branding> = {
     },
   },
   // PS1 (jewel case): a black strip down the left, the PS symbol at its top and "PlayStation" reading upwards. The strip
-  // is 16.8 mm of the 120 mm booklet (photos of whole retail booklets: 16.5–17 mm), and the marks sit left of its
+  // is 17.5 mm of the 120 mm booklet, leaving the wordmark's "y" about 0.5 mm clear of its edge as on retail booklets, and the marks sit left of its
   // centre as they do on those booklets. Their sizes and offsets are shares of the strip's width.
   ps1: {
     front: {
-      shape: 'strip', w: 0.14, fill: K,
+      shape: 'strip', w: 0.146, fill: K,
       marks: [
-        { parts: [{ stack: [{ logo: 'playstation-mark-colour' }, { logo: 'playstation-wordmark', crop: [0, 0, 0.94, 1], h: 0.22 }] }], color: W, frame: { color: W }, gap: 0.3, from: 0.034, to: 0.1325, across: 0.703, dx: -0.004, rotate: 0 },
-        { parts: [{ logo: 'sony-logo' }], color: W, from: 0.845, to: 0.972, across: 0.6864, dx: 0.0038, anchor: 'bottom', rotate: 0 },
-        { parts: [{ logo: 'playstation-wordmark', crop: [0, 0, 0.94, 1] }], color: W, from: 0.184, to: 0.778, across: 0.8857, dx: 0.0868, anchor: 'center', rotate: -90 },
+        { parts: [{ stack: [{ logo: 'playstation-mark-colour' }, { logo: 'playstation-wordmark', crop: [0, 0, 0.94, 1], h: 0.22 }] }], color: W, frame: { color: W }, gap: 0.3, from: 0.034, to: 0.1325, across: 0.6741, dx: -0.0244, rotate: 0 },
+        { parts: [{ logo: 'sony-logo' }], color: W, from: 0.845, to: 0.972, across: 0.6582, dx: -0.017, anchor: 'bottom', rotate: 0 },
+        { parts: [{ logo: 'playstation-wordmark', crop: [0, 0, 0.94, 1] }], color: W, from: 0.184, to: 0.778, across: 0.8493, dx: 0.0627, anchor: 'center', rotate: -90 },
         // The wordmark's own ® is twice the size of the scans', so it is cropped off and this smaller one set instead.
-        { parts: [{ text: '®', weight: 400 }], color: W, from: 0.1695, to: 0.181, across: 0.0886, dx: 0.2396, anchor: 'center', rotate: -90 },
+        { parts: [{ text: '®', weight: 400 }], color: W, from: 0.1695, to: 0.181, across: 0.0849, dx: 0.2092, anchor: 'center', rotate: -90 },
       ],
     },
     spine: {
