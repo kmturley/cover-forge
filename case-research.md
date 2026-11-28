@@ -217,6 +217,17 @@ Two separate readings, since PS3 and PS4/PS5 turned out to differ at the insert 
 
 **Ours:** 128 × 149, spine 11 ✅ — three sources now agree on the spine and on width/height within 1 mm. **No change indicated.**
 
+**Xbox Series X|S: three generations of case (2026-11-28).** The sources above are all for the Xbox One, or for the
+original Series X case (2020), which follows it: a green case band with the XBOX logo above a shorter insert (the wiki's
+128 × 149, with a black "XBOX SERIES X" strip at its top). Later cases dropped the logo from the case and print the
+header on an insert that runs almost the case's full height: first a green block with a white "Xbox Series X / Xbox
+One" label, then (2023 on) one reading "Xbox Series X" (photo of the three side by side). For the newest case, the one
+the app's dress draws: a retail GTA V case measures about 133 × 163 mm with ~5.5 mm of green above and below (a 300 px
+photo, ±2 mm), and the three Series X scans' proportions (3142 × 1845–1853 px) give 157–163 mm tall for 128–133 mm
+panels. **Ours now:** 129.5 × 161, spine 11 (the PS4/PS5 size, in the same size of case), within that range; a ruler
+on a newer insert would pin it to 130–133 × 160–163. On the Xbox One the green top is the case's (photo of ARK: the art
+starts 17 mm down, a 150 mm insert below it).
+
 ---
 
 ## 6. Nintendo Switch

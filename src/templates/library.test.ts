@@ -75,8 +75,9 @@ describe('template library', () => {
   it('searches every word, by name, maker or group', () => {
     // By name within a group.
     expect(searchLibrary('nintendo').map((e) => e.name)).toEqual(['3DS', 'DS', 'Game Boy', 'Game Boy Advance', 'Game Boy Color', 'GameCube', 'NES', 'SNES', 'Switch', 'Switch 2', 'Wii', 'Wii U']);
-    // The standard case counts too: PS3, PS4, PS5, Xbox One and Series X|S covers fit a Blu-ray case, as does the Blu-ray 4K UHD one.
-    expect(searchLibrary('blu ray').map((e) => e.id)).toEqual(['game-case-ps3', 'game-case-ps4', 'game-case-ps5', 'game-case-xbox-one', 'game-case-xbox-series', 'bluray-us-11', 'uhd-us-11', 'uhd-multi4-15', 'uhd-elite-12.5', 'bluray-slim-7']);
+    // The standard case counts too: PS3, PS4, PS5 and Xbox One covers fit a Blu-ray case, as does the Blu-ray 4K UHD one. The
+    // Xbox Series insert is taller than any of them, so it is its own case.
+    expect(searchLibrary('blu ray').map((e) => e.id)).toEqual(['game-case-ps3', 'game-case-ps4', 'game-case-ps5', 'game-case-xbox-one', 'bluray-us-11', 'uhd-us-11', 'uhd-multi4-15', 'uhd-elite-12.5', 'bluray-slim-7']);
     expect(searchLibrary('')).toHaveLength(LIBRARY.length);
   });
 

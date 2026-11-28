@@ -136,7 +136,10 @@ export const GAME_CASES: Record<string, { insert: InsertSize; outside?: Size }> 
   'xbox-360': { insert: { ...DVD_INSERT, spine: 14 }, outside: DVD_SHELL },
   // The Blu-ray insert in Microsoft's own case (§5). Scans of Series X covers read 156 mm tall: unconfirmed (see scans-needed.md).
   'xbox-one': { insert: { ...BLURAY_INSERT, spine: 11 }, outside: XBOX_ONE_SHELL },
-  'xbox-series': { insert: { ...BLURAY_INSERT, spine: 11 }, outside: XBOX_ONE_SHELL },
+  // The newest Series case (2023 on), the one its dress draws: the insert runs almost the case's full height, its printed
+  // header at the top with ~5.5 mm of green above and below (photo of a retail GTA V case; the three scans' proportions
+  // agree). The original 2020 case followed the Xbox One's, a 149 mm insert under a green case band (§5).
+  'xbox-series': { insert: { w: 129.5, h: 161, spine: 11 }, outside: XBOX_ONE_SHELL },
 };
 
 /**

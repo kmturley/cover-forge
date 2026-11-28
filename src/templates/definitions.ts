@@ -518,8 +518,8 @@ const VINYL: Record<string, { label: string }> = {
  */
 const GAME_CASE_ORIGIN: Record<string, CaseOrigin> = {
   pc: 'standard', ps1: 'standard', ps2: 'standard', ps3: 'standard', ps4: 'standard', ps5: 'standard',
-  wii: 'standard', 'wii-u': 'standard', gamecube: 'standard', xbox: 'standard', 'xbox-360': 'standard', 'xbox-one': 'standard', 'xbox-series': 'standard',
-  'ps-vita': 'original', ds: 'original', '3ds': 'original', switch: 'original', switch2: 'original', nes: 'original', snes: 'original',
+  wii: 'standard', 'wii-u': 'standard', gamecube: 'standard', xbox: 'standard', 'xbox-360': 'standard', 'xbox-one': 'standard',
+  'ps-vita': 'original', 'xbox-series': 'original', ds: 'original', '3ds': 'original', switch: 'original', switch2: 'original', nes: 'original', snes: 'original',
   gb: 'aftermarket', gbc: 'aftermarket', gba: 'aftermarket',
 };
 
@@ -530,10 +530,11 @@ const GAME_CASE_ORIGIN: Record<string, CaseOrigin> = {
 const GAME_CASE_NAME: Record<string, string> = {
   ds: 'DS case', gb: 'DS case', gbc: 'DS case', gba: 'DS case', '3ds': '3DS case',
   switch: 'Switch case', switch2: 'Switch case', 'ps-vita': 'PS Vita case', nes: 'NES case', snes: 'SNES case',
+  'xbox-series': 'Xbox Series case',
 };
 
 /**
- * Cases whose insert is much shorter than the case (PS3: 149 of 171 mm; Xbox One and Series: 149 of 170) stand it on the
+ * Cases whose insert is much shorter than the case (PS3: 149 of 171 mm; Xbox One: 149 of 170) stand it on the
  * bottom, leaving a band of the case at the top with a logo on it: the Blu-ray logo moulded at the top right of the clear
  * PS3 case, the Xbox One logo printed on the Xbox One's green top (photos of retail cases; on the Xbox One's own case the
  * insert leaves out its printed header for it, see `headerOnCase` in official.ts). The
@@ -545,7 +546,6 @@ const UNDER_BAND: Record<string, { logo: string; heightMm: number; rightMm?: num
   ps3: [{ logo: 'blu-ray', heightMm: 8, rightMm: 7 }],
   // Printed white across the green top, 47 mm wide (photo of a retail case); the logo is 941 × 185 units.
   'xbox-one': [{ logo: 'xbox-one', heightMm: (47 * 185) / 941, printed: true }],
-  'xbox-series': [],
 };
 
 /**

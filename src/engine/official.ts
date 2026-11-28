@@ -586,22 +586,23 @@ export const GAME_CASE_BRANDING: Record<string, Branding> = {
     },
   },
   // Xbox Series X|S (2024 on): a green block over the spine's top and the front's top-left corner with a diagonal edge,
-  // continued by a pale slanted plate holding "Xbox Series X"; a charcoal spine.
+  // continued by a pale slanted plate holding "Xbox Series X"; a charcoal spine. Shares of its 129.5 × 161 mm insert: the
+  // band is 15.6 mm deep, 9.7 % of the height as on the three scans.
   'xbox-series': {
     front: {
-      shape: 'tab', w: 0.2069, wBottom: 0.1195, h: 0.105, fill: SERIES_GREEN,
-      plate: { top: 0.583, bottom: 0.497, fill: '#fcfcfc', line: '#d9d9d9' },
+      shape: 'tab', w: 0.2045, wBottom: 0.1181, h: 0.0972, fill: SERIES_GREEN,
+      plate: { top: 0.5762, bottom: 0.4912, fill: '#fcfcfc', line: '#d9d9d9' },
       marks: [
-        { parts: [{ logo: 'xbox-seriesx-mark' }], color: W, h: 0.0583, align: 'left', inset: 0.0529, cy: 0.0588 },
-        { parts: [{ text: 'Xbox Series X', weight: 800 }], color: '#333333', h: 0.0232, align: 'left', inset: 0.211, cy: 0.0582, onPanel: true },
+        { parts: [{ logo: 'xbox-seriesx-mark' }], color: W, h: 0.054, align: 'left', inset: 0.0523, cy: 0.0544 },
+        { parts: [{ text: 'Xbox Series X', weight: 800 }], color: '#333333', h: 0.0215, align: 'left', inset: 0.2086, cy: 0.0539, onPanel: true },
       ],
     },
     spine: {
       fill: '#373632',
-      cap: { length: 0.105, joins: true, fill: SERIES_GREEN },
+      cap: { length: 0.0972, joins: true, fill: SERIES_GREEN },
       marks: [
-        { parts: [{ logo: 'xbox-seriesx-mark' }], color: W, from: 0.131, to: 0.181, across: 0.58, dx: 0.03, rotate: 0 },
-        { parts: [{ logo: 'xbox-seriesx', crop: [0.372, 0.2, 1, 0.82] }], color: W, from: 0.1852, to: 0.2755, across: 0.4, dx: 0.02, rotate: 90 },
+        { parts: [{ logo: 'xbox-seriesx-mark' }], color: W, from: 0.1212, to: 0.1675, across: 0.58, dx: 0.03, rotate: 0 },
+        { parts: [{ logo: 'xbox-seriesx', crop: [0.372, 0.2, 1, 0.82] }], color: W, from: 0.1714, to: 0.255, across: 0.4, dx: 0.02, rotate: 90 },
       ],
     },
   },

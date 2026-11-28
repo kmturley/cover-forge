@@ -56,7 +56,7 @@ describe('game case sizes (see branding-spec.md)', () => {
     ['game-case', 'wii', 273, 183],
     ['game-case', 'ps3', 273, 149],
     ['game-case', 'xbox-one', 267, 149],
-    ['game-case', 'xbox-series', 267, 149],
+    ['game-case', 'xbox-series', 270, 161],
     ['game-case', 'ps4', 273, 161],
     ['game-case', 'ps5', 273, 161],
   ] as const)('%s %s: %d × %d mm cover', (kind, v, w, h) => {
