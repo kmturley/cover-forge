@@ -1,48 +1,39 @@
 /**
- * Measures printed cover wraps and aggregates the results by folder name.
+ * Measures where the branding sits on real covers: the header band or side strip, its colours, the logos on it and
+ * the spine's cap and logos, as shares of each panel. Results are aggregated by folder name (one folder per case:
+ * "scans/ps4/*.jpg", "scans/ps1/*.jpg", ...).
  *
- * Assumes each image is a single, pre-cropped full wrap laid out left to right as
- * back | spine | front, with no background border beyond the trim edge (the image's
- * own edges ARE the trim edges) — except CD/PS1/Dreamcast jewel cases, which are
- * spine | back | spine | front (see JEWEL_CASE_GROUPS below). Point it at a directory
- * of subfolders, one per platform/case ("scans/ps4/*.jpg", "scans/ps5/*.jpg", ...) and
- * it aggregates by subfolder name.
+ * Sizes are not measured here. An insert's size, spine and fold positions come from its documented standard (the
+ * app's template, from case-research.md), because a scan can't be trusted for them: scanners, crops, rotation and
+ * re-saves all change them. Instead every image is stretched to its case's standard size, which puts its folds where
+ * the standard does, and only the branding is measured on it. An image whose proportions are far off the standard
+ * (STRETCH_TOLERANCE) is cropped, includes a border or bleed, is another edition, or isn't a full wrap: it is listed
+ * but not counted. What the pixels can't tell (bleed to crop off, a reason to leave an image out) is declared in
+ * scripts/scan-manifest.json.
+ *
+ * Layout, left to right: back | spine | front, or for a CD/PS1 jewel case spine | back | spine | front (the tray card
+ * and the separate booklet side by side).
  *
  * Usage:
- *   node scripts/measure-covers.ts                                  # scans ./scans, writes scans-report.md
- *   node scripts/measure-covers.ts scans --out case-scan-report.md --branding-out branding-spec.md
- *   node scripts/measure-covers.ts "scans/**\/*.jpg" --out case-scan-report.md
+ *   npm run measure:covers                                          # scans ./scans, writes scans-report.md and branding-spec.md
+ *   npx tsx scripts/measure-covers.ts scans --out report.md --branding-out branding.md
  *
- * A `template.png` inside a folder is treated as a FAN-MADE TEMPLATE, not a scan (see measureTemplate): a
- * mostly-transparent PNG holding only the branding (header strip, spine strip, back/spine logos). It is
- * measured from its alpha channel with the same header-band/colour code the scans use, reported alongside
- * that folder's scans as one more row, so the folder's single summary row (mode, else median) covers both.
+ * A `template.png` in a folder is a FAN-MADE TEMPLATE (see measureTemplate): a mostly transparent PNG holding only the
+ * branding, stretched to the standard like a scan and measured with the same code, as one more row.
  *
- * Source defaults to `./scans`, `--out` to `scans-report.md`. The same run also measures what is printed on the
- * front header and spine (mark positions, sizes, colours, the line under the header, spine caps) and writes it,
- * one column per attribute, to `--branding-out` (default `branding-spec.md`), replacing that file entirely.
- * Scans whose embedded DPI isn't exactly 300 are rejected outright and left out of the
- * report entirely (noted on stderr instead), since a print-shop scan should always be
- * saved at 300 DPI and anything else is a strong signal the file isn't one (a web image,
- * a phone photo, a re-save that dropped/rewrote the metadata).
+ * Each folder's summary is a consensus (see `consensus`): the value most of the counted images agree on, or none.
+ * scripts/compare-covers.ts renders the app's own cover for each folder; it is measured the same way and shown beside
+ * the consensus, never counted in it.
  *
- * What's deterministic here vs. a first pass, honestly:
- *   - Pixel size and mm conversion (via embedded DPI): deterministic, but only as
- *     good as the file's DPI metadata — files that aren't exactly 300 DPI are rejected
- *     rather than trusted.
- *   - Fold line (back|spine, spine|front) detection: a real edge-detection pass
- *     (vertical gradient profile + symmetry check), not a guess, but it can fail
- *     on busy artwork; failures are reported per file, not silently papered over.
- *   - Front header band height/colour: only detects FLAT bands (a single colour
- *     with one transition row), the most common case. Sloped or curved headers
- *     (Wii, GameCube, Wii U) will misdetect or report low confidence — noted in
- *     the output, not silently treated as correct.
+ * Detection is approximate: band edges are found by a jump in the row colour (flat or smooth gradient bands), logos by
+ * colour against the band, and a PS1-style strip by its strongest seam. Sloped or curved headers are reported as such.
  */
 import { existsSync, globSync, readdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
 import { basename, dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import sharp from 'sharp';
 import { buildTemplateById } from '../src/templates/index.ts';
+import type { TemplateConfig } from '../src/types/template.ts';
 
 /**
  * What is known about one source image beyond its pixels, from scripts/scan-manifest.json (keyed `<folder>/<file>`).
@@ -51,14 +42,8 @@ import { buildTemplateById } from '../src/templates/index.ts';
 interface SourceInfo {
   /** Left out of the report, with this reason. */
   exclude?: string;
-  /** Bleed round the trim on every side, mm: cropped off before measuring (the default assumes the image edge is the trim). */
+  /** Bleed round the trim on every side, mm: cropped off before the image is stretched to the standard. */
   bleedMm?: number;
-  /** The image's real resolution, when its DPI tag is wrong. */
-  dpi?: number;
-  /** The trimmed image's real height, mm (measured with a ruler, or a part of known size): sets the scale instead of the DPI tag. */
-  trimHeightMm?: number;
-  /** Fold positions checked by hand, mm from the trim's left edge: [back|spine, spine|front], or a jewel case's three seams. */
-  foldsMm?: number[];
   note?: string;
 }
 
@@ -73,21 +58,33 @@ function loadManifest(): Record<string, SourceInfo> {
 /** Scan folder names that differ from the app's variant id. */
 const FOLDER_TO_TEMPLATE: Record<string, string> = { wiiu: 'wii-u', psvita: 'ps-vita', xbox360: 'xbox-360', xboxone: 'xbox-one', xboxseriesx: 'xbox-series' };
 
-/**
- * The trimmed height a folder's scans should have, mm: the tallest printed piece of the case they're for. Used only as a
- * sanity check on each scan's scale (a scan tagged 300 DPI but scanned at 400 comes out a third too big), never as a
- * measurement: a scan more than SCALE_TOLERANCE off it is reported but left out of the consensus.
- */
-function expectedHeightMm(group: string): number | null {
-  const g = group.toLowerCase();
-  try {
-    const t = buildTemplateById(g === 'cd' ? 'cd-jewel' : `game-case-${FOLDER_TO_TEMPLATE[g] ?? g}`);
-    return Math.max(...t.panels.map((p: { heightMm: number }) => p.heightMm));
-  } catch {
-    return null;
-  }
+/** A case's printed pieces as the scans lay them out, left to right, at their documented standard size (mm). */
+interface Layout {
+  widthsMm: number[];
+  heightMm: number;
+  jewel: boolean;
 }
-const SCALE_TOLERANCE = 0.025;
+
+/**
+ * The standard layout for a folder, from the app's template for that case (its sizes are the documented standard, see
+ * case-research.md), or null when the app has no template for it.
+ */
+function standardLayout(group: string): Layout | null {
+  const g = group.toLowerCase();
+  const id = g === 'cd' ? 'cd-jewel' : `game-case-${FOLDER_TO_TEMPLATE[g] ?? g}`;
+  const t: TemplateConfig = buildTemplateById(id);
+  // An unknown id falls back to a default template: only an exact match is this case's standard.
+  if (t.id !== id) return null;
+  const jewel = JEWEL_CASE_GROUPS.has(g);
+  const panels = (jewel ? ['spine', 'back', 'spineRight', 'front'] : ['back', 'spine', 'front']).map((pid) => t.panels.find((p) => p.id === pid));
+  if (panels.some((p) => !p)) return null;
+  return { widthsMm: panels.map((p) => p!.widthMm), heightMm: Math.max(...panels.map((p) => p!.heightMm)), jewel };
+}
+
+/** How far an image's proportions may be from the standard's before it is taken for cropped or not a full wrap. */
+const STRETCH_TOLERANCE = 0.03;
+/** The resolution images are stretched to before measuring. */
+const FIT_DPI = 300;
 
 /**
  * The value most of the images agree on: the largest group of values all within `tol` of each other, if at least two
@@ -104,8 +101,8 @@ function consensus(values: (number | null)[], tol: number): { value: number; agr
   }
   return best.length >= 2 ? { value: median(best), agree: best.length, of: v.length } : null;
 }
-/** How far apart values may be and still agree: mm for sizes, percentage points for shares of a panel. */
-const TOL = { mm: 1, pct: 1 };
+/** How far apart two shares of a panel may be and still agree, percentage points. */
+const TOL_PCT = 1;
 
 const IMAGE_EXTS = new Set(['.jpg', '.jpeg', '.png', '.tif', '.tiff', '.webp']);
 const MM_PER_INCH = 25.4;
@@ -114,118 +111,35 @@ const DEFAULT_OUT = 'scans-report.md';
 const DEFAULT_BRANDING_OUT = 'branding-spec.md';
 /** Where scripts/compare-covers.ts writes `<platform>/app.png` (and its fold positions), if it has been run. */
 const DEFAULT_APP_DIR = 'compare';
-/** Print-ready covers are supplied at 300 DPI; anything else (72/96 dpi web images, a phone photo, metadata
- * lost on a re-save) is rejected rather than trusted. */
-const REQUIRED_DPI = 300;
-/** A spine between these fractions of the total width is plausible for every case format in this project
- * (from a 3 mm cassette spine to a 25 mm VHS box, roughly 0.5%-20% of a typical wrap width). */
-const SPINE_FRACTION_RANGE: [number, number] = [0.005, 0.2];
-/** Front and back panels are the same width on every case researched so far (case-research.md); reject a
- * fold-line pair whose two side widths disagree by more than this fraction of their average. */
-const SYMMETRY_TOLERANCE = 0.08;
-
-/**
- * Fallback spine widths (mm), keyed by the folder name you use for each case, from case-research.md's
- * already-researched values (see definitions.ts). Flat, pre-print cover files have no physical fold crease
- * to detect — edge/variance detection on them tends to lock onto ordinary art content instead (a photo
- * inset, a plain-colour background) rather than failing safely. When generic detection doesn't find a
- * plausible, symmetric pair, this is used as a calibration prior instead: assume front and back panels are
- * equal width (true for every case in case-research.md) and place the spine using its known width. This is
- * an ESTIMATE, not a measurement, and is always labelled as such in the report.
- */
-const KNOWN_SPINE_MM: Record<string, number> = {
-  pc: 14,
-  ps2: 14,
-  ps3: 14,
-  ps4: 14,
-  ps5: 14,
-  'ps-vita': 9,
-  psvita: 9,
-  ds: 16,
-  gb: 16,
-  gbc: 16,
-  gba: 16,
-  nes: 28,
-  snes: 25,
-  '3ds': 12,
-  switch: 10,
-  switch2: 10,
-  wii: 14,
-  'wii-u': 14,
-  wiiu: 14,
-  gamecube: 14,
-  xbox: 14,
-  'xbox-360': 14,
-  xbox360: 14,
-  'xbox-one': 11,
-  xboxone: 11,
-  'xbox-series': 11,
-  xboxseries: 11,
-  dvd: 14,
-  'dvd-slim': 7,
-  dvdslim: 7,
-  bluray: 11,
-  'blu-ray': 11,
-};
-
-/**
- * CD/PS1/Dreamcast jewel cases are the one shape in this project where a source file can't be treated
- * as back | spine | front: the tray card's two spine flaps and the (physically separate) front cover are
- * commonly supplied side by side in a single file, left to right as spine | back | spine | front — see
- * case-research.md's CD jewel case section and `jewelCase()` in src/templates/definitions.ts, both of
- * which record the tray card as [spine | back | spine] with the front as its own piece. `spine` is the
- * app's own 6.5 mm tray-card flap width; `spine2` uses the case's ~10 mm shelf spine (Wikipedia, already
- * used for this case's exterior depth in case-research.md) rather than repeating `spine`, because every
- * real scan tested so far draws the flap nearest the front noticeably wider than the one nearest the back.
- */
+/** Folders of CD/PS1/Dreamcast jewel cases: their images are spine | back | spine | front (tray card, then booklet). */
 const JEWEL_CASE_GROUPS = new Set(['cd', 'ps1', 'dreamcast']);
-const JEWEL_CASE_MM = { spine: 6.5, spine2: 10, back: 137, front: 120 };
 
 /** Fan-made templates are named this (any extension) inside a platform folder. */
 const TEMPLATE_BASENAME = 'template';
-/** A wrap's width in every case researched so far falls in this range (mm); a template outside it has
- * broken DPI metadata (seen: a 72-DPI-tagged file, a 10752 px wide file tagged 300). */
-const PLAUSIBLE_WRAP_WIDTH_MM: [number, number] = [180, 330];
 /** Alpha above this counts as "printed" when reading a template's layout. */
 const ALPHA_OPAQUE = 128;
 /** The colour transparent template pixels are flattened onto, so the scan header-band code sees a hard edge
  * where the branding ends. */
 const TEMPLATE_FLATTEN_RGB: [number, number, number] = [255, 0, 255];
 
-type DpiConfidence = 'ok' | 'wrong' | 'missing';
-
 interface ImageResult {
   file: string;
   /** 'template' = fan-made transparent template, measured from its alpha channel. 'app' = the app's own render of
-   * this case (scripts/compare-covers.ts), measured with its fold positions known; it is reported beside the folder's
-   * consensus row and never counted in it. */
+   * this case (scripts/compare-covers.ts); it is reported beside the folder's consensus and never counted in it. */
   kind: 'scan' | 'template' | 'app';
+  /** The image's size as supplied, less any declared bleed. */
   widthPx: number;
   heightPx: number;
-  dpi: number | null;
-  dpiConfidence: DpiConfidence;
-  widthMm: number | null;
-  heightMm: number | null;
-  backMm: number | null;
-  spineMm: number | null;
-  frontMm: number | null;
-  /** The second spine flap, jewel cases only (see JEWEL_CASE_GROUPS) — null for every other case shape. */
-  spine2Mm: number | null;
-  /**
-   * 'detected' from the image itself, 'manual' from the manifest (checked by hand), 'known' for the app's own render,
-   * 'estimated' from a known spine width (left out of the consensus: it is the app's number, not the scan's), or 'none'.
-   */
-  spineSource: 'detected' | 'manual' | 'estimated' | 'known' | 'none';
-  /** Where the mm scale comes from: the file's DPI tag, or the manifest (a declared DPI or trimmed height). */
-  scaleSource: 'tag' | 'declared';
-  /** Why this row is left out of the consensus (a suspect scale), or null when it counts. */
+  /** How much wider (+) or narrower (−) the image is than the standard, in proportion, %: 0 when it fits exactly. */
+  stretchPct: number;
+  /** Why this row is left out of the consensus (proportions far off the standard), or null when it counts. */
   distrust: string | null;
   bandHeightPct: number | null;
   bandShape: 'flat' | 'gradient' | 'none';
   bandColorHex: string | null;
   bandEndColorHex: string | null;
   spineCapPct: number | null;
-  /** Header/spine branding, or null when the wrap's layout couldn't be located. */
+  /** Header/spine branding, or null when it couldn't be measured. */
   branding: Branding | null;
   notes: string[];
 }
@@ -281,11 +195,6 @@ function colourProfileNote(icc: Buffer | undefined): string | null {
   return `Colour profile ${name} converted to sRGB.`;
 }
 
-function dpiConfidence(density: number | undefined): { dpi: number | null; confidence: DpiConfidence } {
-  if (!density) return { dpi: null, confidence: 'missing' };
-  return { dpi: density, confidence: Math.round(density) === REQUIRED_DPI ? 'ok' : 'wrong' };
-}
-
 /** Grayscale luminance, one value per pixel, row-major. */
 function toGray(img: RawImage): Float32Array {
   const { width, height, channels, data } = img;
@@ -331,102 +240,6 @@ function median(values: number[]): number {
   const sorted = [...values].sort((a, b) => a - b);
   const mid = Math.floor(sorted.length / 2);
   return sorted.length % 2 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2;
-}
-
-/** The strongest column in each run of adjacent above-threshold columns of a (smoothed) vertical-edge
- * profile — one real seam can span a couple of px, so this collapses each such run to its single peak. */
-function findPeaks(profile: Float64Array, width: number): number[] {
-  const margin = Math.max(2, Math.floor(width * 0.01));
-  for (let i = 0; i < margin; i++) profile[i] = 0;
-  for (let i = width - margin; i < width; i++) profile[i] = 0;
-
-  const values = Array.from(profile);
-  const baseline = median(values);
-  const mad = median(values.map((v) => Math.abs(v - baseline))) || 1;
-  const threshold = baseline + 4 * mad;
-
-  const candidates: number[] = [];
-  for (let i = 0; i < profile.length; i++) if (profile[i] > threshold) candidates.push(i);
-  if (!candidates.length) return [];
-
-  const peaks: number[] = [];
-  let run = [candidates[0]];
-  for (const c of candidates.slice(1)) {
-    if (c - run[run.length - 1] <= 3) {
-      run.push(c);
-    } else {
-      peaks.push(run.reduce((best, i) => (profile[i] > profile[best] ? i : best)));
-      run = [c];
-    }
-  }
-  peaks.push(run.reduce((best, i) => (profile[i] > profile[best] ? i : best)));
-  return peaks;
-}
-
-/** Finds the back|spine and spine|front seams. Returns [x1, x2] in pixels, or null. */
-function findFoldLines(gray: Float32Array, width: number, height: number): [number, number] | null {
-  const profile = smooth(verticalSeamProfile(gray, width, height));
-  const peaks = findPeaks(profile, width);
-  if (!peaks.length) return null;
-
-  const [lo, hi] = SPINE_FRACTION_RANGE;
-  let best: [number, number] | null = null;
-  let bestScore = -1;
-  for (let i = 0; i < peaks.length; i++) {
-    for (let j = i + 1; j < peaks.length; j++) {
-      const x1 = peaks[i];
-      const x2 = peaks[j];
-      const spine = x2 - x1;
-      if (spine < lo * width || spine > hi * width) continue;
-      const back = x1;
-      const front = width - x2;
-      if (back === 0 || front === 0) continue;
-      if (Math.abs(back - front) / ((back + front) / 2) > SYMMETRY_TOLERANCE) continue;
-      const score = profile[x1] + profile[x2];
-      if (score > bestScore) {
-        bestScore = score;
-        best = [x1, x2];
-      }
-    }
-  }
-  return best;
-}
-
-/**
- * For CD/PS1/Dreamcast jewel cases only: refines the three seams of a spine | back | spine | front layout
- * (see JEWEL_CASE_GROUPS) by searching near where JEWEL_CASE_MM's known proportions predict each one,
- * rather than a blind global search. A global threshold-based search (the same approach as findFoldLines)
- * was tried first and rejected: on real jewel case scans, the busy collage-style back cover raises the
- * "ordinary edge noise" baseline enough that the genuine, but modest, spine1|back seam often doesn't clear
- * a global threshold at all (seen in testing on two of three real PS1 scans), while a blind combinatorial
- * match against whatever peaks DO clear it can just as easily lock onto a wrong triple. Anchoring each
- * search to its expected position avoids both failure modes, at the cost of never finding a seam far from
- * where it's expected to be. */
-function findJewelCaseSeams(gray: Float32Array, width: number, height: number, dpi: number): [number, number, number] {
-  const mmToPx = (mm: number) => (mm / MM_PER_INCH) * dpi;
-  const profile = smooth(verticalSeamProfile(gray, width, height));
-  const margin = Math.max(2, Math.floor(width * 0.01));
-  for (let i = 0; i < margin; i++) profile[i] = 0;
-  for (let i = width - margin; i < width; i++) profile[i] = 0;
-
-  const peakNear = (expectedPx: number, windowPx: number): number => {
-    const lo = Math.max(0, Math.round(expectedPx - windowPx));
-    const hi = Math.min(width - 1, Math.round(expectedPx + windowPx));
-    let best = Math.round(expectedPx);
-    let bestValue = -Infinity;
-    for (let x = lo; x <= hi; x++) {
-      if (profile[x] > bestValue) {
-        bestValue = profile[x];
-        best = x;
-      }
-    }
-    return best;
-  };
-
-  const x1 = peakNear(mmToPx(JEWEL_CASE_MM.spine), mmToPx(4));
-  const x2 = peakNear(x1 + mmToPx(JEWEL_CASE_MM.back), mmToPx(6));
-  const x3 = peakNear(x2 + mmToPx(JEWEL_CASE_MM.spine2), mmToPx(6));
-  return [x1, x2, x3];
 }
 
 function colorToHex([r, g, b]: [number, number, number]): string {
@@ -1075,148 +888,59 @@ function applyFrontBand(result: ImageResult, band: HeaderBand | null, heightPx: 
   return true;
 }
 
-/** `knownFold`: where the seams are, when the layout is known rather than found — two x positions (back|spine, spine|front)
- * or, for a jewel case, three (spine | back | spine | front). `info`: what the manifest records about the image. */
-async function measure(file: string, group: string, knownFold?: number[], kind: 'scan' | 'app' = 'scan', info: SourceInfo = {}): Promise<ImageResult> {
+/**
+ * Fits an image to its case's standard: `bleedMm` cropped off, then stretched to the standard size at FIT_DPI. Returns
+ * the result's shared fields (with the stretch check applied) and the fitted pipeline's size and fold positions.
+ */
+async function fitToStandard(file: string, kind: ImageResult['kind'], layout: Layout, info: SourceInfo) {
   const meta = await sharp(file).metadata();
   const notes: string[] = [];
-  // The scale: a DPI or trimmed height declared in the manifest wins over the file's own tag.
-  const bleed = info.bleedMm ?? 0;
-  const declared = info.dpi ?? (info.trimHeightMm ? (meta.height! * MM_PER_INCH) / (info.trimHeightMm + 2 * bleed) : undefined);
-  const tagged = dpiConfidence(meta.density);
-  const { dpi, confidence } = declared ? { dpi: declared, confidence: 'ok' as DpiConfidence } : tagged;
-  if (declared) notes.push(info.dpi ? `Scale declared: ${info.dpi} DPI.` : `Scale declared: trimmed height ${info.trimHeightMm} mm (${declared.toFixed(0)} DPI).`);
-  if (confidence !== 'ok') {
-    notes.push(`DPI is ${meta.density ?? 'missing'}, not ${REQUIRED_DPI}; rejected.`);
-  }
   const profileNote = colourProfileNote(meta.icc);
   if (profileNote) notes.push(profileNote);
-
-  // The bleed is cropped off, so every position below is measured from the trim.
-  const bleedPx = dpi ? Math.round((bleed / MM_PER_INCH) * dpi) : 0;
+  if (info.note) notes.push(info.note);
+  const stdW = layout.widthsMm.reduce((a, b) => a + b, 0);
+  // Declared bleed is cropped off first; its size in pixels follows from the image's width against the standard's plus bleed.
+  const bleed = info.bleedMm ?? 0;
+  const bleedPx = bleed ? Math.round((meta.width! * bleed) / (stdW + 2 * bleed)) : 0;
+  if (bleedPx) notes.push(`${bleed} mm bleed cropped off.`);
   const widthPx = meta.width! - 2 * bleedPx;
   const heightPx = meta.height! - 2 * bleedPx;
-  const image = bleedPx ? sharp(file).extract({ left: bleedPx, top: bleedPx, width: widthPx, height: heightPx }) : sharp(file);
-  if (bleedPx) notes.push(`${bleed} mm bleed cropped off.`);
-  if (info.note) notes.push(info.note);
-
-  const toMm = (px: number) => (dpi ? (px / dpi) * MM_PER_INCH : null);
-  const manual = !knownFold && info.foldsMm && dpi ? info.foldsMm.map((mm) => Math.round((mm / MM_PER_INCH) * dpi)) : undefined;
-  if (manual) knownFold = manual;
-  const result: ImageResult = {
-    file,
-    kind,
-    widthPx,
-    heightPx,
-    dpi,
-    dpiConfidence: confidence,
-    widthMm: toMm(widthPx),
-    heightMm: toMm(heightPx),
-    backMm: null,
-    spineMm: null,
-    frontMm: null,
-    spine2Mm: null,
-    spineSource: 'none',
-    scaleSource: declared ? 'declared' : 'tag',
-    distrust: null,
-    bandHeightPct: null,
-    bandShape: 'none',
-    bandColorHex: null,
-    bandEndColorHex: null,
-    spineCapPct: null,
-    branding: null,
-    notes,
-  };
-
-  // A scan whose size is far from the case's is at the wrong scale (or has a border or bleed nobody declared): its mm
-  // values are wrong and its percentages are taken from the wrong edges, so it is shown but not counted.
-  const expected = kind === 'scan' ? expectedHeightMm(group) : null;
-  if (expected && result.heightMm && Math.abs(result.heightMm / expected - 1) > SCALE_TOLERANCE) {
-    result.distrust = `Scale suspect: ${result.heightMm.toFixed(1)} mm tall where ${group}'s pieces are ${expected} mm; declare its bleed, DPI or trimmed height in ${MANIFEST}.`;
+  const stretchPct = 100 * (widthPx / heightPx / (stdW / layout.heightMm) - 1);
+  const result: ImageResult = { file, kind, widthPx, heightPx, stretchPct, distrust: null, bandHeightPct: null, bandShape: 'none', bandColorHex: null, bandEndColorHex: null, spineCapPct: null, branding: null, notes };
+  if (Math.abs(stretchPct) > STRETCH_TOLERANCE * 100) {
+    result.distrust = `Proportions ${stretchPct > 0 ? '+' : ''}${stretchPct.toFixed(1)} % off the standard ${stdW} × ${layout.heightMm} mm: cropped, a border or bleed included, another edition, or not a full wrap. Declare its bleed or exclude it in ${MANIFEST}.`;
     notes.push(result.distrust);
   }
+  const px = FIT_DPI / MM_PER_INCH;
+  const [width, height] = [Math.round(stdW * px), Math.round(layout.heightMm * px)];
+  const pipeline = (bleedPx ? sharp(file).extract({ left: bleedPx, top: bleedPx, width: widthPx, height: heightPx }) : sharp(file)).resize(width, height, { fit: 'fill' });
+  let at = 0;
+  const folds = layout.widthsMm.slice(0, -1).map((w) => Math.round((at += w) * px));
+  return { result, pipeline, width, height, folds };
+}
 
-  if (confidence !== 'ok') return result;
-
-  // A full wrap (back+spine+front laid side by side) is always wider than a single panel is tall; a
-  // portrait image here is almost certainly a single front- or back-cover scan, not a wrap, and treating
-  // it as one would silently invent a nonsense back/spine/front split.
-  if (widthPx < heightPx) {
-    notes.push('Image is portrait (taller than wide) — likely a single front/back panel, not a full wrap. Skipping spine/band analysis.');
-    return result;
-  }
-
-  const { data, info: pixels } = await image.removeAlpha().raw().toBuffer({ resolveWithObject: true });
+/** Measures a scan, or the app's own render, stretched to its case's standard (see fitToStandard). */
+async function measure(file: string, layout: Layout, kind: 'scan' | 'app' = 'scan', info: SourceInfo = {}): Promise<ImageResult> {
+  const { result, pipeline, folds } = await fitToStandard(file, kind, layout, info);
+  const { data, info: pixels } = await pipeline.removeAlpha().raw().toBuffer({ resolveWithObject: true });
   const img: RawImage = { width: pixels.width, height: pixels.height, channels: pixels.channels, data };
 
-  if (JEWEL_CASE_GROUPS.has(group.toLowerCase())) {
-    if (!dpi) return result;
-    const gray = toGray(img);
-    const [x1, x2, x3] = knownFold && knownFold.length === 3 ? knownFold : findJewelCaseSeams(gray, img.width, img.height, dpi);
-    if (knownFold && knownFold.length === 3) {
-      result.spineSource = manual ? 'manual' : 'known';
-    } else {
-      result.spineSource = 'estimated';
-      notes.push(
-        `Jewel case (spine | back | spine | front): seams refined from ${group}'s known CD/PS1 tray-card proportions (case-research.md) by searching nearby for the nearest real edge, not detected outright.`,
-      );
-    }
-    result.spineMm = toMm(x1);
-    result.backMm = toMm(x2 - x1);
-    result.spine2Mm = toMm(x3 - x2);
-    result.frontMm = toMm(img.width - x3);
-
-    // Not attempted: branding-spec.md documents PS1's branding as a vertical strip on the LEFT edge of the
-    // front cover (15.5% W), not a horizontal band at the top like PS3/4/5 — findHeaderBand looks for the
-    // wrong shape on the wrong axis here, and would also be reading the one region (the front's right
-    // side) deliberately cropped to avoid a left-aligned mark on every other case.
-    notes.push("Header band not checked: PS1's branding is a vertical left-edge strip (branding-spec.md), not a horizontal top band.");
-    result.branding = measureLeftStrip(img, x3, img.width);
+  if (layout.jewel) {
+    // A jewel case's branding is a vertical strip down the left of the booklet, not a band across the top.
+    result.branding = measureLeftStrip(img, folds[2], img.width);
     return result;
   }
-
-  const gray = toGray(img);
-  let fold = findFoldLines(gray, img.width, img.height);
-  if (knownFold) {
-    fold = [knownFold[0], knownFold[1]];
-    result.spineSource = manual ? 'manual' : 'known';
-  } else if (fold) {
-    result.spineSource = 'detected';
-  } else {
-    const knownSpineMm = KNOWN_SPINE_MM[group.toLowerCase()];
-    if (knownSpineMm && dpi) {
-      const spinePx = (knownSpineMm / MM_PER_INCH) * dpi;
-      const sidePx = (img.width - spinePx) / 2;
-      fold = [Math.round(sidePx), Math.round(sidePx + spinePx)];
-      result.spineSource = 'estimated';
-      notes.push(`Fold lines not detected; estimated from ${group}'s known ${knownSpineMm} mm spine, assuming equal front/back width.`);
-    } else {
-      notes.push('Could not confidently locate the back|spine and spine|front fold lines, and no known spine width for this folder to fall back on.');
-      return result;
-    }
-  }
-
-  const [x1, x2] = fold;
-  result.backMm = toMm(x1);
-  result.spineMm = toMm(x2 - x1);
-  result.frontMm = toMm(img.width - x2);
-
+  const [x1, x2] = folds;
   // Header logos are near-universally left- or centre-aligned (see branding-spec.md); sampling only the
   // right-hand slice of the front panel avoids the logo mark entirely on every case tested so far, since a
   // logo pulling even a large minority of a row's pixels can still tip the row median (seen in testing:
   // PS4's wordmark did exactly this across ~45% of the front width).
-  const bandSlice: [number, number] = [x2 + Math.round((img.width - x2) * 0.6), img.width];
-  const band = findHeaderBand(img, bandSlice[0], bandSlice[1]);
+  const band = findHeaderBand(img, x2 + Math.round((img.width - x2) * 0.6), img.width);
   result.branding = measureBranding(img, x1, x2, band);
-  if (!applyFrontBand(result, band, img.height)) {
-    notes.push('No header band detected on the front panel (may be sloped/curved, or none).');
-  }
-
+  if (!applyFrontBand(result, band, img.height)) result.notes.push('No header band detected on the front panel (may be sloped/curved, or none).');
   result.spineCapPct = result.branding.spineBand && result.branding.spineBand.heightPct < 100 ? result.branding.spineBand.heightPct : null;
-
   return result;
 }
-
 
 /** Contiguous [start, end] runs of true values, merging gaps of up to `gap` columns. */
 function runsOf(flags: boolean[], gap = 3): [number, number][] {
@@ -1259,76 +983,14 @@ function columnExtents(alpha: Uint8Array, width: number, height: number): { top:
 }
 
 /**
- * Measures a fan-made template.png: a transparent canvas with only the branding printed on it.
- *
- * Layout comes from the alpha channel, colour and header-band height from the same findHeaderBand pass the
- * scans use (transparent pixels flattened onto magenta so the band's lower edge is a hard jump), sampled from
- * the same right-hand slice of the front panel — so the numbers are directly comparable with the scans'.
- *   - Standard wraps: the spine is the taller strip of branding sticking down past the header band; back and
- *     front are what's left either side. No such strip (or an asymmetric one) falls back to KNOWN_SPINE_MM,
- *     exactly as for scans.
- *   - Jewel cases: two printed runs at the top (spine flap | ... | flap + front branding strip); the flap
- *     ends where the run's bottom edge steps down to full height.
- *   - DPI: like scans, anything not tagged exactly 300 is rejected by the caller. A 300-tagged width that's
- *     still implausible is rescaled to the same folder's scan summary width if there are scans, otherwise
- *     the file is skipped — mm values are never taken from metadata we can see is wrong.
+ * Measures a fan-made template.png: a transparent canvas with only the branding printed on it. It is stretched to the
+ * standard like a scan, then its transparent pixels are flattened onto magenta so the band's lower edge is a hard
+ * jump for the same findHeaderBand pass the scans use, sampled from the same slice of the front panel (of the printed
+ * part only: a template whose header is just a small tab has nothing to sample across the rest of the front).
  */
-async function measureTemplate(file: string, group: string, scanWidthMm: number | null): Promise<ImageResult> {
-  const meta = await sharp(file).metadata();
-  const widthPx = meta.width!;
-  const heightPx = meta.height!;
-  const notes: string[] = [];
-  const profileNote = colourProfileNote(meta.icc);
-  if (profileNote) notes.push(profileNote);
-
-  let dpi = REQUIRED_DPI;
-  const widthMm = (widthPx / dpi) * MM_PER_INCH;
-  let usable = true;
-  if (widthMm < PLAUSIBLE_WRAP_WIDTH_MM[0] || widthMm > PLAUSIBLE_WRAP_WIDTH_MM[1]) {
-    if (scanWidthMm) {
-      dpi = (widthPx * MM_PER_INCH) / scanWidthMm;
-      notes.push(
-        `Implausible width at ${REQUIRED_DPI} DPI (${widthMm.toFixed(0)} mm); rescaled to ${group}'s scan summary width ${scanWidthMm.toFixed(1)} mm (effective ${dpi.toFixed(0)} DPI). Percentages are unaffected; mm values assume the template is a full wrap at scan size.`,
-      );
-    } else {
-      notes.push(`Implausible width at ${REQUIRED_DPI} DPI (${widthMm.toFixed(0)} mm) and no ${group} scans to rescale from; skipped.`);
-      usable = false;
-    }
-  }
-  const toMm = (px: number) => (px / dpi) * MM_PER_INCH;
-
-  const result: ImageResult = {
-    file,
-    kind: 'template',
-    widthPx,
-    heightPx,
-    dpi,
-    dpiConfidence: 'ok',
-    widthMm: toMm(widthPx),
-    heightMm: toMm(heightPx),
-    backMm: null,
-    spineMm: null,
-    frontMm: null,
-    spine2Mm: null,
-    spineSource: 'none',
-    scaleSource: 'tag',
-    distrust: null,
-    bandHeightPct: null,
-    bandShape: 'none',
-    bandColorHex: null,
-    bandEndColorHex: null,
-    spineCapPct: null,
-    branding: null,
-    notes,
-  };
-  if (!usable) return result;
-  if (widthPx < heightPx) {
-    notes.push('Template is portrait (taller than wide) — not a full wrap. Skipping.');
-    return result;
-  }
-
-  const { data, info } = await sharp(file).ensureAlpha().raw().toBuffer({ resolveWithObject: true });
-  const { width, height } = info;
+async function measureTemplate(file: string, layout: Layout, info: SourceInfo = {}): Promise<ImageResult> {
+  const { result, pipeline, width, height, folds } = await fitToStandard(file, 'template', layout, info);
+  const { data } = await pipeline.ensureAlpha().raw().toBuffer({ resolveWithObject: true });
   const alpha = new Uint8Array(width * height);
   const rgb = Buffer.alloc(width * height * 3);
   for (let i = 0; i < width * height; i++) {
@@ -1337,86 +999,23 @@ async function measureTemplate(file: string, group: string, scanWidthMm: number 
     for (let c = 0; c < 3; c++) rgb[i * 3 + c] = Math.round(data[i * 4 + c] * a + TEMPLATE_FLATTEN_RGB[c] * (1 - a));
   }
   const img: RawImage = { width, height, channels: 3, data: rgb };
-  const { top, bottom } = columnExtents(alpha, width, height);
-  const printed = Array.from(top, (t) => t > 0);
 
-  if (JEWEL_CASE_GROUPS.has(group.toLowerCase())) {
-    const runs = runsOf(printed);
-    if (runs.length !== 2 || runs[0][0] > width * 0.01) {
-      notes.push(`Jewel case layout not recognised: expected 2 printed runs starting at the left edge (spine flap | flap + front branding), found ${runs.length}.`);
-      return result;
-    }
-    const [[, a1], [b0, b1]] = runs;
-    const x1 = a1 + 1;
-    const x2 = b0;
-    let x3 = b0;
-    while (x3 <= b1 && bottom[x3] < height - 4) x3++; // flap ends where the run reaches full height
-    if (x3 > b1) {
-      notes.push('Second spine flap has no step in its bottom edge, so its width could not be measured.');
-      return result;
-    }
-    result.spineSource = 'detected';
-    result.spineMm = toMm(x1);
-    result.backMm = toMm(x2 - x1);
-    result.spine2Mm = toMm(x3 - x2);
-    result.frontMm = toMm(width - x3);
-    result.branding = measureLeftStrip(img, x3, width);
-    notes.push('Jewel case, read from alpha.');
+  if (layout.jewel) {
+    result.branding = measureLeftStrip(img, folds[2], width);
     return result;
   }
-
-  const headerRows = median(Array.from(top).filter((t) => t > 0));
-  // A printed area covering most of the sheet is a boxed-cartridge layout (background fills it), not a thin header
-  // band with a spine strip sticking down past it.
-  const isHeaderLayout = headerRows < height * 0.3;
-  const spineRuns = isHeaderLayout ? runsOf(Array.from(top, (t) => t > headerRows * 1.3 && t > headerRows + height * 0.02)) : [];
-  const spineRun = spineRuns.sort((p, q) => q[1] - q[0] - (p[1] - p[0]))[0];
-  const [lo, hi] = SPINE_FRACTION_RANGE;
-  let fold: [number, number] | null = null;
-  if (spineRun) {
-    const [s0, s1] = spineRun;
-    const spinePx = s1 + 1 - s0;
-    const back = s0;
-    // Widest spine researched is ~25 mm (VHS); anything wider is background art, not a spine strip.
-    const plausible = toMm(spinePx) <= 25;
-    const front = width - (s1 + 1);
-    if (plausible && spinePx >= lo * width && spinePx <= hi * width && back > 0 && front > 0 && Math.abs(back - front) / ((back + front) / 2) <= SYMMETRY_TOLERANCE) {
-      fold = [s0, s1 + 1];
-      result.spineSource = 'detected';
-    }
-  }
-  if (!fold) {
-    const knownSpineMm = KNOWN_SPINE_MM[group.toLowerCase()];
-    if (!knownSpineMm) {
-      notes.push('No symmetric spine branding strip found and no known spine width for this folder; not a standard back|spine|front wrap with a header.');
-      return result;
-    }
-    const spinePx = (knownSpineMm / MM_PER_INCH) * dpi;
-    const sidePx = (width - spinePx) / 2;
-    fold = [Math.round(sidePx), Math.round(sidePx + spinePx)];
-    result.spineSource = 'estimated';
-    notes.push(`No symmetric spine strip found; estimated from ${group}'s known ${knownSpineMm} mm spine, assuming equal front/back width.`);
-  }
-  const [x1, x2] = fold;
-  result.backMm = toMm(x1);
-  result.spineMm = toMm(x2 - x1);
-  result.frontMm = toMm(width - x2);
-
-  // Same slice of the front panel the scans sample, but of the printed part only: a template whose header is
-  // just a small tab (Switch) has nothing to sample across the rest of the front.
-  const frontPrinted = runsOf(printed.map((p, x) => p && x >= x2))[0];
+  const [x1, x2] = folds;
+  const { top } = columnExtents(alpha, width, height);
+  const frontPrinted = runsOf(Array.from(top, (t, x) => t > 0 && x >= x2))[0];
   if (!frontPrinted) {
-    notes.push('Nothing printed on the front panel: no header band.');
+    result.notes.push('Nothing printed on the front panel: no header band.');
     return result;
   }
   const [f0, f1] = frontPrinted;
-  const bandSlice: [number, number] = [f0 + Math.round((f1 - f0) * 0.6), f1 + 1];
-  const band = findHeaderBand(img, bandSlice[0], bandSlice[1]);
+  const band = findHeaderBand(img, f0 + Math.round((f1 - f0) * 0.6), f1 + 1);
   result.branding = measureBranding(img, x1, x2, band);
   result.spineCapPct = result.branding.spineBand && result.branding.spineBand.heightPct < 100 ? result.branding.spineBand.heightPct : null;
-  if (!applyFrontBand(result, band, height)) {
-    notes.push('No header band detected on the front panel.');
-  }
+  if (!applyFrontBand(result, band, height)) result.notes.push('No header band detected on the front panel.');
   return result;
 }
 
@@ -1427,29 +1026,30 @@ const deltaStr = (a: string | null, b: string | null) => (a === null || b === nu
 /** How far apart two colours are (0 = identical, 441 = black vs white). */
 const deltaHex = (a: string | null, b: string | null) => (a && b ? String(Math.round(colorDistance(hexToColor(a), hexToColor(b)))) : '—');
 
-/** Rows whose scale is trusted: they count towards a size. */
-const scaled = (r: ImageResult) => r.distrust === null;
-/** Rows whose folds were found or checked, not estimated from the app's own spine: they count towards anything measured from a fold. */
-const folded = (r: ImageResult) => scaled(r) && r.spineSource !== 'estimated' && r.spineSource !== 'none';
+/** Rows that count towards the consensus: their proportions fit the standard. */
+const counts = (r: ImageResult) => r.distrust === null;
 /** A consensus cell: the agreed value and how many of the counted rows agree, or — when fewer than two agree. */
 const agreed = (c: ReturnType<typeof consensus>) => (c ? `${c.value.toFixed(1)} (${c.agree}/${c.of})` : '—');
+
+/** The consensus paragraph both reports share. */
+const CONSENSUS_TEXT =
+  '**Consensus** is the value most counted rows agree on: the largest group within ' + `${TOL_PCT}` + ' percentage point of each other, its median, ' +
+  'shown with how many of the counted rows agree (`3/4`); fewer than two agreeing is no consensus (—). Colours and shapes take the most common value. ' +
+  `A row whose proportions are more than ${STRETCH_TOLERANCE * 100} % off the standard (cropped, a border or bleed included, another edition) is listed but not counted. ` +
+  `What a scan's pixels can't tell (bleed to crop off, a reason to leave it out) is declared in ${MANIFEST}.`;
 
 function buildReport(groups: Map<string, ImageResult[]>): string {
   const lines: string[] = ['# Cover scan measurements', ''];
   lines.push(
-    "Generated by `scripts/measure-covers.ts`. Assumes each source image is a single, " +
-      'pre-cropped full wrap (back | spine | front) with no border beyond the trim edge, unless the manifest declares its bleed. ' +
-      'Fold lines are found by edge detection, not assumed; header bands are detected as either ' +
-      'a flat colour or a smooth vertical gradient (by where real cover art/photo texture starts, ' +
-      "not by colour alone) — sloped/curved headers still need a follow-up pass. " +
-      'All colours are sRGB: an embedded ICC profile is converted to sRGB when the image is read (flagged in Notes), and an image with no profile is assumed to be sRGB already. ' +
-      `Scans and templates whose embedded DPI isn't exactly ${REQUIRED_DPI} are rejected outright and don't appear below (see stderr). ` +
-      'Rows named `template.*` are fan-made transparent templates: their layout is read from the alpha channel and ' +
-      'their header band/colours with the same code as the scans. ' +
-      '**Consensus** is the value most rows agree on: the largest group within ' + `${TOL.mm} mm (sizes) or ${TOL.pct} point (shares of a panel)` + ' of each other, its median, shown with how many of the counted rows agree (`3/4`); fewer than two agreeing is no consensus (—). ' +
-      'Rows that don\'t count are still listed: a **scale suspect** row (its size is more than ' + `${SCALE_TOLERANCE * 100}`+ ' % off the case\'s, so its DPI tag, bleed or crop is wrong) counts for nothing, and a row whose fold lines were **estimated** (placed from the app\'s own spine width, so circular) counts only for its overall width and height. ' +
-      `What a scan can't tell by itself (its bleed, its real DPI or trimmed height, hand-checked fold positions, or a reason to leave it out) is declared in ${MANIFEST}. ` +
-      'If `npm run compare:covers` has been run, a table also shows `app (rendered)`, the app\'s own render of that case measured with its fold positions known, and `app − Consensus` (mm or percentage points; `=`/`≠` for shapes; a colour distance, 0 to 441, for colours). It never counts towards the consensus.',
+    'Generated by `scripts/measure-covers.ts`. Insert sizes, spines and fold positions are **not** measured from scans: they come from each ' +
+      "case's documented standard (the app's template, see case-research.md). Each image is stretched to that standard size, so its folds are " +
+      'where the standard puts them, and only what is printed is measured: the front header band, its colours, and the spine cap. ' +
+      '**Stretch** is how far the image\'s proportions are from the standard (0 = it fits as supplied). ' +
+      'Rows named `template.*` are fan-made transparent templates, measured the same way. ' +
+      'All colours are sRGB: an embedded ICC profile is converted to sRGB when the image is read (flagged in Notes). ' +
+      CONSENSUS_TEXT +
+      ' If `npm run compare:covers` has been run, a table also shows `app (rendered)`, the app\'s own render measured the same way, and `app − Consensus` ' +
+      '(percentage points; `=`/`≠` for shapes; a colour distance, 0 to 441, for colours).',
   );
   lines.push('');
 
@@ -1459,57 +1059,33 @@ function buildReport(groups: Map<string, ImageResult[]>): string {
     if (!results.length && !app) continue;
     lines.push(`## ${name}  (n=${results.length})`);
     lines.push('');
-    lines.push(
-      '| File | DPI | Width mm | Height mm | Back mm | Spine mm | Spine 2 mm | Front mm | Spine source | Band % H | Band shape | Band colour | Band end colour | Spine cap % L | Notes |',
-    );
-    lines.push('| :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- |');
+    lines.push('| File | Pixels | Stretch % | Band % H | Band shape | Band colour | Band end colour | Spine cap % L | Notes |');
+    lines.push('| :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- |');
     const rowFor = (r: ImageResult) =>
-      `| ${appLabel(r)} | ${r.dpi ? r.dpi.toFixed(0) : '—'} | ${fmt(r.widthMm)} | ${fmt(r.heightMm)} ` +
-      `| ${fmt(r.backMm)} | ${fmt(r.spineMm)} | ${fmt(r.spine2Mm)} | ${fmt(r.frontMm)} | ${r.spineSource} | ${fmt(r.bandHeightPct)} ` +
+      `| ${appLabel(r)} | ${r.widthPx} × ${r.heightPx} | ${r.stretchPct >= 0 ? '+' : ''}${r.stretchPct.toFixed(1)} | ${fmt(r.bandHeightPct)} ` +
       `| ${r.bandShape} | ${r.bandColorHex ?? '—'} | ${r.bandEndColorHex ?? '—'} | ${fmt(r.spineCapPct)} | ${r.notes.join('; ')} |`;
     for (const r of results) lines.push(rowFor(r));
-    const size = (pick: (r: ImageResult) => number | null) => consensus(results.filter(scaled).map(pick), TOL.mm);
-    const fromFold = (pick: (r: ImageResult) => number | null, tol = TOL.mm) => consensus(results.filter(folded).map(pick), tol);
-    const sums = {
-      width: size((r) => r.widthMm),
-      height: size((r) => r.heightMm),
-      back: fromFold((r) => r.backMm),
-      spine: fromFold((r) => r.spineMm),
-      spine2: fromFold((r) => r.spine2Mm),
-      front: fromFold((r) => r.frontMm),
-      band: fromFold((r) => r.bandHeightPct, TOL.pct),
-      cap: fromFold((r) => r.spineCapPct, TOL.pct),
-    };
-    const counted = results.filter(folded);
-    lines.push(
-      `| **Consensus** | | **${agreed(sums.width)}** | **${agreed(sums.height)}** | **${agreed(sums.back)}** | **${agreed(sums.spine)}** ` +
-        `| **${agreed(sums.spine2)}** | **${agreed(sums.front)}** | | **${agreed(sums.band)}** | | ` +
-        `**${modeOrMedianHexColor(counted.map((r) => r.bandColorHex)) ?? '—'}** | **${modeOrMedianHexColor(counted.map((r) => r.bandEndColorHex)) ?? '—'}** ` +
-        `| **${agreed(sums.cap)}** | |`,
-    );
-    if (app && results.length) {
+    const counted = results.filter(counts);
+    const band = consensus(counted.map((r) => r.bandHeightPct), TOL_PCT);
+    const cap = consensus(counted.map((r) => r.spineCapPct), TOL_PCT);
+    const shape = modeString(counted.map((r) => r.bandShape));
+    const colour = modeOrMedianHexColor(counted.map((r) => r.bandColorHex));
+    const endColour = modeOrMedianHexColor(counted.map((r) => r.bandEndColorHex));
+    lines.push(`| **Consensus** | | | **${agreed(band)}** | **${shape ?? '—'}** | **${colour ?? '—'}** | **${endColour ?? '—'}** | **${agreed(cap)}** | |`);
+    if (app) {
       lines.push(rowFor(app));
-      const v = (c: ReturnType<typeof consensus>) => c?.value ?? null;
-      lines.push(
-        `| *app − Consensus* | | ${deltaNum(app.widthMm, v(sums.width))} | ${deltaNum(app.heightMm, v(sums.height))} ` +
-          `| ${deltaNum(app.backMm, v(sums.back))} | ${deltaNum(app.spineMm, v(sums.spine))} | ${deltaNum(app.spine2Mm, v(sums.spine2))} ` +
-          `| ${deltaNum(app.frontMm, v(sums.front))} | | ${deltaNum(app.bandHeightPct, v(sums.band))} ` +
-          `| ${deltaStr(app.bandShape, modeString(counted.map((r) => r.bandShape)))} | ${deltaHex(app.bandColorHex, modeOrMedianHexColor(counted.map((r) => r.bandColorHex)))} ` +
-          `| ${deltaHex(app.bandEndColorHex, modeOrMedianHexColor(counted.map((r) => r.bandEndColorHex)))} | ${deltaNum(app.spineCapPct, v(sums.cap))} | |`,
-      );
-    } else if (app) {
-      lines.push(rowFor(app));
+      if (results.length) {
+        lines.push(
+          `| *app − Consensus* | | | ${deltaNum(app.bandHeightPct, band?.value ?? null)} | ${deltaStr(app.bandShape, shape)} | ${deltaHex(app.bandColorHex, colour)} ` +
+            `| ${deltaHex(app.bandEndColorHex, endColour)} | ${deltaNum(app.spineCapPct, cap?.value ?? null)} | |`,
+        );
+      }
     }
-    const by = (src: ImageResult['spineSource']) => results.filter((r) => r.spineSource === src).length;
-    const suspect = results.filter((r) => !scaled(r)).length;
+    const off = results.length - counted.length;
     lines.push('');
-    lines.push(
-      `Fold lines detected in ${by('detected')}/${results.length}, checked by hand in ${by('manual')}/${results.length}, estimated (not counted) in ${by('estimated')}/${results.length}.` +
-        (suspect ? ` Scale suspect (not counted) in ${suspect}/${results.length}.` : ''),
-    );
+    lines.push(`${counted.length}/${results.length} counted${off ? `; ${off} with proportions off the standard` : ''}.`);
     lines.push('');
   }
-
   return lines.join('\n');
 }
 
@@ -1567,7 +1143,6 @@ function logoColumns(prefix: string, panelW: string, panelH: string, pick: (b: B
 }
 
 const BRANDING_COLUMNS: BrandingColumn[] = [
-  { header: 'Spine source', get: (r) => r.spineSource, kind: 'str' },
   ...bandColumns('Front band', 'W', 'H', (b) => b.frontBand),
   ...logoColumns('Front', 'W', 'H', (b) => b.frontLogos),
   ...bandColumns('Spine band', 'S', 'L', (b) => b.spineBand),
@@ -1611,13 +1186,11 @@ function buildBrandingReport(groups: Map<string, ImageResult[]>): string {
   lines.push('- **logo colour**: the median colour of the logo\'s pixels.');
   lines.push('');
   lines.push(
-    '**Consensus** is the value most rows agree on: the largest group within ' + `${TOL.mm} mm (sizes) or ${TOL.pct} point (shares of a panel)` + ' of each other, its median, shown with how many of the counted rows agree (`3/4`); fewer than two agreeing is no consensus (—). ' +
-      'Rows that don\'t count are still listed: a **scale suspect** row (its size is more than ' + `${SCALE_TOLERANCE * 100}`+ ' % off the case\'s, so its DPI tag, bleed or crop is wrong) counts for nothing, and a row whose fold lines were **estimated** (placed from the app\'s own spine width, so circular) counts only for its overall width and height. ' +
-      `What a scan can't tell by itself (its bleed, its real DPI or trimmed height, hand-checked fold positions, or a reason to leave it out) is declared in ${MANIFEST}. ` +
-      'Detection is approximate: a logo touching the band\'s edge, or artwork close to the band colour, can move a number. ' +
-      'All colours are sRGB: an embedded ICC profile is converted to sRGB when the image is read (flagged in Notes), and an image with no profile is assumed to be sRGB already. ' +
-      `Scans and templates whose DPI isn't exactly ${REQUIRED_DPI} are rejected, and images whose layout wasn't located have no row. ` +
-      'If `npm run compare:covers` has been run, a table also shows `app (rendered)`, the app\'s own render of that case, and `app − Consensus` (percentage points; `=`/`≠` for text; a colour distance, 0 to 441, for colours). It never counts towards the consensus.',
+    'Every image is stretched to its case\'s documented standard size first, so the panels are where the standard puts them (see scans-report.md). ' +
+      CONSENSUS_TEXT +
+      ' Detection is approximate: a logo touching the band\'s edge, or artwork close to the band colour, can move a number. ' +
+      'All colours are sRGB: an embedded ICC profile is converted to sRGB when the image is read (flagged in Notes). ' +
+      'If `npm run compare:covers` has been run, a table also shows `app (rendered)`, the app\'s own render, and `app − Consensus` (percentage points; `=`/`≠` for text; a colour distance, 0 to 441, for colours).',
   );
   lines.push('');
 
@@ -1637,11 +1210,10 @@ function buildBrandingReport(groups: Map<string, ImageResult[]>): string {
       return `| ${appLabel(r)} | ${BRANDING_COLUMNS.map((c) => fmtCell(c.get(r, b))).join(' | ')} | ${extra.join('; ')} |`;
     };
     for (const r of rows) lines.push(brandingRow(r));
-    // Only rows whose folds were found or checked count: every branding measurement is taken from the front's or spine's edges.
-    const counted = rows.filter(folded);
+    const counted = rows.filter(counts);
     const sums = BRANDING_COLUMNS.map((c) => {
       const values = counted.map((r) => c.get(r, r.branding!));
-      if (c.kind === 'num') return consensus(values as (number | null)[], TOL.pct);
+      if (c.kind === 'num') return consensus(values as (number | null)[], TOL_PCT);
       if (c.kind === 'hex') return modeOrMedianHexColor(values as (string | null)[]);
       return modeString(values as (string | null)[]);
     });
@@ -1687,56 +1259,32 @@ async function main() {
   const manifest = loadManifest();
   const infoOf = (f: string) => manifest[`${basename(dirname(f))}/${basename(f)}`] ?? {};
   const excluded: string[] = [];
+  const noStandard = new Set<string>();
   const groups = new Map<string, ImageResult[]>();
   const add = (group: string, r: ImageResult) => groups.set(group, [...(groups.get(group) ?? []), r]);
-  let rejected = 0;
-  for (const file of files.filter((f) => !isTemplate(f))) {
+  for (const file of files) {
     const group = basename(dirname(file));
     const info = infoOf(file);
     if (info.exclude) {
       excluded.push(`${group}/${basename(file)}: ${info.exclude}`);
       continue;
     }
-    const result = await measure(file, group, undefined, 'scan', info);
-    if (result.dpiConfidence !== 'ok') {
-      rejected++;
-      console.error(`Rejected ${file}: DPI is ${result.dpi ?? 'missing'}, not ${REQUIRED_DPI}.`);
+    const layout = standardLayout(group);
+    if (!layout) {
+      noStandard.add(group);
       continue;
     }
-    add(group, result);
+    add(group, isTemplate(file) ? await measureTemplate(file, layout, info) : await measure(file, layout, 'scan', info));
   }
+  if (noStandard.size) console.error(`Skipped (the app has no template, so no standard to fit to): ${[...noStandard].sort().join(', ')}.`);
 
-  // Templates go last so each can be rescaled against its folder's scans if its DPI metadata is unusable.
-  for (const file of files.filter(isTemplate)) {
-    const group = basename(dirname(file));
-    const density = (await sharp(file).metadata()).density;
-    if (dpiConfidence(density).confidence !== 'ok') {
-      rejected++;
-      console.error(`Rejected ${file}: DPI is ${density ?? 'missing'}, not ${REQUIRED_DPI}.`);
-      continue;
-    }
-    // Only for a template whose own DPI tag is unusable: its mm values follow the scans' width (its percentages don't).
-    const widths = (groups.get(group) ?? []).filter(scaled).map((r) => r.widthMm).filter((w): w is number => w !== null);
-    const scanWidth = consensus(widths, TOL.mm)?.value ?? (widths.length ? median(widths) : null);
-    const result = await measureTemplate(file, group, scanWidth);
-    if (result.spineSource === 'none' && result.backMm === null && result.notes.some((n) => n.endsWith('skipped.'))) {
-      console.error(`Skipped template ${file}: ${result.notes.join(' ')}`);
-      continue;
-    }
-    add(group, result);
-  }
-
-  if (rejected) console.error(`Rejected ${rejected}/${files.length} file(s) for not being ${REQUIRED_DPI} DPI; left out of the report.`);
-
-  // The app's own renders (scripts/compare-covers.ts), measured with their fold positions known.
+  // The app's own renders (scripts/compare-covers.ts), measured the same way.
   const appDir = flags.get('--app-dir') ?? DEFAULT_APP_DIR;
   const appGroups = existsSync(appDir) ? readdirSync(appDir, { withFileTypes: true }).filter((d) => d.isDirectory()).map((d) => d.name) : [];
   for (const group of appGroups) {
     const png = join(appDir, group, 'app.png');
-    const meta = join(appDir, group, 'app.json');
-    if (!existsSync(png) || !existsSync(meta)) continue;
-    const { x1, x2, x3 } = JSON.parse(readFileSync(meta, 'utf8')) as { x1: number; x2: number; x3?: number };
-    add(group, await measure(png, group, x3 === undefined ? [x1, x2] : [x1, x2, x3], 'app'));
+    const layout = standardLayout(group);
+    if (existsSync(png) && layout) add(group, await measure(png, layout, 'app'));
   }
 
   let report = buildReport(groups);

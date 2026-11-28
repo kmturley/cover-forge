@@ -5,13 +5,13 @@
  *
  * For every folder under `scans/` that matches a game-case template it writes, under `compare/` (git-ignored):
  *   <platform>/app.png        the app's render (Branded on, no artwork, mid grey where nothing is printed), cropped to trim, 300 DPI
- *   <platform>/app.json       where its back|spine and spine|front folds are, in pixels
+ *   <platform>/app.json       where its folds are, in pixels (for reference: the measuring takes them from the standard)
  *   <platform>.png            header and spine area, stacked: app, template, then an overlay of the app against the
  *                             template (red = only the app prints it, cyan = only the template does, yellow = both
  *                             print but in different colours, e.g. a logo in the wrong place or size). With --scans,
  *                             each scan follows too.
  *   <platform>-full.png       the whole wrap of each of those, in a grid
- * then re-runs scripts/measure-covers.ts, which finds `compare/<platform>/app.json` and adds an `app (rendered)` row
+ * then re-runs scripts/measure-covers.ts, which finds `compare/<platform>/app.png`, measures it like a scan (fitted to the same standard) and adds an `app (rendered)` row
  * and an `app − Consensus` row to scans-report.md and branding-spec.md, measured with the same code as the scans.
  *
  * Usage:

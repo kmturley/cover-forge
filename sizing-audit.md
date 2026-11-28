@@ -12,7 +12,7 @@ accuracy a solid base before more visual fixes. Measured on `feature/realistic-c
 | 3D textures | Correct: UVs sample the trim; no face stretches its art (checked all 127 templates and pieces). |
 | 3D shapes | Two models. The jewel case is built at the **case's** real outside size; every other case is the **paper insert** wrapped round a box, so it is smaller than the real case. |
 | Case sizes | Set in several places: the jewel case's 142 × 125 × 10 in two files, and case outsides that only slipcovers and boxes use. |
-| Reference scans | The weakest link: the image's edges are assumed to be the trim, its DPI tag is trusted, and fold lines are estimated from the app's own sizes when not found. Half the "measurements" are partly circular. |
+| Reference scans | The weakest link: the image's edges are assumed to be the trim, its DPI tag is trusted, and fold lines are estimated from the app's own sizes when not found. Half the "measurements" are partly circular. **Since fixed (step 1):** sizes come from the standard, and scans are stretched to it and used for branding only. |
 | Export | Correct: the page is the template, bleed included. |
 
 The biggest risk isn't the drawing code, which mostly agrees with itself. It's that the numbers going in (from scans) and
@@ -126,29 +126,34 @@ From `scans-report.md` and `branding-spec.md` (89 images over 23 platforms):
 
 ## 6. Recommended order of fixes
 
-1. **Make the references trustworthy first.**
-   - Give each scan a small sidecar file: which case it is, whether it includes bleed and how much, and a physical size
-     it can be checked against (or its true DPI).
-   - Derive the scale from known physical sizes rather than the DPI tag.
-   - Leave rows with estimated fold lines out of the statistics, and stop estimating folds from the app's own sizes.
-   - Measure the app's render on a neutral background, trim only.
-   - Require two agreeing sources before a number counts.
+1. **Use the references only for what they're good at.** *(done)*
 
-   **Done** (the measuring tools; no scan has been checked by hand yet):
-   - `scripts/scan-manifest.json` records, per scan: an exclusion, bleed, true DPI or trimmed height, and hand-checked
-     fold positions. It is committed even though `scans/` isn't.
-   - Each scan's size is checked against the case (±2.5 %). Scale-suspect rows are listed but don't count: currently
-     2 Switch 2, 2 Xbox 360, 1 Xbox and all 3 Xbox Series X scans.
-   - Rows with estimated folds count only for overall width and height.
-   - The summary row is now a **consensus**: the median of the largest group agreeing within 1 mm or 1 point, shown as
+   This turned out to be a wrong assumption in its own right: the scans were being used to measure insert sizes, spines
+   and folds, which scanners, crops, rotation and re-saves all change. Now:
+   - **Sizes come from the documented standard.** Each case's template (sourced in `case-research.md`) gives the
+     insert's size, spine and fold positions. Nothing measures them from a scan any more.
+   - **Every scan is stretched to its standard size**, so its folds land where the standard puts them. Wrong DPI tags,
+     rescans and rescaling stop mattering: for example, the two Xbox 360 scans tagged 300 DPI but scanned at about 400
+     now agree with the rest, 4 out of 4.
+   - **Scans measure only what is printed:** where the band, strip, logos and spine cap sit, and their colours, as
+     shares of each panel.
+   - **A scan whose proportions are more than 3 % off the standard is listed but not counted.** It is cropped,
+     includes a border or bleed, is another edition, or isn't a full wrap. Currently flagged: 2 PS1 scans (+3.2 %) and
+     all 3 Xbox Series X scans (−5 %).
+   - **The summary is a consensus:** the median of the largest group agreeing within 1 point, shown as
      `value (agree/counted)`, and `—` when fewer than two agree.
-   - The app's render is mid grey where nothing is printed. Its PS1 strip now measures 15.4 % (it drew 15.5 % all along;
-     it was misread as 10.8 %).
+   - `scripts/scan-manifest.json` records, per scan, bleed to crop off before stretching or a reason to leave it out.
+     It is committed even though `scans/` isn't, and stays empty until a scan has been checked.
+   - The app's comparison render is mid grey where nothing is printed. Its PS1 strip measures 15.4 % (it was misread
+     as 10.8 %) against a consensus of 15.5 %.
 
-   **Result:** the overall sizes mostly agree, but back, spine, front and branding values now have no consensus for
-   most platforms. That is the honest position: those numbers came from estimated folds. The next step is to check
-   folds by hand for the scans that matter, starting with PS1, and to confirm the Xbox Series X height (the scans say
-   156 mm, the app 149).
+   **Open questions:**
+   - **Xbox Series X:** all three scans are 266 × 156 mm in proportion, against the app's 266 × 149. Is the real
+     insert taller, or do the scans include something extra?
+   - **The larger `app − Consensus` gaps in `branding-spec.md`** (for example the Wii, Xbox 360 and NES spine logos,
+     and the GBC front logo) are candidates for step 3. Some are detection quirks, such as a tab on the right being
+     reported as a band.
+
 2. **One case spec per physical case.** Record its outside size, its printed pieces and their positions in the case, and
    a source for each number. Templates (`definitions.ts`), slipcovers and boxes (`pieces.ts`) and the 3D model all read
    from it. This removes the duplicates in section 3.
