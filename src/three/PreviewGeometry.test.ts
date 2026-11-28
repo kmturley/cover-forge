@@ -148,8 +148,18 @@ describe('inset faces', () => {
     expect(insetFaces(t, t.preview)).toEqual([{ face: '-x', panel: 'spine' }]);
   });
 
+  it('sits the DVD insert inside its real-size keepcase: the spine centred down its edge, the front and back from the spine edge', () => {
+    const t = buildTemplate('dvd', 'std-14');
+    expect(t.preview).toMatchObject({ kind: 'box', widthMm: 135, heightMm: 190, depthMm: 14 });
+    expect(insetFaces(t, t.preview)).toEqual([{ face: '-x', panel: 'spine' }]);
+    expect(t.preview.kind === 'box' && t.preview.decals).toEqual([
+      { panel: 'front', face: '+z', align: 'min-x' },
+      { panel: 'back', face: '-z', align: 'min-x' },
+    ]);
+  });
+
   it('leaves every other case, box and card printed straight onto its faces', () => {
-    for (const [kind, id] of [['dvd', 'std-14'], ['bluray', 'us-11'], ['vhs', 'std-25'], ['cassette', 'std'], ['nfc-box', 'card'], ['nfc-card', 'cr80-duplex']] as const) {
+    for (const [kind, id] of [['bluray', 'us-11'], ['vhs', 'std-25'], ['cassette', 'std'], ['nfc-box', 'card'], ['nfc-card', 'cr80-duplex']] as const) {
       const t = buildTemplate(kind, id);
       expect(insetFaces(t, t.preview), `${kind}/${id}`).toEqual([]);
     }

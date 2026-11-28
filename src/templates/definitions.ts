@@ -1,6 +1,6 @@
 import type { CaseOrigin, PanelId, PanelRect, PlasticPart, PreviewMaterial, PreviewSpec, SpineOrientation, TemplateConfig, TemplateKind, TemplateMark, TemplateVariant } from '../types/template';
 import { XBOX_GREEN } from '../engine/official';
-import { BETAMAX_SLEEVE, BLURAY_INSERT, BLURAY_SPINES, CARD_BOX, CASSETTE_JCARD, CR80, DVD_INSERT, DVD_SPINES, FLOPPY, GAME_CASES, JEWEL_CASE, MINI_CD_SLIM, MINIDISC_ALBUM, MINIDISC_JCARD, NFC_BOXES, NFC_STICKERS, UHD_SPINES, VHS_SLEEVE, VINYL_SLEEVES } from './cases';
+import { BETAMAX_SLEEVE, BLURAY_INSERT, DVD_SHELL, BLURAY_SPINES, CARD_BOX, CASSETTE_JCARD, CR80, DVD_INSERT, DVD_SPINES, FLOPPY, GAME_CASES, JEWEL_CASE, MINI_CD_SLIM, MINIDISC_ALBUM, MINIDISC_JCARD, NFC_BOXES, NFC_STICKERS, UHD_SPINES, VHS_SLEEVE, VINYL_SLEEVES } from './cases';
 
 export const PX_PER_MM = 300 / 25.4;
 
@@ -124,6 +124,26 @@ const wrapPreview = (w: number, h: number, depth: number, casing: PreviewMateria
   faces: { '-x': 'spine', '+z': 'front', '-z': 'back' },
   casing,
   glossy,
+  radiusMm: radius,
+});
+
+/**
+ * A keepcase at its real outside size (`shell`, from cases.ts), with the printed insert at its own size under the clear
+ * sleeve: the front and back from the spine edge (wrapping round its rounded corner), the spine centred down its edge. The
+ * plastic shows round the rest, as on a real case: about 5.5 mm at the opening edge and 3.5 mm above and below.
+ */
+const keepcasePreview = (shell: { w: number; h: number }, depth: number, casing: PreviewMaterial, radius: number): PreviewSpec => ({
+  kind: 'box',
+  widthMm: shell.w,
+  heightMm: shell.h,
+  depthMm: depth,
+  faces: { '-x': 'spine' },
+  decals: [
+    { panel: 'front', face: '+z', align: 'min-x' },
+    { panel: 'back', face: '-z', align: 'min-x' },
+  ],
+  casing,
+  glossy: true,
   radiusMm: radius,
 });
 
@@ -549,8 +569,7 @@ export const TEMPLATE_DEFS: TemplateDef[] = [
       const variantId = DVD[id] ? id : 'std-14';
       const { w, h } = DVD_INSERT;
       const spine = DVD_SPINES[variantId];
-      return wrap('dvd', DVD[variantId].label, variantId, w, h, spine,
-        wrapPreview(w, h, spine, { color: '#16191f', roughness: 0.35 }, true, 2.5));
+      return wrap('dvd', DVD[variantId].label, variantId, w, h, spine, keepcasePreview(DVD_SHELL, spine, { color: '#16191f', roughness: 0.35 }, 2.5));
     },
   },
   {

@@ -12,7 +12,7 @@ describe('sizedLibrary', () => {
 
   it('gives each its case’s real outside size', () => {
     const dvd = byId('dvd-std-14');
-    expect([dvd.widthMm, dvd.heightMm, dvd.depthMm].map(Math.round)).toEqual([130, 183, 14]);
+    expect([dvd.widthMm, dvd.heightMm, dvd.depthMm].map(Math.round)).toEqual([135, 190, 14]);
     expect(Math.round(byId('vinyl-12inch').heightMm)).toBe(314);
   });
 
