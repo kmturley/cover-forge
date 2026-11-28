@@ -4,10 +4,10 @@ import { ContactShadows, Environment, Lightformer, OrbitControls } from '@react-
 import { BackSide, CylinderGeometry, MeshStandardMaterial, NeutralToneMapping, PlaneGeometry, type BufferGeometry, type Texture } from 'three';
 import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js';
 import type { PanelId, TemplateConfig } from '../types/template';
-import { FACE_ORDER, createBodyGeometry, createCornerArc, createPanelStrip, createWrappedPanelGeometry, createLabelGeometry, createLabelSliceGeometry, createSlabBodyGeometry, createSlabFaceGeometry, bodyPrintedFaces, insetFaces, insetPlacement, labelWrap, modelSizeMm, previewScale, SLEEVE_WALL_MM } from './PreviewGeometry';
+import { FACE_ORDER, createBodyGeometry, createCornerArc, createPanelStrip, createWrappedPanelGeometry, createLabelGeometry, createLabelSliceGeometry, createSlabBodyGeometry, createSlabFaceGeometry, bodyPrintedFaces, insertCenterY, insetFaces, insetPlacement, labelWrap, modelSizeMm, previewScale, SLEEVE_WALL_MM } from './PreviewGeometry';
 import { JewelCase } from './JewelCase';
 import { Measurements3D } from './Measurements3D';
-import { createBodyMaterial, createSleeveMaterial } from './PreviewMaterials';
+import { createBodyMaterial, createEmbossMaterial, createEmbossTexture, createSleeveMaterial } from './PreviewMaterials';
 
 /** Three-quarter view showing the left edge (-X), top edge (+Y) and front (+Z). Tune via the console log. */
 export const DEFAULT_CAMERA_POSITION: [number, number, number] = [-2.2, 1.1, 2.6];
@@ -95,7 +95,7 @@ function PrintedModel({ texture, template, scale, showInserts }: { texture: Text
     if (spec.kind === 'box') {
       if (spec.wrapTray) out.push(...trayWrap(template, spec));
       // Pieces on part of a face, at their own size; where one reaches the end of the face's flat it wraps round the rounded edge.
-      else for (const { face, panel } of insetFaces(template, spec)) out.push({ geometry: createWrappedPanelGeometry(template, panel, spec.depthMm, spec.heightMm, spec.radiusMm), ...insetPlacement(spec, face) });
+      else for (const { face, panel } of insetFaces(template, spec)) out.push({ geometry: createWrappedPanelGeometry(template, panel, spec.depthMm, spec.heightMm, spec.radiusMm, 0, insertCenterY(template, spec, panel)), ...insetPlacement(spec, face) });
       for (const d of spec.decals ?? []) {
         const panel = template.panels.find((p) => p.id === d.panel);
         if (!panel) continue;
@@ -103,7 +103,7 @@ function PrintedModel({ texture, template, scale, showInserts }: { texture: Text
         const x = d.align === 'min-x' ? -spec.widthMm / 2 + panel.widthMm / 2 + m : spec.widthMm / 2 - panel.widthMm / 2 - m;
         // A hair off the surface (no z-fighting); on the back face it is turned to face -z, seen from behind, so its x is mirrored.
         const front = d.face === '+z';
-        const geometry = createWrappedPanelGeometry(template, d.panel, spec.widthMm, spec.heightMm, spec.radiusMm, front ? x : -x);
+        const geometry = createWrappedPanelGeometry(template, d.panel, spec.widthMm, spec.heightMm, spec.radiusMm, front ? x : -x, insertCenterY(template, spec, d.panel));
         out.push({ geometry, position: [0, 0, (front ? 1 : -1) * (spec.depthMm / 2 + 0.05)], rotation: [0, front ? 0 : Math.PI, 0] });
       }
     } else if (spec.fullFace) {
@@ -178,6 +178,26 @@ function PrintedModel({ texture, template, scale, showInserts }: { texture: Text
   useEffect(() => () => hingeMaterial?.dispose(), [hingeMaterial]);
   useEffect(() => () => hingeGeometry?.dispose(), [hingeGeometry]);
 
+  // Logos on the case above the insert, moulded or printed, a hair proud of its front.
+  const embossed = useMemo(() => {
+    if (spec.kind !== 'box' || !spec.emboss) return [];
+    return spec.emboss.flatMap((e) => {
+      const made = createEmbossTexture(e.logo, 256, e.printed);
+      if (!made) return [];
+      const [h, w] = [e.heightMm, e.heightMm * made.aspect];
+      const x = e.rightMm === undefined ? 0 : spec.widthMm / 2 - e.rightMm - w / 2;
+      return [{ geometry: new PlaneGeometry(w, h), material: createEmbossMaterial(made.texture, spec.casing, e.printed), texture: made.texture, position: [x, spec.heightMm / 2 - e.topMm, spec.depthMm / 2 + 0.04] as [number, number, number] }];
+    });
+  }, [spec]);
+  useEffect(
+    () => () =>
+      embossed.forEach((e) => {
+        e.geometry.dispose();
+        e.material.dispose();
+        e.texture.dispose();
+      }),
+    [embossed],
+  );
   useEffect(() => () => geometry.dispose(), [geometry]);
   useEffect(() => () => pieces.forEach((p) => p.geometry.dispose()), [pieces]);
   useEffect(() => () => metal.dispose(), [metal]);
@@ -212,6 +232,9 @@ function PrintedModel({ texture, template, scale, showInserts }: { texture: Text
         // On the front face, out to the spine edge, just proud of the surface.
         <mesh material={hingeMaterial} geometry={hingeGeometry!} position={[-spec.widthMm / 2 + (hinge.fromMm ?? trayInset(spec)) + hinge.widthMm / 2, 0, spec.depthMm / 2 + HINGE_DEPTH_MM / 2 - 0.2]} />
       )}
+      {embossed.map((e, i) => (
+        <mesh key={`emboss-${i}`} geometry={e.geometry} material={e.material} position={e.position} />
+      ))}
       {showInserts &&
         pieces.map((p, i) => (
           <mesh key={i} geometry={p.geometry} material={sleeve} position={p.position} rotation={p.rotation} />

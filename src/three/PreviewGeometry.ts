@@ -82,6 +82,16 @@ const INSET_TOLERANCE_MM = 0.6;
  * drawn at true size, centred, with the case showing round them.
  * Fronts and backs always fill their face.
  */
+/**
+ * Where the printed pieces' centre sits up the face, mm from its middle: from `insertBottomMm` (an insert standing on the
+ * case's bottom edge, under a band the case keeps at the top), else centred.
+ */
+export function insertCenterY(t: TemplateConfig, spec: Extract<PreviewSpec, { kind: 'box' }>, panel: PanelId): number {
+  const p = t.panels.find((q) => q.id === panel);
+  if (!p || spec.insertBottomMm === undefined) return 0;
+  return -spec.heightMm / 2 + spec.insertBottomMm + p.heightMm / 2;
+}
+
 export function insetFaces(t: TemplateConfig, spec: PreviewSpec): InsetFace[] {
   if (spec.kind !== 'box') return [];
   const out: InsetFace[] = [];
@@ -289,17 +299,17 @@ function unroll(s: number, half: number, r: number): { along: number; angle: num
 }
 
 /**
- * A panel printed on part of a box face (a decal or an inset), drawn at its own size centred at `centerX` on a face
- * `faceW` × `faceH`, in the face's own frame (facing +z, the face's surface at z = 0). Edges that reach the end of the face's
+ * A panel printed on part of a box face (a decal or an inset), drawn at its own size centred at (`centerX`, `centerY`) on a
+ * face `faceW` × `faceH`, in the face's own frame (facing +z, the face's surface at z = 0). Edges that reach the end of the face's
  * flat wrap round the rounded edge (see `wrapAxis`), so the piece meets the neighbouring face's artwork and follows the curve
  * instead of overhanging it. Trimmed a hair all round, like the insets, so texture filtering never picks up the next panel.
  */
-export function createWrappedPanelGeometry(t: TemplateConfig, id: PanelId, faceW: number, faceH: number, radius: number, centerX = 0): BufferGeometry {
+export function createWrappedPanelGeometry(t: TemplateConfig, id: PanelId, faceW: number, faceH: number, radius: number, centerX = 0, centerY = 0): BufferGeometry {
   const p = t.panels.find((q) => q.id === id);
   if (!p) throw new Error(`Template has no ${id} panel`);
   const r = Math.min(radius, faceW / 2, faceH / 2);
   const xs = wrapAxis(centerX - p.widthMm / 2, centerX + p.widthMm / 2, faceW / 2, r);
-  const ys = wrapAxis(-p.heightMm / 2, p.heightMm / 2, faceH / 2, r);
+  const ys = wrapAxis(centerY - p.heightMm / 2, centerY + p.heightMm / 2, faceH / 2, r);
   const range = panelUvRange(t, id);
   const trim = 0.15;
   const du = ((range.u1 - range.u0) * trim) / p.widthMm;

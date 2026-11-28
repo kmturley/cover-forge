@@ -88,6 +88,14 @@ export type PreviewSpec =
       hollow?: boolean;
       /** Artwork covering only part of a face (a cassette's back flap, a slim case's front card beside its hinge), against one edge of it. */
       decals?: { panel: PanelId; face: '-z' | '+z'; align: 'min-x' | 'max-x'; /** How far in from that edge, mm (0: against it). */ marginMm?: number }[];
+      /** How far the printed pieces (decals and insets) stand above the case's bottom edge, mm; centred top to bottom when left out. */
+      insertBottomMm?: number;
+      /**
+       * Logos on the case's front above the insert: moulded into the plastic (a PS3 case's Blu-ray logo), drawn as a faint
+       * frosted shape, or `printed` on it (an Xbox One case's top). `topMm` is from the case's top edge to the logo's middle; `rightMm` from the
+       * opening edge to the logo's right edge, or centred across when left out.
+       */
+      emboss?: { logo: string; heightMm: number; topMm: number; rightMm?: number; /** Printed on the case in the logo's own colours (Xbox One's top), not moulded. */ printed?: boolean }[];
       casing: PreviewMaterial;
       /** Whether the printed faces are glossy film (cases) or plain card (sleeves). */
       glossy: boolean;

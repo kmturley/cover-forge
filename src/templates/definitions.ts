@@ -130,13 +130,16 @@ const wrapPreview = (w: number, h: number, depth: number, casing: PreviewMateria
 /**
  * A keepcase at its real outside size (`shell`, from cases.ts), with the printed insert at its own size under the clear
  * sleeve: the front and back from the spine edge (wrapping round its rounded corner), the spine centred down its edge. The
- * plastic shows round the rest, as on a real case: about 5.5 mm at the opening edge and 3.5 mm above and below.
+ * plastic shows round the rest, as on a real case: about 5.5 mm at the opening edge and 3.5 mm above and below. With
+ * `insertBottomMm` the insert stands that far above the bottom edge instead of centred, under a band the case keeps at the top.
  */
-const keepcasePreview = (shell: { w: number; h: number }, depth: number, casing: PreviewMaterial, radius: number): PreviewSpec => ({
+const keepcasePreview = (shell: { w: number; h: number }, depth: number, casing: PreviewMaterial, radius: number, band?: { insertBottomMm: number; emboss?: Extract<PreviewSpec, { kind: 'box' }>['emboss'] }): PreviewSpec => ({
   kind: 'box',
   widthMm: shell.w,
   heightMm: shell.h,
   depthMm: depth,
+  ...(band && { insertBottomMm: band.insertBottomMm }),
+  ...(band?.emboss && { emboss: band.emboss }),
   faces: { '-x': 'spine' },
   decals: [
     { panel: 'front', face: '+z', align: 'min-x' },
@@ -530,14 +533,30 @@ const GAME_CASE_NAME: Record<string, string> = {
 };
 
 /**
+ * Cases whose insert is much shorter than the case (PS3: 149 of 171 mm; Xbox One and Series: 149 of 170) stand it on the
+ * bottom, leaving a band of the case at the top with a logo on it: the Blu-ray logo moulded at the top right of the clear
+ * PS3 case, the Xbox One logo printed on the Xbox One's green top (photos of retail cases; on the Xbox One's own case the
+ * insert leaves out its printed header for it, see `headerOnCase` in official.ts). The
+ * bottom margin is the DVD keepcase's, (190 − 183) / 2; each logo is centred in the band, sized by eye from photos.
+ */
+const INSERT_BOTTOM_MM = 3.5;
+const bandMiddle = (shellH: number, insertH: number) => (shellH - INSERT_BOTTOM_MM - insertH) / 2;
+const UNDER_BAND: Record<string, { logo: string; heightMm: number; rightMm?: number; printed?: boolean }[]> = {
+  ps3: [{ logo: 'blu-ray', heightMm: 8, rightMm: 7 }],
+  // Printed white across the green top, 47 mm wide (photo of a retail case); the logo is 941 × 185 units.
+  'xbox-one': [{ logo: 'xbox-one', heightMm: (47 * 185) / 941, printed: true }],
+  'xbox-series': [],
+};
+
+/**
  * Game case variants: the platform's name and the case colour for the 3D view. Sizes (the printed insert, US releases)
  * are in cases.ts's GAME_CASES. PS1 is `jewel`: a CD jewel case, not a keepcase.
  */
-const GAME_CASE: Record<string, { label: string; color: string; jewel?: boolean }> = {
+const GAME_CASE: Record<string, { label: string; color: string; jewel?: boolean; clear?: boolean }> = {
   pc: { label: 'PC', color: '#16191f' },
   ps1: { label: 'PS1', color: '#16181c', jewel: true },
   ps2: { label: 'PS2', color: '#000000' },
-  ps3: { label: 'PS3', color: '#000000' },
+  ps3: { label: 'PS3', color: '#eef2f5', clear: true },
   ps4: { label: 'PS4', color: '#003791' },
   ps5: { label: 'PS5', color: '#ffffff' },
   'ps-vita': { label: 'PS Vita', color: '#003791' },
@@ -830,10 +849,12 @@ export const TEMPLATE_DEFS: TemplateDef[] = [
       const v = GAME_CASE[variantId];
       if (v.jewel) return jewelCase('game-case', v.label, variantId, 'black');
       const { insert: { w, h, spine }, outside } = GAME_CASES[variantId];
-      const casing = { color: v.color, roughness: 0.3 };
-      // On the DVD keepcase the 3D shows the real case with the insert inside it; the other shells are still the insert's size.
+      const casing = v.clear ? { color: v.color, transmission: 0.9, roughness: 0.15 } : { color: v.color, roughness: 0.3 };
+      // The 3D shows the real case with the insert inside it, where the case's outside is known (not the NES and SNES boxes).
       return wrap('game-case', v.label, variantId, w, h, spine,
-        outside === DVD_SHELL ? keepcasePreview(DVD_SHELL, spine, casing, 2) : wrapPreview(w, h, spine, casing, true, 2));
+        outside
+          ? keepcasePreview(outside, outside.d ?? spine, casing, 2, UNDER_BAND[variantId] && { insertBottomMm: INSERT_BOTTOM_MM, emboss: UNDER_BAND[variantId].map((e) => ({ ...e, topMm: bandMiddle(outside.h, h) })) })
+          : wrapPreview(w, h, spine, casing, true, 2));
     },
   },
 ];
