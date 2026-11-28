@@ -1,3 +1,12 @@
 {
-  "$doc": "What scripts/measure-covers.ts can't tell from a scan's pixels, keyed <folder>/<file> under scans/. Scans are used only for where branding sits and its colours; sizes come from each case's documented standard, and every scan is stretched to it. Fields: exclude (a reason: left out of the report), bleedMm (bleed round the trim on every side, cropped off before stretching), note. Add an entry only for something checked against the image."
+  "$doc": "What scripts/measure-covers.ts can't tell from a scan's pixels, keyed <folder>/<file> under scans/. Scans are used only for where branding sits and its colours; sizes come from each case's documented standard, and every scan is stretched to it. Fields: exclude (a reason: left out of the report), bleedMm (bleed round the trim on every side, cropped off before stretching), note. Add an entry only for something checked against the image.",
+  "ps1/granturismo.jpg": {
+    "note": "The booklet's left ~2 mm is hidden under the tray card's flap: the PS box and wordmark sit on the fold, where photos of whole booklets show them ~2 mm in. Its strip width and horizontal positions read ~2 mm small."
+  },
+  "ps1/harvestmoonbacktonature.jpg": {
+    "note": "The booklet's left ~2 mm is hidden under the tray card's flap: the PS box and wordmark sit on the fold, where photos of whole booklets show them ~2 mm in. Its strip width and horizontal positions read ~2 mm small."
+  },
+  "ps1/jadecocoonstoryofthetamamayu.jpg": {
+    "note": "The booklet's left ~2 mm is hidden under the tray card's flap: the PS box and wordmark sit on the fold, where photos of whole booklets show them ~2 mm in. Its strip width and horizontal positions read ~2 mm small."
+  }
 }

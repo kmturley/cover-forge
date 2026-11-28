@@ -67,7 +67,7 @@ describe('branding', () => {
     expect(band('switch2').fill).toBe('#f20c0d');
     expect(band('xbox-one').marks[0].align).toBe('center');
     expect(GAME_CASE_BRANDING.switch.front).toMatchObject({ shape: 'tab', w: 0.22, h: 0.132 });
-    expect(GAME_CASE_BRANDING.ps1.front).toMatchObject({ shape: 'strip', w: 0.155 });
+    expect(GAME_CASE_BRANDING.ps1.front).toMatchObject({ shape: 'strip', w: 0.14 });
     expect(FORMAT_BRANDING.dvd.front.shape).toBe('none');
   });
 
