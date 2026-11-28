@@ -44,6 +44,8 @@ export interface AppState {
   showGuides: boolean;
   /** UI-only (not persisted): dimension lines in mm on the 2D and 3D views. */
   showMeasurements: boolean;
+  /** UI-only (not persisted): the 2D view shows the bleed round each piece, dimmed, instead of only the trimmed piece. */
+  showBleed: boolean;
   view: ViewMode;
   /** UI-only (not persisted): slowly spins the 3D model as a hands-free product demo. */
   autoRotate: boolean;
@@ -95,6 +97,7 @@ export type Action =
   | { type: 'setItemCase'; items: string[]; case: string }
   | { type: 'setShowGuides'; show: boolean }
   | { type: 'setShowMeasurements'; show: boolean }
+  | { type: 'setShowBleed'; show: boolean }
   | { type: 'setView'; view: ViewMode }
   | { type: 'setAutoRotate'; autoRotate: boolean }
   | { type: 'setShowInserts'; show: boolean }
@@ -147,6 +150,7 @@ export const initialState: AppState = {
   lastTemplates: {},
   showGuides: false,
   showMeasurements: false,
+  showBleed: false,
   view: '3d',
   autoRotate: false,
   showInserts: true,
@@ -340,6 +344,8 @@ function apply(state: AppState, action: Action): AppState {
       return { ...state, showGuides: action.show };
     case 'setShowMeasurements':
       return { ...state, showMeasurements: action.show };
+    case 'setShowBleed':
+      return { ...state, showBleed: action.show };
     case 'setView':
       return { ...state, view: action.view };
     case 'setAutoRotate':

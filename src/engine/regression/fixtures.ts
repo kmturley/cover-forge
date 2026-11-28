@@ -212,6 +212,8 @@ const features: Fixture[] = [
   { name: 'view/guides', scene: scene(BR, { showGuides: true }), px: 2 },
   { name: 'view/assembly-hatch', scene: scene('nfc-box-card', { hideOutsideCut: true, markAssembly: true }), px: 2 },
   { name: 'view/hide-outside-cut', scene: scene(PS4, { hideOutsideCut: true, banner: true }), px: 2 },
+  // Bleed on: the bleed round the PS1 jewel case's two pieces shows, dimmed.
+  { name: 'view/dim-outside-cut', scene: scene('game-case-ps1', { dimOutsideCut: true, banner: true }), px: 2 },
 ];
 
 /** Each built-in preset, applied to the same item on a Blu-ray case. */

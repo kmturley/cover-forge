@@ -196,10 +196,17 @@ From `scans-report.md` and `branding-spec.md` (89 images over 23 platforms):
    - Format logos (DVD, Blu-ray, CD) have no `ref` yet, so they still follow the panel. Giving them one is a small
      follow-up, but it would change the DVD slim's own spine, so it needs a look first.
 
-4. **Editor: show the trim and the bleed honestly.**
-   - Add an option to show the bleed in the 2D view.
-   - Draw selection boxes at the trim, with the bleed part shown faintly.
-   - Keep layer percentages inside 0–100 % of the trim, and give bleed overflow as its own setting.
+4. **Editor: show the trim and the bleed honestly.** *(done)*
+   - **A Bleed toggle in the 2D view** (beside Guides and Measurements). It shows the bleed round each piece, dimmed, so
+     you can see what is printed past the cut line. Off by default, and never in the 3D texture or exports.
+   - **Selection outlines at the trim.** A layer that runs into the bleed (a side strip, a header band, the cover
+     picture) is outlined solid where the trimmed piece ends; the rest of its box, where the handles are, is faint and
+     dashed. Selecting the PS1 strip no longer looks like it is cut off.
+   - Tests: `LayerOverlay.test.ts` for the outline, and a golden of the dimmed-bleed view (`view/dim-outside-cut`).
+   - **Not done: keeping layer placements inside 0–100 % of the trim**, with bleed overflow as its own setting. A
+     layer reaching into the bleed (−2.5 %) is correct for full-bleed elements, and with the outline now explaining it,
+     changing the saved format isn't worth the migration.
+
 5. **3D: model the case, not the paper.** Use the case spec's outside size for the shell, and place the insert inside it
    at its real size (as the jewel case now does). Keepcases need a clear sleeve over the insert; the DS-style cases need
    their own shell.

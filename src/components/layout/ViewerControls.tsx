@@ -1,8 +1,8 @@
 import { useAppDispatch, useAppState } from '../../context/AppContext';
 
-/** 2D / 3D switch, the guide lines toggle, and (in 3D) an auto-rotate demo spin and a switch to hide the printed inserts. They only change the viewer, so they sit inside it. */
+/** 2D / 3D switch, the guide lines toggle, (in 2D) the bleed, and (in 3D) an auto-rotate demo spin and a switch to hide the printed inserts. They only change the viewer, so they sit inside it. */
 export function ViewerControls() {
-  const { showGuides, showMeasurements, view, autoRotate, showInserts } = useAppState();
+  const { showGuides, showMeasurements, showBleed, view, autoRotate, showInserts } = useAppState();
   const dispatch = useAppDispatch();
   return (
     <div className="viewer-controls" onPointerDown={(e) => e.stopPropagation()} onDoubleClick={(e) => e.stopPropagation()}>
@@ -22,6 +22,12 @@ export function ViewerControls() {
         <input type="checkbox" checked={showMeasurements} onChange={(e) => dispatch({ type: 'setShowMeasurements', show: e.target.checked })} />
         Measurements
       </label>
+      {view === '2d' && (
+        <label className="check" title="Show the bleed round each piece (dimmed): the margin printed past the cut line">
+          <input type="checkbox" checked={showBleed} onChange={(e) => dispatch({ type: 'setShowBleed', show: e.target.checked })} />
+          Bleed
+        </label>
+      )}
       {view === '3d' && (
         <label className="check">
           <input type="checkbox" checked={autoRotate} onChange={(e) => dispatch({ type: 'setAutoRotate', autoRotate: e.target.checked })} />

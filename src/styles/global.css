@@ -341,6 +341,11 @@ h3 { font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: v
 .layer-outline { position: absolute; outline: 1.5px solid #38bdf8; box-shadow: 0 0 0 1px rgba(0,0,0,.45); }
 .layer-outline.whole { outline-style: dashed; }
 .layer-outline.fixed { outline-color: #a3a3a3; }
+/* A layer reaching into the bleed: its whole box faint and dashed, the part inside the trim outlined as usual. */
+.layer-outline.into-bleed { outline: 1px dashed rgba(56, 189, 248, .55); box-shadow: none; }
+.layer-outline-trim { position: absolute; outline: 1.5px solid #38bdf8; box-shadow: 0 0 0 1px rgba(0,0,0,.45); pointer-events: none; }
+.layer-outline-trim.fixed { outline-color: #a3a3a3; }
+.layer-outline.whole .layer-outline-trim { outline-style: dashed; }
 .layer-handle { position: absolute; width: 9px; height: 9px; margin: -4.5px 0 0 -4.5px; background: #fff; border: 1.5px solid #0284c7; border-radius: 2px; }
 .snap-guide { position: absolute; background: #f43f5e; }
 .snap-guide.vertical { width: 1px; }

@@ -42,7 +42,7 @@ function useDevicePixelRatio(): number {
  * (about the cursor); images are positioned from the sidebar. A click selects the panel under the cursor.
  */
 export function CanvasEditor() {
-  const { template, shared, designs, assets, showGuides, showMeasurements } = useAppState();
+  const { template, shared, designs, assets, showGuides, showMeasurements, showBleed } = useAppState();
   const item = useSelectedItem();
   const dispatch = useAppDispatch();
   const wrapRef = useRef<HTMLDivElement>(null);
@@ -68,8 +68,9 @@ export function CanvasEditor() {
   }, []);
 
   useEffect(() => {
-    rendererRef.current?.setScene({ template, item, shared, designs, assets, showGuides, hideOutsideCut: true, markAssembly: true });
-  }, [template, item, shared, designs, assets, showGuides]);
+    // The trimmed piece, or with Bleed on the bleed round it too, dimmed.
+    rendererRef.current?.setScene({ template, item, shared, designs, assets, showGuides, hideOutsideCut: !showBleed, dimOutsideCut: showBleed, markAssembly: true });
+  }, [template, item, shared, designs, assets, showGuides, showBleed]);
 
   // Track the viewport size so the canvas can be fitted to it.
   useEffect(() => {

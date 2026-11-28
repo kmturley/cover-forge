@@ -24,11 +24,16 @@ export interface Scene {
   showGuides: boolean;
   /** Clear everything outside the cut lines (bleed, and any gaps between panels), so the canvas looks like the cut-out piece (the 2D view). */
   hideOutsideCut?: boolean;
+  /** Dim everything outside the cut lines instead (the 2D view with Bleed on): the bleed shows, but reads as not part of the piece. */
+  dimOutsideCut?: boolean;
   /** Shade the flaps and tabs that fold away (the 2D editor's preview aid; never in the 3D texture or an export). */
   markAssembly?: boolean;
 }
 
 export type { ImageLookup };
+
+/** What the bleed is veiled with when it is shown: the page's dark grey, mostly opaque, so the art shows through faintly. */
+const BLEED_VEIL = 'rgba(30, 32, 36, 0.62)';
 
 /**
  * Renders the full flat cover. Pure and synchronous: used by the editor, the 3D texture and export.
@@ -61,6 +66,17 @@ export function renderCover(
     }
     ctx.fill();
     ctx.globalCompositeOperation = 'source-over';
+  }
+  if (scene.dimOutsideCut && !scene.hideOutsideCut) {
+    // The whole canvas less the panels' trim rects (even-odd), veiled. Snapped like the cut above, so the two agree.
+    ctx.beginPath();
+    ctx.rect(0, 0, t.totalWidthMm * px, t.totalHeightMm * px);
+    for (const p of t.panels) {
+      const [x0, y0] = [Math.floor(p.xMm * px), Math.floor(p.yMm * px)];
+      ctx.rect(x0, y0, Math.ceil((p.xMm + p.widthMm) * px) - x0, Math.ceil((p.yMm + p.heightMm) * px) - y0);
+    }
+    ctx.fillStyle = BLEED_VEIL;
+    ctx.fill('evenodd');
   }
   if (scene.showGuides) drawGuides(ctx, t, px);
   ctx.restore();
