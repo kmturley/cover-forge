@@ -137,6 +137,22 @@ describe('spine title case', () => {
 });
 
 describe('pinnedSpine', () => {
+  it('keeps the marks below a cap that joins the front header on every spine in the library, however thin', () => {
+    // The cap keeps its length to meet the header while the marks shrink with a thinner spine; they must not rise into it.
+    const spines = TEMPLATE_DEFS.flatMap((d) => d.variants.map((v) => buildTemplate(d.kind, v.id))).flatMap((t) => t.panels.filter((p) => p.text === 'vertical').map((p) => [p.heightMm, p.widthMm] as const));
+    for (const [id, b] of Object.entries(GAME_CASE_BRANDING)) {
+      const cap = b.spine?.cap;
+      if (!cap?.joins) continue;
+      const below = b.spine!.marks.map((m) => m.from >= cap.length);
+      for (const [length, width] of spines) {
+        const sp = pinnedSpine(b, length, width)!;
+        sp.marks.forEach((m, i) => {
+          if (below[i]) expect(m.from, `${id} on a ${length} × ${width} mm spine, mark ${i + 1}`).toBeGreaterThanOrEqual(sp.cap!.length - 1e-9);
+        });
+      }
+    }
+  });
+
   const sw = GAME_CASE_BRANDING.switch;
   it('keeps the spine as drawn on the platform\'s own case', () => {
     expect(pinnedSpine(sw, 161, 10)).toBe(sw.spine);

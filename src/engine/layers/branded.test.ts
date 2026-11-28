@@ -119,3 +119,30 @@ describe('the dress as layers', () => {
     console.log(report.join('\n'));
   });
 });
+
+describe('a header that is part of its own case', () => {
+  const ids = (t: ReturnType<typeof buildTemplateById>) => brandedLayers(t).layers.map((l) => l.id);
+
+  it("leaves the Xbox One's header and spine cap off its own case's insert, where the case's green top carries them", () => {
+    const own = ids(buildTemplateById('game-case-xbox-one'));
+    expect(own).not.toContain('branded.front.band');
+    expect(own).not.toContain('branded.spine.cap');
+    expect(own).toContain('branded.spine.mark-1');
+    // The spine's logo moves up by the cap's length, keeping its place below it.
+    const lifted = brandingFor('game-case', 'xbox-one').spine!.marks[0];
+    const printed = brandingFor('dvd', 'std-14', 'xbox-one').spine!;
+    expect(lifted.from).toBeCloseTo(printed.marks[0].from - printed.cap!.length);
+  });
+
+  it("still prints them on the Xbox One's slipcover, which goes round the outside of the case", () => {
+    const slip = ids(buildTemplateById('game-case-xbox-one~slipcover'));
+    expect(slip).toContain('branded.front.band');
+    expect(slip).toContain('branded.spine.cap');
+  });
+
+  it('still prints them when the Xbox One dress is on another case', () => {
+    const other = ids({ ...buildTemplateById('dvd-std-14'), dress: 'xbox-one' });
+    expect(other).toContain('branded.front.band');
+    expect(other).toContain('branded.spine.cap');
+  });
+});

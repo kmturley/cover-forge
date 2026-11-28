@@ -153,6 +153,12 @@ export interface Branding {
   backBand?: boolean;
   /** The platform's own insert (mm, from cases.ts): front width and height, and the spine's length and width. Shares are taken of it, so the dress keeps its size in mm on any other panel (see `dressFrame` in branding.ts). */
   ref?: { w: number; h: number; spine: number; spineW: number };
+  /**
+   * On the platform's own case the front's header is part of the case, not the insert (Xbox One: the green top and its logo
+   * are the case's, above the shorter insert, and run round the spine), so the header and the spine cap joining it aren't
+   * printed there (see `withHeaderOnCase`). Anywhere else (the dress on another case, a slipcover or a box) they are.
+   */
+  headerOnCase?: boolean;
 }
 
 /** A mark's `color` only tints logo layers that have no fill of their own; logos with colours baked into the SVG (Wii, Xbox, Xbox 360…) ignore it. */
@@ -560,8 +566,12 @@ export const GAME_CASE_BRANDING: Record<string, Branding> = {
       ],
     },
   },
-  // Xbox One: a flat green band with the sphere and "XBOX ONE" centred, running over the spine's top; a charcoal spine.
+  // Xbox One: a flat green band with the sphere and "XBOX ONE" centred, running over the spine's top; a charcoal spine. On
+  // the Xbox One's own case the band is the case's green top (photos of retail cases), so only other cases print it.
   'xbox-one': {
+    headerOnCase: true,
+    // The case's green top runs right round it, so wherever the band is printed it carries on across the back.
+    backBand: true,
     front: {
       shape: 'band', depth: flat(0.105), fill: XBOX_GREEN,
       marks: [{ parts: [{ logo: 'xbox-one' }], color: W, h: 0.052, align: 'center', cy: 0.0532, dx: -0.0052 }],
@@ -607,13 +617,52 @@ const FORMAT_VARIANT_BRANDING: Record<string, Branding> = {
 };
 
 /** What `none` as a dress draws: nothing. */
+/**
+ * Whether a template is the platform's own game case's insert, the one its dress was drawn for: not another case marked
+ * with it, nor the case's slipcover or box (which go round the outside, so print what the case itself carries).
+ */
+export const onOwnCase = (t: { kind: TemplateKind; variantId: string; dress?: string; piece?: string }): boolean =>
+  t.kind === 'game-case' && (!t.dress || t.dress === t.variantId) && (!t.piece || t.piece === 'insert');
+
 const NO_BRANDING: Branding = { front: { shape: 'none', marks: [] } };
 
 /**
  * The branding for a template: its platform's for game cases, else its variant's or its format's. A `dress` (a brand id, from
  * `brandOf` in the library, or `none`) is drawn instead of that, whatever the case.
  */
-export function brandingFor(kind: TemplateKind, variantId: string, dress?: string): Branding {
+export function brandingFor(kind: TemplateKind, variantId: string, dress?: string, piece?: string): Branding {
+  const b = resolveBranding(kind, variantId, dress);
+  return b.headerOnCase && onOwnCase({ kind, variantId, dress, piece }) ? withHeaderOnCase(b) : b;
+}
+
+const onCaseCache = new Map<Branding, Branding>();
+/**
+ * A dress on its own case when the case carries its header (`headerOnCase`): no front header, and no spine cap where it
+ * joins that header (the case's top runs round the spine too). The spine's marks and title start move up by the cap's
+ * length, so they keep their place below it as on the platform's own insert.
+ */
+function withHeaderOnCase(b: Branding): Branding {
+  let out = onCaseCache.get(b);
+  if (out) return out;
+  const sp = b.spine;
+  const lift = sp?.cap?.joins ? sp.cap.length : 0;
+  out = {
+    ...b,
+    front: NO_BRANDING.front,
+    ...(sp && {
+      spine: {
+        ...sp,
+        cap: lift ? undefined : sp.cap,
+        marks: sp.marks.map((m) => ({ ...m, from: m.from - lift, to: m.to - lift })),
+        ...(sp.titleFrom !== undefined && { titleFrom: sp.titleFrom - lift }),
+      },
+    }),
+  };
+  onCaseCache.set(b, out);
+  return out;
+}
+
+function resolveBranding(kind: TemplateKind, variantId: string, dress?: string): Branding {
   if (dress === 'none') return NO_BRANDING;
   if (dress) {
     // A platform's (`snes`), or a format's (`dvd`, or a variant of one: `bluray/slim-7`).
@@ -659,17 +708,21 @@ export function pinnedSpine(b: Branding, lengthMm: number, widthMm?: number): Sp
   if (k >= 1) return sp;
   // A cap that meets the front's header follows the header, which only changes with the length.
   const kc = sp.cap?.joins ? Math.min(1, b.ref.spine / lengthMm) : k;
+  // So it can end below where the marks shrink to: those below it keep their gap below its end (scaled like them), rather
+  // than rising into it (an Xbox dress on a thin Blu-ray spine).
+  const capEnd = sp.cap?.length ?? 0;
+  const along = (v: number) => (kc !== k && v >= capEnd ? capEnd * kc + (v - capEnd) * k : v * k);
   return {
     ...sp,
     cap: sp.cap && { ...sp.cap, length: sp.cap.length * kc, ...(sp.cap.dome && { dome: sp.cap.dome * kc }), ...(sp.cap.line && { line: { ...sp.cap.line, size: sp.cap.line.size * k, ...(sp.cap.line.gap && { gap: sp.cap.line.gap * k }) } }) },
     outline: sp.outline && { ...sp.outline, ...(sp.outline.rightFrom && { rightFrom: sp.outline.rightFrom * k }) },
-    marks: sp.marks.map((m) => ({ ...m, from: m.from * k, to: m.to * k, ...(m.dxAlong && { dxAlong: m.dxAlong * k }) })),
-    titleFrom: sp.titleFrom === undefined ? undefined : sp.titleFrom * k,
+    marks: sp.marks.map((m) => ({ ...m, ...(m.from >= capEnd ? { from: along(m.from), to: along(m.to) } : { from: m.from * k, to: m.to * k }), ...(m.dxAlong && { dxAlong: m.dxAlong * k }) })),
+    titleFrom: sp.titleFrom === undefined ? undefined : along(sp.titleFrom),
   };
 }
 
 /** The branding a template is drawn with, its own or the dress it was marked with. */
-export const brandingOf = (t: { kind: TemplateKind; variantId: string; dress?: string }): Branding => brandingFor(t.kind, t.variantId, t.dress);
+export const brandingOf = (t: { kind: TemplateKind; variantId: string; dress?: string; piece?: string }): Branding => brandingFor(t.kind, t.variantId, t.dress, t.piece);
 
 /** How much to scale a spine title's automatic size by (1 unless the format asks for more). */
 export function spineTitleScale(kind: TemplateKind, variantId: string, branded: boolean): number {

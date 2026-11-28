@@ -207,6 +207,11 @@ const features: Fixture[] = [
   { name: 'dress/snes-box-on-dvd-case', scene: scene('game-case-pc~box', { item: item({ front: { dress: 'snes' } }), banner: true }), px: 1 },
   { name: 'dress/3ds-on-jewel', scene: scene('game-case-ps1', { item: item({ front: { dress: '3ds' } }), banner: true }), px: 2 },
   { name: 'dress/none', scene: scene('game-case-ps4', { item: item({ front: { dress: 'none' } }), banner: true }), px: 2 },
+  // The Xbox One dress, whose header is on its own case: printed elsewhere, with the band carried on across the back.
+  { name: 'dress/xbox-one-on-dvd-case', scene: scene('game-case-pc', { item: item({ front: { dress: 'xbox-one' } }), banner: true }), px: 2 },
+  { name: 'dress/xbox-one-slipcover', scene: scene('game-case-xbox-one~slipcover', { banner: true }), px: 1 },
+  // On a thin spine the cap keeps its length to meet the header, and the marks stay below it as they shrink.
+  { name: 'dress/xbox-one-on-bluray-slim', scene: scene('bluray-slim-7', { item: item({ front: { dress: 'xbox-one' } }), banner: true }), px: 2 },
 
   // Guides and the cut-out view.
   { name: 'view/guides', scene: scene(BR, { showGuides: true }), px: 2 },
