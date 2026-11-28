@@ -3,7 +3,7 @@ import { Line } from '@react-three/drei';
 import { CanvasTexture, DoubleSide, LinearFilter, Matrix4, Quaternion, Vector3 } from 'three';
 import type { PanelId, PreviewSpec, TemplateConfig } from '../types/template';
 import { MEASURE_COLOR, formatMm } from '../engine/MeasurementOverlay';
-import { insetFaces, labelWrap, previewScale } from './PreviewGeometry';
+import { insertCenterY, insetFaces, labelWrap, previewScale } from './PreviewGeometry';
 
 const COLOR = MEASURE_COLOR;
 /** How far (mm) dimension lines sit clear of the model. */
@@ -122,10 +122,17 @@ interface Art {
 const panelOf = (t: TemplateConfig, id: PanelId | undefined) => t.panels.find((p) => p.id === id);
 
 /** Where the front cover's artwork actually is: the whole face on a case or card, but only the label on a disk or diskette. */
-function frontArt(t: TemplateConfig, spec: PreviewSpec): Art | null {
+export function frontArt(t: TemplateConfig, spec: PreviewSpec): Art | null {
   if (spec.kind === 'box') {
     const p = panelOf(t, spec.faces['+z']);
-    return p ? { cx: 0, cy: 0, w: spec.widthMm, h: spec.heightMm, z: spec.depthMm / 2 - spec.radiusMm, mmW: p.widthMm, mmH: p.heightMm } : null;
+    if (p) return { cx: 0, cy: 0, w: spec.widthMm, h: spec.heightMm, z: spec.depthMm / 2 - spec.radiusMm, mmW: p.widthMm, mmH: p.heightMm };
+    // An insert inside a real-size case: the front is a piece at its own size against the spine edge (see PreviewScene).
+    const d = spec.decals?.find((x) => x.face === '+z');
+    const q = d && panelOf(t, d.panel);
+    if (!d || !q) return null;
+    const m = d.marginMm ?? 0;
+    const cx = d.align === 'min-x' ? -spec.widthMm / 2 + q.widthMm / 2 + m : spec.widthMm / 2 - q.widthMm / 2 - m;
+    return { cx, cy: insertCenterY(t, spec, d.panel), w: q.widthMm, h: q.heightMm, z: spec.depthMm / 2, mmW: q.widthMm, mmH: q.heightMm };
   }
   const p = panelOf(t, spec.panel);
   if (!p) return null;
@@ -140,7 +147,8 @@ function frontArt(t: TemplateConfig, spec: PreviewSpec): Art | null {
 /**
  * The cover's width and height, and (on cases) the spine's width, in mm, each flat in its own plane (front face, and the
  * spine's bottom edge) so it doesn't turn to face the camera as the model is orbited. They span the printed artwork,
- * not the case around it: a card inset in the case, or a label on a disk, is measured at its own edges.
+ * not the case around it: a card inset in the case, an insert inside a real-size case, or a label on a disk, is measured
+ * at its own edges.
  */
 export function Measurements3D({ spec, template }: { spec: PreviewSpec; template: TemplateConfig }) {
   const art = frontArt(template, spec);
@@ -160,7 +168,7 @@ export function Measurements3D({ spec, template }: { spec: PreviewSpec; template
       const len = inset ? spine.widthMm : spec.depthMm;
       // Likewise a printed spine's bottom edge is where its curve ends, `radiusMm` in from the side plane.
       const x = inset ? -spec.widthMm / 2 : -spec.widthMm / 2 + spec.radiusMm;
-      const bottom = inset ? -Math.min(spec.heightMm, spine.heightMm) / 2 : -spec.heightMm / 2;
+      const bottom = inset ? insertCenterY(template, spec, spine.id) - Math.min(spec.heightMm, spine.heightMm) / 2 : -spec.heightMm / 2;
       dims.push({ a: v(x, bottom, len / 2), b: v(x, bottom, -len / 2), off: v(0, -OFFSET_MM * 2, 0), facing: v(-1, 0, 0), mm: spine.widthMm });
     }
   }
