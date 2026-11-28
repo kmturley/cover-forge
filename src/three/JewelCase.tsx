@@ -1,6 +1,7 @@
 import { useEffect, useMemo } from 'react';
 import { AddEquation, CustomBlending, ExtrudeGeometry, FrontSide, MeshPhysicalMaterial, MeshStandardMaterial, OneFactor, Path, Shape, ZeroFactor, type BufferGeometry, type Material, type Texture } from 'three';
 import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js';
+import { JEWEL_CASE } from '../templates/cases';
 import type { CaseConstruction, PanelId, PlasticFinish, PlasticPart, TemplateConfig } from '../types/template';
 import { createPanelStrip } from './PreviewGeometry';
 import { createSleeveMaterial } from './PreviewMaterials';
@@ -67,35 +68,11 @@ const GAP = 0.06;
 const PAPER = 0.04;
 
 /**
- * The case's parts, mm, measured from a real jewel case's 3D model ("Compact disc and case" by effe on BlendSwap, CC0) and a
- * photo of an empty one. x runs across the case from its centre (the hinge on -x), z through it (the lid at +z). Simplified:
- * flat plates with softened edges rather than the real mouldings.
+ * The case's plastic parts, mm, from cases.ts (measured from a real case). Drawn simplified: flat plates with softened
+ * edges rather than the real mouldings.
  */
 const CASE = {
-  /** The lid: as tall as the case; its top and bottom walls wrap over the base; its front stops this far in from the hinge edge. */
-  lid: { frontFromHingeMm: 12 },
-  /** The base: shorter than the lid (inside its walls); its end wall on the opening side is set in this far, leaving a finger slot. */
-  base: { heightMm: 122.8, openingWallInsetMm: 1 },
-  tray: {
-    /** Its floor's gap in front of the base's back wall (the tray card's place) and its thickness. */
-    floorGapMm: 0.2,
-    floorMm: 0.8,
-    /** The deck round the disc well: its top this far in front of the base's back wall. */
-    deckMm: 5.87,
-    /** Its end on the opening side: this far in from the base's end wall (the card's flap's place). */
-    endGapMm: 0.2,
-    /**
-     * The hinge strip, as far in from the case's hinge edge as the lid's front starts: a channel open to the outside, its front
-     * flush with the lid's (the band down the front of the case), its inner wall the well's side. The card's flap sits inside it.
-     */
-    strip: { frontMm: 1.75, wallMm: 1, ribs: 9, ribWidthMm: 0.45, ribMm: 0.15 },
-    /** The disc well: its centre right of the case's centre, its rim's radius; it runs off the tray's top and bottom edges. */
-    well: { xMm: 4.3, radiusMm: 61, rimMm: 0.8 },
-    /** The hub: a low round platform, and inside it a crown of teeth (the slots between them radiate from a small hole). */
-    hub: { platformMm: 15, platformHeightMm: 1.2, crownMm: 9.5, crownHeightMm: 3.2, holeMm: 3.5, slotWidthMm: 1.1, slots: 16 },
-  },
-  /** The lid's four booklet tabs: half-round clips inside its top and bottom walls, centred at these x. */
-  tabs: { radiusMm: 5, depthMm: 0.8, xMm: [-37, 47] as const },
+  ...JEWEL_CASE.parts,
   /** How much the plates' edges are softened. */
   edgeMm: 0.4,
 };

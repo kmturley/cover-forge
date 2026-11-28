@@ -1,5 +1,6 @@
 import type { CaseOrigin, PanelId, PanelRect, PlasticPart, PreviewMaterial, PreviewSpec, SpineOrientation, TemplateConfig, TemplateKind, TemplateMark, TemplateVariant } from '../types/template';
 import { XBOX_GREEN } from '../engine/official';
+import { BETAMAX_SLEEVE, BLURAY_INSERT, BLURAY_SPINES, CARD_BOX, CASSETTE_JCARD, CR80, DVD_INSERT, DVD_SPINES, FLOPPY, GAME_CASES, JEWEL_CASE, MINI_CD_SLIM, MINIDISC_ALBUM, MINIDISC_JCARD, NFC_BOXES, NFC_STICKERS, UHD_SPINES, VHS_SLEEVE, VINYL_SLEEVES } from './cases';
 
 export const PX_PER_MM = 300 / 25.4;
 
@@ -130,37 +131,33 @@ const wrapPreview = (w: number, h: number, depth: number, casing: PreviewMateria
  * Blu-ray cases. The US standard and slim cases are offered; the others are hidden but still built, so a save or link that
  * uses one keeps printing at the size it was designed for. An id's physical size must never change (see templates.test.ts).
  */
-const BLURAY: Record<string, { label: string; spine: number; hidden?: boolean }> = {
-  'us-11': { label: 'Blu-ray', spine: 11 },
-  'slim-7': { label: 'Blu-ray slim', spine: 7 },
-  'us-12.5': { label: 'Blu-ray Elite', spine: 12.5, hidden: true },
-  'eu-14': { label: 'Blu-ray (EU)', spine: 14, hidden: true },
+const BLURAY: Record<string, { label: string; hidden?: boolean }> = {
+  'us-11': { label: 'Blu-ray' },
+  'slim-7': { label: 'Blu-ray slim' },
+  'us-12.5': { label: 'Blu-ray Elite', hidden: true },
+  'eu-14': { label: 'Blu-ray (EU)', hidden: true },
 };
 
-/**
- * Blu-ray 4K UHD cases: the Blu-ray case in black. Severin Films ships its single, 2-disc and 3-disc 4K UHD cases at
- * 12.5 mm and its 4-disc case at 15 mm; the front panel is the same size in every one.
- */
-const UHD: Record<string, { label: string; spine: number }> = {
-  'us-11': { label: 'Blu-ray 4K UHD', spine: 11 },
-  'elite-12.5': { label: 'Blu-ray 4K UHD (Elite)', spine: 12.5 },
-  'multi4-15': { label: 'Blu-ray 4K UHD (4-disc)', spine: 15 },
+/** Blu-ray 4K UHD cases: the Blu-ray case in black; the front panel is the same size in every one (spines in cases.ts). */
+const UHD: Record<string, { label: string }> = {
+  'us-11': { label: 'Blu-ray 4K UHD' },
+  'elite-12.5': { label: 'Blu-ray 4K UHD (Elite)' },
+  'multi4-15': { label: 'Blu-ray 4K UHD (4-disc)' },
 };
 
-const DVD: Record<string, { label: string; spine: number; hidden?: boolean }> = {
-  'std-14': { label: 'DVD', spine: 14 },
-  'slim-7': { label: 'DVD Slim', spine: 7 },
+const DVD: Record<string, { label: string; hidden?: boolean }> = {
+  'std-14': { label: 'DVD' },
+  'slim-7': { label: 'DVD Slim' },
   // The 9 mm slim case offered before the 7 mm one: hidden, but saves that use it still print at 9 mm.
-  'slim-9': { label: 'DVD Slim (9 mm)', spine: 9, hidden: true },
+  'slim-9': { label: 'DVD Slim (9 mm)', hidden: true },
 };
 
-/** Boxes that hold an NFC item: a slim one for a CR80 card (54 × 85.6 × 0.8 mm plus room to slide) and a small keepsake box. */
-const NFC_BOX: Record<string, { label: string; w: number; h: number; d: number; hidden?: boolean }> = {
-  card: { label: 'NFC Card Box', w: 58, h: 90, d: 6 },
-  small: { label: 'NFC Small Box', w: 60, h: 60, d: 25, hidden: true },
+/** Boxes that hold an NFC item (sizes in cases.ts). */
+const NFC_BOX: Record<keyof typeof NFC_BOXES & ('card' | 'small'), { label: string; hidden?: boolean }> = {
+  card: { label: 'NFC Card Box' },
+  small: { label: 'NFC Small Box', hidden: true },
 };
-const NFC_WALLET = { w: 58, h: 90 };
-const NFC_STICKER_MM: Record<string, number> = { '25': 25, '30': 30, '35': 35 };
+const NFC_STICKER_MM = NFC_STICKERS;
 const NFC_STICKER_NAME: Record<string, string> = { '25': 'NFC Sticker Small', '30': 'NFC Sticker Medium', '35': 'NFC Sticker Large' };
 
 export interface TuckBox {
@@ -277,9 +274,6 @@ function trayCardBody(back: number, flap: number, r: number): { widthMm: number;
   return { widthMm: back + 2 * r - 2 * halfCorner, depthMm: flap + 2 * r - 2 * halfCorner };
 }
 
-/** A CD jewel case's real outside size, mm (case-research.md §1). */
-const JEWEL_CASE = { w: 142, h: 125, d: 10 };
-
 /** Corner radius of the CD jewel case's shell, mm. */
 const JEWEL_RADIUS = 1.5;
 
@@ -310,7 +304,9 @@ const JEWEL_TRAYS = {
  * its flaps folded round the tray's ends), and the booklet behind the lid, 3 mm in from the opening edge.
  */
 function jewelCase(kind: TemplateKind, name: string, variantId: string, tray: keyof typeof JEWEL_TRAYS): TemplateConfig {
-  const [back, flap, booklet] = [137, 6.5, 120];
+  const { trayCard, booklet } = JEWEL_CASE;
+  const { back, flap } = trayCard;
+  const outside = JEWEL_CASE.outside;
   return assemble({
     kind,
     name,
@@ -322,21 +318,21 @@ function jewelCase(kind: TemplateKind, name: string, variantId: string, tray: ke
         specs: [
           // The opening-side flap first: seen from behind, the sheet's left flap folds round to the opening side, so the
           // primary spine, the one on the hinge side that faces out on a shelf, is the sheet's right flap.
-          { id: 'spineRight', label: 'Spine (opening side)', w: flap, h: 118, text: 'vertical' },
-          { id: 'back', label: 'Back (tray card)', w: back, h: 118 },
-          { id: 'spine', label: 'Spine (hinge side)', w: flap, h: 118, text: 'vertical' },
+          { id: 'spineRight', label: 'Spine (opening side)', w: flap, h: trayCard.h, text: 'vertical' },
+          { id: 'back', label: 'Back (tray card)', w: back, h: trayCard.h },
+          { id: 'spine', label: 'Spine (hinge side)', w: flap, h: trayCard.h, text: 'vertical' },
         ],
       },
-      { dir: 'row', specs: [{ id: 'front', label: 'Front (booklet)', w: booklet, h: booklet }] },
+      { dir: 'row', specs: [{ id: 'front', label: 'Front (booklet)', w: booklet.w, h: booklet.h }] },
     ],
     preview: {
       kind: 'box',
-      widthMm: JEWEL_CASE.w,
-      heightMm: JEWEL_CASE.h,
-      depthMm: JEWEL_CASE.d,
+      widthMm: outside.w,
+      heightMm: outside.h,
+      depthMm: outside.d,
       // The tray card's flaps on the sides they fold to: the primary spine on the hinge side (-x), like every other case.
       faces: { '-x': 'spine', '+x': 'spineRight' },
-      construction: { kind: 'jewel', shell: CLEAR_SHELL, tray: JEWEL_TRAYS[tray], wallMm: 1, sideWallMm: (JEWEL_CASE.w - back) / 2, bookletMarginMm: 3 },
+      construction: { kind: 'jewel', shell: CLEAR_SHELL, tray: JEWEL_TRAYS[tray], wallMm: JEWEL_CASE.wallMm, sideWallMm: (outside.w - back) / 2, bookletMarginMm: booklet.fromOpeningEdgeMm },
       casing: { color: CLEAR_SHELL.color, transmission: 1, roughness: 0.04 },
       glossy: true,
       radiusMm: JEWEL_RADIUS,
@@ -345,16 +341,13 @@ function jewelCase(kind: TemplateKind, name: string, variantId: string, tray: ke
 }
 
 /**
- * MiniDisc cases (case-research.md §22). Two different cases, so two templates:
+ * MiniDisc cases (case-research.md §22; sizes in cases.ts). Two different cases, so two templates:
  * - the standard case blank and home-recorded discs come in, printed with a J-card: one strip, 73 mm tall, folded into a
  *   68 mm front, a 5.5 mm spine and an 11 mm tab that tucks behind the disc (like a cassette's, smaller);
  * - the full-size album case pre-recorded MiniDiscs were sold in, 110 × 90 × 14 mm, built like a CD jewel case: a rear tray
  *   card (106 × 101.5 mm: a 9.3 mm spine flap, an 87.4 mm back, a 9.3 mm spine flap) and a 73 × 105 mm booklet front behind
  *   the lid. The tray card's folds and the booklet's panels are measured from the case seller's printable templates.
  */
-const MINIDISC_JCARD = { front: 68, spine: 5.5, tab: 11, h: 73 };
-/** `w`, `h`, `d` are the real case's outside size, for reference; the 3D preview is sized to the print (see miniDiscAlbumCase). */
-const MINIDISC_ALBUM = { w: 90, h: 110, d: 14, tray: { w: 106, h: 101.5, spine: 9.3 }, booklet: { w: 73, h: 105 } };
 /** Corner radius of the album case's 3D body, mm. */
 const MINIDISC_ALBUM_RADIUS = 1.5;
 
@@ -452,10 +445,9 @@ function miniDiscAlbumCase(): TemplateConfig {
  * less a 1 mm frame each side). The case is one moulded piece with no separate tray, so there is no tray card and no
  * second spine (the 7.5 mm 8 cm case with a tray has those, but its sizes are not known).
  */
-const MINI_CD_SLIM = { w: 93, h: 90, d: 5.2, card: { w: 82.6, h: 85.7 }, frame: 1 };
-
 function miniCdSlimCase(): TemplateConfig {
-  const { w, h, d, card, frame } = MINI_CD_SLIM;
+  const { card, frame } = MINI_CD_SLIM;
+  const { w, h, d } = MINI_CD_SLIM.outside;
   return assemble({
     kind: 'cd',
     name: 'Mini CD',
@@ -489,20 +481,11 @@ function miniCdSlimCase(): TemplateConfig {
   });
 }
 
-/** A Betamax cassette's sleeve, 98 × 159 × 27 mm (case-research.md §23): a printable box like the VHS one, a size smaller. */
-const BETAMAX = { w: 98, h: 159, d: 27 };
-
-/** A tuck box for a standard poker-size deck (63.5 × 88.9 mm cards), 66 × 91 × 18 mm for 54 cards (case-research.md §24). */
-const CARD_BOX = { w: 66, h: 91, d: 18 };
-
-/**
- * Vinyl record sleeve sizes. The sleeve is a square jacket: front | spine | back in a row.
- * Standard outer sleeve thickness is ~3 mm (spine). Sizes are the outer sleeve dimensions.
- */
-const VINYL: Record<string, { label: string; sizeMm: number; spine: number }> = {
-  '12inch': { label: 'Vinyl 12"', sizeMm: 314, spine: 3 },
-  '10inch': { label: 'Vinyl 10"', sizeMm: 262, spine: 3 },
-  '7inch': { label: 'Vinyl 7"', sizeMm: 184, spine: 3 },
+/** Vinyl record sleeves: a square jacket, front | spine | back in a row (sizes in cases.ts). */
+const VINYL: Record<string, { label: string }> = {
+  '12inch': { label: 'Vinyl 12"' },
+  '10inch': { label: 'Vinyl 10"' },
+  '7inch': { label: 'Vinyl 7"' },
 };
 
 /**
@@ -527,49 +510,33 @@ const GAME_CASE_NAME: Record<string, string> = {
 };
 
 /**
- * Game case variants (US releases): the platform, the size of its printed insert (`w`/`h` = the front panel, `spine`)
- * and the case colour for the 3D view. Sizes are the US cover art sizes in branding-spec.md, cross-checked against
- * multiple independent sources per case in case-research.md: platforms on the same case share a size, and the brand
- * only changes the Branded header. PS1 is `jewel`: a CD jewel case, not a keepcase. PS Vita is the one entry
- * case-research.md flags as low-confidence (only one case source and one derived insert source were found).
+ * Game case variants: the platform's name and the case colour for the 3D view. Sizes (the printed insert, US releases)
+ * are in cases.ts's GAME_CASES. PS1 is `jewel`: a CD jewel case, not a keepcase.
  */
-const GAME_CASE: Record<string, { label: string; w: number; h: number; spine: number; color: string; jewel?: boolean }> = {
-  // PC boxed games shipped in standard DVD keepcases, so this matches the DVD insert.
-  'pc':        { label: 'PC',                  w: 129.5, h: 183, spine: 14,   color: '#16191f' },
-  'ps1':       { label: 'PS1',                 w: 120,   h: 120, spine: 6.5,  color: '#16181c', jewel: true },
-  'ps2':       { label: 'PS2',                 w: 129.5, h: 183, spine: 14,   color: '#000000' },
-  'ps3':       { label: 'PS3',                 w: 129.5, h: 149, spine: 14,   color: '#000000' },
-  'ps4':       { label: 'PS4',                 w: 129.5, h: 161, spine: 14,   color: '#003791' },
-  'ps5':       { label: 'PS5',                 w: 129.5, h: 161, spine: 14,   color: '#ffffff' },
-  // From a reported 207 × 125 mm full cover.
-  'ps-vita':   { label: 'PS Vita',             w: 99,    h: 125, spine: 9,    color: '#003791' },
-  // The Game Boy cartridge is bigger than a DS card, but Retro Game Cases sells GB/GBC/GBA cases "the same size as the
-  // Nintendo DS case" with clips for the cartridge, and the Game Boy covers in scans/gb are 276 × 116 mm like the DS's.
-  // So it is a DS-size case; the original retail box is a Box type round it (case-research.md §16).
-  'gb':        { label: 'Game Boy',            w: 130,   h: 116, spine: 16,   color: '#c9ccd1' },
-  'gbc':       { label: 'Game Boy Color',      w: 130,   h: 116, spine: 16,   color: '#e4eaee' },
-  // The scans measure 131.7 + 15.2 + 131.7 × 117.3 mm, but it is the same DS-size case as the others (case-research.md §18).
-  'gba':       { label: 'Game Boy Advance',    w: 130,   h: 116, spine: 16,   color: '#b4bcc1' },
-  // The scans in scans/nes are the retail box's wrap: 293.8 × 176.1 mm, front 133, spine 28. An NES cartridge is about 120 × 134 × 17-20 mm
-  // (ConsoleMods), so no case here holds it. A NES-size clamshell does (case-research.md §20), and the insert follows the scans.
-  'nes':       { label: 'NES',                 w: 133,   h: 176, spine: 28,   color: '#26262a' },
-  // PROTOTYPE (case-research.md §21): the original retail box, 7 × 5 × 1.25 in (177.8 × 127 × 31.75 mm). The scans' folds read 29-32 mm
-  // for the spine, and the fan template's 25.4 mm is the depth of a 1 inch universal case.
-  'snes':      { label: 'SNES',                w: 127,   h: 177.8, spine: 31.75, color: '#26262a' },
-  // From the 276 × 116 mm covers in scans/ds: front 130 × 116, spine 16.
-  'ds':        { label: 'DS',                  w: 130,   h: 116, spine: 16,   color: '#b9bcc2' },
-  // The scans in scans/3ds measure 131 × 116 front, spine 12; the front is 130 like the DS, which shares its case's footprint (case-research.md §15).
-  '3ds':       { label: '3DS',                 w: 130,   h: 116, spine: 12,   color: '#1a1a1a' },
-  'switch':    { label: 'Switch',              w: 99,    h: 161, spine: 10,   color: '#e60012' },
-  'switch2':   { label: 'Switch 2',            w: 99,    h: 161, spine: 10,   color: '#e60012' },
-  'wii-u':     { label: 'Wii U',               w: 129.5, h: 183, spine: 14,   color: '#0096d6' },
-  'wii':       { label: 'Wii',                 w: 129.5, h: 183, spine: 14,   color: '#ffffff' },
-  'gamecube':  { label: 'GameCube',            w: 129.5, h: 183, spine: 14,   color: '#000000' },
-  'xbox':      { label: 'Xbox',                w: 129.5, h: 183, spine: 14,   color: '#000000' },
-  'xbox-360':  { label: 'Xbox 360',            w: 129.5, h: 183, spine: 14,   color: '#ffffff' },
-  // The Blu-ray insert.
-  'xbox-one':  { label: 'Xbox One',            w: 128,   h: 149, spine: 11,   color: XBOX_GREEN },
-  'xbox-series': { label: 'Xbox Series X|S',   w: 128,   h: 149, spine: 11,   color: XBOX_GREEN },
+const GAME_CASE: Record<string, { label: string; color: string; jewel?: boolean }> = {
+  pc: { label: 'PC', color: '#16191f' },
+  ps1: { label: 'PS1', color: '#16181c', jewel: true },
+  ps2: { label: 'PS2', color: '#000000' },
+  ps3: { label: 'PS3', color: '#000000' },
+  ps4: { label: 'PS4', color: '#003791' },
+  ps5: { label: 'PS5', color: '#ffffff' },
+  'ps-vita': { label: 'PS Vita', color: '#003791' },
+  gb: { label: 'Game Boy', color: '#c9ccd1' },
+  gbc: { label: 'Game Boy Color', color: '#e4eaee' },
+  gba: { label: 'Game Boy Advance', color: '#b4bcc1' },
+  nes: { label: 'NES', color: '#26262a' },
+  snes: { label: 'SNES', color: '#26262a' },
+  ds: { label: 'DS', color: '#b9bcc2' },
+  '3ds': { label: '3DS', color: '#1a1a1a' },
+  switch: { label: 'Switch', color: '#e60012' },
+  switch2: { label: 'Switch 2', color: '#e60012' },
+  'wii-u': { label: 'Wii U', color: '#0096d6' },
+  wii: { label: 'Wii', color: '#ffffff' },
+  gamecube: { label: 'GameCube', color: '#000000' },
+  xbox: { label: 'Xbox', color: '#000000' },
+  'xbox-360': { label: 'Xbox 360', color: '#ffffff' },
+  'xbox-one': { label: 'Xbox One', color: XBOX_GREEN },
+  'xbox-series': { label: 'Xbox Series X|S', color: XBOX_GREEN },
 };
 
 export const TEMPLATE_DEFS: TemplateDef[] = [
@@ -579,11 +546,11 @@ export const TEMPLATE_DEFS: TemplateDef[] = [
     group: 'Cases',
     variants: Object.entries(DVD).map(([id, v]) => ({ id, label: v.label, hidden: v.hidden })),
     build: (id) => {
-      const v = DVD[id] ?? DVD['std-14'];
-      const w = 129.5;
-      const h = 183;
-      return wrap('dvd', v.label, DVD[id] ? id : 'std-14', w, h, v.spine,
-        wrapPreview(w, h, v.spine, { color: '#16191f', roughness: 0.35 }, true, 2.5));
+      const variantId = DVD[id] ? id : 'std-14';
+      const { w, h } = DVD_INSERT;
+      const spine = DVD_SPINES[variantId];
+      return wrap('dvd', DVD[variantId].label, variantId, w, h, spine,
+        wrapPreview(w, h, spine, { color: '#16191f', roughness: 0.35 }, true, 2.5));
     },
   },
   {
@@ -592,11 +559,11 @@ export const TEMPLATE_DEFS: TemplateDef[] = [
     group: 'Cases',
     variants: Object.entries(BLURAY).map(([id, v]) => ({ id, label: v.label, hidden: v.hidden })),
     build: (id) => {
-      const v = BLURAY[id] ?? BLURAY['us-11'];
-      const w = 128;
-      const h = 149;
-      return wrap('bluray', v.label, BLURAY[id] ? id : 'us-11', w, h, v.spine,
-        wrapPreview(w, h, v.spine, { color: '#0a4da2', transmission: 0.8, roughness: 0.2 }, true, 2.5));
+      const variantId = BLURAY[id] ? id : 'us-11';
+      const { w, h } = BLURAY_INSERT;
+      const spine = BLURAY_SPINES[variantId];
+      return wrap('bluray', BLURAY[variantId].label, variantId, w, h, spine,
+        wrapPreview(w, h, spine, { color: '#0a4da2', transmission: 0.8, roughness: 0.2 }, true, 2.5));
     },
   },
   {
@@ -605,11 +572,11 @@ export const TEMPLATE_DEFS: TemplateDef[] = [
     group: 'Cases',
     variants: Object.entries(UHD).map(([id, v]) => ({ id, label: v.label })),
     build: (id) => {
-      const v = UHD[id] ?? UHD['us-11'];
-      const w = 128;
-      const h = 149;
-      return wrap('uhd', v.label, UHD[id] ? id : 'us-11', w, h, v.spine,
-        wrapPreview(w, h, v.spine, { color: '#111111', roughness: 0.3 }, true, 2.5));
+      const variantId = UHD[id] ? id : 'us-11';
+      const { w, h } = BLURAY_INSERT;
+      const spine = UHD_SPINES[variantId];
+      return wrap('uhd', UHD[variantId].label, variantId, w, h, spine,
+        wrapPreview(w, h, spine, { color: '#111111', roughness: 0.3 }, true, 2.5));
     },
   },
   {
@@ -619,14 +586,14 @@ export const TEMPLATE_DEFS: TemplateDef[] = [
     variants: [{ id: 'std-25', label: 'VHS' }],
     // A retail VHS sleeve is card, not plastic, so it is a printable box. The tape stands upright: 105 wide, 190 tall,
     // with the spine (the 25 mm thickness) along the long side.
-    build: () => tuckBox({ kind: 'vhs', name: 'VHS box', variantId: 'std-25', w: 105, h: 190, d: 25, casing: { color: '#e6dfcf', roughness: 0.8 }, radiusMm: 1 }),
+    build: () => tuckBox({ kind: 'vhs', name: 'VHS box', variantId: 'std-25', ...VHS_SLEEVE, casing: { color: '#e6dfcf', roughness: 0.8 }, radiusMm: 1 }),
   },
   {
     kind: 'betamax',
     name: 'Betamax box',
     group: 'Boxes',
     variants: [{ id: 'std', label: 'Betamax' }],
-    build: () => tuckBox({ kind: 'betamax', name: 'Betamax box', variantId: 'std', ...BETAMAX, casing: { color: '#e6dfcf', roughness: 0.8 }, radiusMm: 1 }),
+    build: () => tuckBox({ kind: 'betamax', name: 'Betamax box', variantId: 'std', ...BETAMAX_SLEEVE, casing: { color: '#e6dfcf', roughness: 0.8 }, radiusMm: 1 }),
   },
   {
     kind: 'cd',
@@ -650,22 +617,22 @@ export const TEMPLATE_DEFS: TemplateDef[] = [
         variantId: 'std',
         bleedMm: 3,
         pieces: [
-          // One strip folded twice, 101.6 mm tall: the flap wraps round the spine onto the back of the case (a partial
-          // back image), then the spine, then the front. Sizes are the standard J-card: 25.4 + 12.7 + 65.1 mm.
+          // One strip folded twice: the flap wraps round the spine onto the back of the case (a partial back image),
+          // then the spine, then the front (the standard J-card, see cases.ts).
           {
             dir: 'row',
             specs: [
-              { id: 'back', label: 'Back (wraps round)', w: 25.4, h: 101.6 },
-              { id: 'spine', label: 'Spine', w: 12.7, h: 101.6, text: 'vertical' },
-              { id: 'front', label: 'Front', w: 65.1, h: 101.6 },
+              { id: 'back', label: 'Back (wraps round)', w: CASSETTE_JCARD.back, h: CASSETTE_JCARD.h },
+              { id: 'spine', label: 'Spine', w: CASSETTE_JCARD.spine, h: CASSETTE_JCARD.h, text: 'vertical' },
+              { id: 'front', label: 'Front', w: CASSETTE_JCARD.front, h: CASSETTE_JCARD.h },
             ],
           },
         ],
         preview: {
           kind: 'box',
-          widthMm: 65.1,
-          heightMm: 101.6,
-          depthMm: 12.7,
+          widthMm: CASSETTE_JCARD.front,
+          heightMm: CASSETTE_JCARD.h,
+          depthMm: CASSETTE_JCARD.spine,
           faces: { '+z': 'front', '-x': 'spine' },
           decals: [{ panel: 'back', face: '-z', align: 'min-x' }],
           casing: { color: '#d8e6ee', transmission: 0.85, roughness: 0.15 },
@@ -702,12 +669,12 @@ export const TEMPLATE_DEFS: TemplateDef[] = [
         name: 'Floppy disk',
         variantId: 'face',
         bleedMm: 1,
-        pieces: [{ dir: 'row', specs: [{ id: 'front', label: 'Label', w: 69.85, h: 69.85 }] }],
+        pieces: [{ dir: 'row', specs: [{ id: 'front', label: 'Label', w: FLOPPY.label, h: FLOPPY.label }] }],
         preview: {
           kind: 'slab',
-          bodyWidthMm: 90,
-          bodyHeightMm: 94,
-          bodyDepthMm: 3.3,
+          bodyWidthMm: FLOPPY.body.w,
+          bodyHeightMm: FLOPPY.body.h,
+          bodyDepthMm: FLOPPY.body.d,
           body: { color: '#2b2e36', roughness: 0.5 },
           panel: 'front',
           fullFace: false,
@@ -739,19 +706,19 @@ export const TEMPLATE_DEFS: TemplateDef[] = [
         // Two separate cards side by side (not folded), so each gets its own bleed. The back is on the left and the
         // front on the right, like the other templates.
         pieces: [
-          ...(duplex ? [{ dir: 'row' as const, specs: [{ id: 'back' as const, label: 'Card back', w: 54, h: 85.6 }] }] : []),
-          { dir: 'row', specs: [{ id: 'front', label: 'Card face', w: 54, h: 85.6 }] },
+          ...(duplex ? [{ dir: 'row' as const, specs: [{ id: 'back' as const, label: 'Card back', w: CR80.w, h: CR80.h }] }] : []),
+          { dir: 'row', specs: [{ id: 'front', label: 'Card face', w: CR80.w, h: CR80.h }] },
         ],
         preview: {
           kind: 'slab',
-          bodyWidthMm: 54,
-          bodyHeightMm: 85.6,
-          bodyDepthMm: 0.76,
+          bodyWidthMm: CR80.w,
+          bodyHeightMm: CR80.h,
+          bodyDepthMm: CR80.d,
           body: { color: '#f4f4f2', roughness: 0.4 },
           panel: 'front',
           backPanel: duplex ? 'back' : undefined,
           fullFace: true,
-          radiusMm: 3.18,
+          radiusMm: CR80.radius,
         },
       });
     },
@@ -799,9 +766,10 @@ export const TEMPLATE_DEFS: TemplateDef[] = [
         const dia = Math.min(25, w * 0.6, h * 0.6);
         return [{ label: 'NFC tag (inside)', xMm: front.xMm + front.widthMm / 2, yMm: front.yMm + front.heightMm / 2, diameterMm: dia }];
       };
-      if (id === 'wallet') return wallet('NFC card wallet', NFC_WALLET.w, NFC_WALLET.h, marksFor(NFC_WALLET.w, NFC_WALLET.h));
-      const v = NFC_BOX[id] ?? NFC_BOX.card;
-      const variantId = NFC_BOX[id] ? id : 'card';
+      const { wallet: wl } = NFC_BOXES;
+      if (id === 'wallet') return wallet('NFC card wallet', wl.w, wl.h, marksFor(wl.w, wl.h));
+      const variantId = id === 'small' ? 'small' : 'card';
+      const v = { ...NFC_BOX[variantId], ...NFC_BOXES[variantId] };
       return tuckBox({ kind: 'nfc-box', name: v.label, variantId, ...v, casing: { color: '#e9e4d8', roughness: 0.85 }, radiusMm: 0.8, marks: marksFor(v.w, v.h) });
     },
   },
@@ -811,20 +779,20 @@ export const TEMPLATE_DEFS: TemplateDef[] = [
     group: 'Cases',
     variants: Object.entries(VINYL).map(([id, v]) => ({ id, label: v.label })),
     build: (id) => {
-      const v = VINYL[id] ?? VINYL['12inch'];
-      const s = v.sizeMm;
+      const variantId = VINYL[id] ? id : '12inch';
+      const { size: s, spine } = VINYL_SLEEVES[variantId];
       return wrap(
         'vinyl',
-        v.label,
-        VINYL[id] ? id : '12inch',
+        VINYL[variantId].label,
+        variantId,
         s,
         s,
-        v.spine,
+        spine,
         {
           kind: 'box',
           widthMm: s,
           heightMm: s,
-          depthMm: v.spine,
+          depthMm: spine,
           faces: { '-x': 'spine', '+z': 'front', '-z': 'back' },
           casing: { color: '#1a1a1a', roughness: 0.7 },
           glossy: false,
@@ -839,11 +807,12 @@ export const TEMPLATE_DEFS: TemplateDef[] = [
     group: 'Game cases',
     variants: Object.entries(GAME_CASE).map(([id, v]) => ({ id, label: v.label, origin: GAME_CASE_ORIGIN[id], caseName: GAME_CASE_NAME[id] })),
     build: (id) => {
-      const v = GAME_CASE[id] ?? GAME_CASE['ps4'];
       const variantId = GAME_CASE[id] ? id : 'ps4';
+      const v = GAME_CASE[variantId];
       if (v.jewel) return jewelCase('game-case', v.label, variantId, 'black');
-      return wrap('game-case', v.label, variantId, v.w, v.h, v.spine,
-        wrapPreview(v.w, v.h, v.spine, { color: v.color, roughness: 0.3 }, true, 2));
+      const { w, h, spine } = GAME_CASES[variantId].insert;
+      return wrap('game-case', v.label, variantId, w, h, spine,
+        wrapPreview(w, h, spine, { color: v.color, roughness: 0.3 }, true, 2));
     },
   },
 ];

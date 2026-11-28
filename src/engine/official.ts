@@ -1,4 +1,5 @@
 import type { TemplateKind } from '../types/template';
+import { GAME_CASES } from '../templates/cases';
 
 /**
  * The "Branded" trade dress: each platform's front header, spine cap and marks, drawn as on retail covers. The values
@@ -620,14 +621,8 @@ export function brandingFor(kind: TemplateKind, variantId: string, dress?: strin
   return kind === 'game-case' ? (Object.hasOwn(GAME_CASE_BRANDING, variantId) ? GAME_CASE_BRANDING[variantId] : FORMAT_BRANDING['game-case']) : (FORMAT_VARIANT_BRANDING[`${kind}/${variantId}`] ?? FORMAT_BRANDING[kind]);
 }
 
-/** Each platform's own case, which its dress was drawn for: front height, spine length (the same) and spine width. */
-const CASE_REF: Record<string, [number, number, number]> = {
-  pc: [129.5, 183, 14], ps1: [120, 120, 6.5], ps2: [129.5, 183, 14], ps3: [129.5, 149, 14], ps4: [129.5, 161, 14], ps5: [129.5, 161, 14], 'ps-vita': [99, 125, 9],
-  gb: [130, 116, 16], gbc: [130, 116, 16], gba: [130, 116, 16], nes: [133, 176, 28], snes: [127, 177.8, 31.75], ds: [130, 116, 16], '3ds': [130, 116, 12],
-  switch: [99, 161, 10], switch2: [99, 161, 10], 'wii-u': [129.5, 183, 14], wii: [129.5, 183, 14], gamecube: [129.5, 183, 14], xbox: [129.5, 183, 14],
-  'xbox-360': [129.5, 183, 14], 'xbox-one': [128, 149, 11], 'xbox-series': [128, 149, 11],
-};
-for (const [id, [w, h, spineW]] of Object.entries(CASE_REF)) if (GAME_CASE_BRANDING[id]) GAME_CASE_BRANDING[id].ref = { w, h, spine: h, spineW };
+/** Each platform's own case, which its dress was drawn for: its insert's front (cases.ts), the spine as long as the front is tall. */
+for (const [id, { insert }] of Object.entries(GAME_CASES)) if (GAME_CASE_BRANDING[id]) GAME_CASE_BRANDING[id].ref = { w: insert.w, h: insert.h, spine: insert.h, spineW: insert.spine };
 
 /** A spine whose marks fill 65 % of the width it is drawn on, leaving a margin either side (up to their size on the platform's own spine); the cap, marks and title start keep to that size, in mm. */
 /** How much of a narrow spine's width a fitted lockup may take: the rest is padding, so a logo never runs to the edges. */

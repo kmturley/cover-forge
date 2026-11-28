@@ -1,4 +1,5 @@
 import type { Piece, TemplateConfig } from '../types/template';
+import { BLURAY_SHELL, DVD_INSERT, DVD_SHELL, GAME_CASES, JEWEL_CASE, type Size } from './cases';
 import { assemble, tuckBox } from './definitions';
 
 /** What can be printed for a case, in the order the Type buttons list them. */
@@ -32,47 +33,13 @@ export interface CaseSpec {
 }
 
 /**
- * The outside size (width, height) of a case, from the "Case exterior" tables in case-research.md. The DVD keepcase is
- * 135 × 190 mm; the Blu-ray-class case 135 × 170–171.5 (171 is the most repeated); a Switch case 105 × 170. Depth is the
- * insert's spine unless noted.
- */
-const DVD_CASE = { w: 135, h: 190 };
-const TALL_CASE = { w: 135, h: 171 };
-const GAME_OUTER: Record<string, { w: number; h: number; depth?: number }> = {
-  pc: DVD_CASE,
-  ps2: DVD_CASE,
-  'wii-u': DVD_CASE,
-  wii: DVD_CASE,
-  gamecube: DVD_CASE,
-  xbox: DVD_CASE,
-  'xbox-360': DVD_CASE,
-  ps3: TALL_CASE,
-  ps4: TALL_CASE,
-  ps5: TALL_CASE,
-  'xbox-one': { w: 135, h: 170 },
-  'xbox-series': { w: 135, h: 170 },
-  // The DS and 3DS share one footprint, 136 × 124 mm (Walvis lists both at that size; seller figures run 134–137 × 123–125),
-  // but not the thickness: the DS case is about 19 mm deep and the 3DS case 12.5 (case-research.md §15).
-  ds: { w: 136, h: 124, depth: 19 },
-  // A Game Boy case is sold as the same size as the DS case.
-  gb: { w: 136, h: 124, depth: 19 },
-  gbc: { w: 136, h: 124, depth: 19 },
-  gba: { w: 136, h: 124, depth: 19 },
-  '3ds': { w: 136, h: 124, depth: 12.5 },
-  switch: { w: 105, h: 170 },
-  switch2: { w: 105, h: 170 },
-  // A single manufacturer source; the case is 11 mm deep against the insert's 9 mm spine.
-  'ps-vita': { w: 105, h: 135, depth: 11 },
-};
-
-/**
  * Where no outside size is known (a cassette case isn't researched), the insert's size plus what a DVD case adds to its
  * insert (a 135 × 190 mm case, a 129.5 × 183 mm insert). A record jacket is the outer size already.
  */
-const SHELL_MARGIN = { w: 5.5, h: 7 };
+const SHELL_MARGIN = { w: DVD_SHELL.w - DVD_INSERT.w, h: DVD_SHELL.h - DVD_INSERT.h };
 
-/** A CD jewel case: 142 × 125 × 10 mm outside (case-research.md §1). */
-const JEWEL: CaseSpec = { w: 142, h: 125, depth: 10, derived: false };
+/** A CD jewel case's outside (cases.ts). */
+const JEWEL: CaseSpec = { w: JEWEL_CASE.outside.w, h: JEWEL_CASE.outside.h, depth: JEWEL_CASE.outside.d, derived: false };
 
 const isJewel = (t: TemplateConfig) => t.kind === 'cd' || (t.kind === 'game-case' && t.variantId === 'ps1');
 
@@ -90,8 +57,9 @@ export function caseSpecOf(base: TemplateConfig): CaseSpec | null {
   const front = base.panels.find((q) => q.id === 'front');
   const spine = base.panels.find((q) => q.id === 'spine');
   if (!front || !spine) return null;
-  const known: { w: number; h: number; depth?: number } | undefined = base.kind === 'dvd' ? DVD_CASE : base.kind === 'bluray' || base.kind === 'uhd' ? TALL_CASE : base.kind === 'game-case' ? GAME_OUTER[base.variantId] : undefined;
-  if (known) return { w: known.w, h: known.h, depth: known.depth ?? spine.widthMm, derived: false };
+  // The real outside, where it is published (cases.ts); its depth is the spine's unless the case's own is known.
+  const known: Size | undefined = base.kind === 'dvd' ? DVD_SHELL : base.kind === 'bluray' || base.kind === 'uhd' ? BLURAY_SHELL : base.kind === 'game-case' ? GAME_CASES[base.variantId]?.outside : undefined;
+  if (known) return { w: known.w, h: known.h, depth: known.d ?? spine.widthMm, derived: false };
   // A record jacket is the outer size already.
   const margin = base.kind === 'vinyl' ? { w: 0, h: 0 } : SHELL_MARGIN;
   return { w: front.widthMm + margin.w, h: front.heightMm + margin.h, depth: spine.widthMm, derived: true };

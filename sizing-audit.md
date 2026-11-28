@@ -154,9 +154,27 @@ From `scans-report.md` and `branding-spec.md` (89 images over 23 platforms):
      and the GBC front logo) are candidates for step 3. Some are detection quirks, such as a tab on the right being
      reported as a band.
 
-2. **One case spec per physical case.** Record its outside size, its printed pieces and their positions in the case, and
-   a source for each number. Templates (`definitions.ts`), slipcovers and boxes (`pieces.ts`) and the 3D model all read
-   from it. This removes the duplicates in section 3.
+2. **One case spec per physical case.** *(done)*
+
+   [`src/templates/cases.ts`](src/templates/cases.ts) now holds every physical size, each with its `case-research.md`
+   section:
+   - each case's real outside (DVD, Blu-ray, Xbox One, Switch, DS, 3DS, Vita and jewel shells);
+   - each printed insert and its spines (DVD, Blu-ray and UHD variants, every game platform);
+   - the jewel case's booklet, tray card, walls and moulded parts;
+   - MiniDisc, 8 cm CD, cassette, VHS, Betamax, card box, vinyl, floppy, CR80 and NFC sizes.
+
+   It replaced these copies:
+   - `definitions.ts`: `JEWEL_CASE`, `GAME_CASE` sizes, the DVD/Blu-ray/UHD spine tables and the one-off constants;
+   - `pieces.ts`: `JEWEL`, `DVD_CASE`, `TALL_CASE` and `GAME_OUTER` (its insert margin is now worked out from the DVD
+     case and insert);
+   - `library.ts`: the `STANDARDS` table;
+   - `official.ts`: `CASE_REF`, the branding's reference sizes;
+   - `JewelCase.tsx`: its `CASE` part measurements.
+
+   Every template, slipcover, box, case size, library name and branding reference size was checked byte-identical
+   before and after. `cases.test.ts` adds fit tests: every insert fits inside its case, and the jewel case's booklet and
+   tray card fit inside its lid, base and tray.
+
 3. **Brand marks in mm from the trim corner.** Convert the 55 marks once, using each platform's reference size. Remove
    `pinned`, `turnedFrom` for branding, `keepSize`, `tiedMarks`, `fitted` and the strip's `keep()`. Each mark's numbers
    can then be checked directly against a scan measured in mm.

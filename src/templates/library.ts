@@ -1,4 +1,5 @@
 import type { MediaType } from '../types/media';
+import { BETAMAX_SLEEVE, BLURAY_INSERT, BLURAY_SPINES, CARD_BOX, CASSETTE_JCARD, CR80, DVD_INSERT, DVD_SPINES, FLOPPY, GAME_CASES, JEWEL_CASE, MINI_CD_SLIM, MINIDISC_ALBUM, MINIDISC_JCARD, UHD_SPINES, VHS_SLEEVE, VINYL_SLEEVES } from './cases';
 import type { CaseOrigin, Piece, TemplateConfig, TemplateKind } from '../types/template';
 import { TEMPLATE_DEFS } from './definitions';
 import { PIECES, PIECE_SEPARATOR, caseSpecOf } from './pieces';
@@ -68,34 +69,31 @@ function sizeOf(t: TemplateConfig): string {
 }
 
 /**
- * Standard cases and formats, by the size of the printed pieces (front, and spine when there is one). A template whose
+ * Standard cases and formats, by the size of the printed pieces (front, and spine when there is one; sizes from cases.ts). A template whose
  * print matches one is named for it, so the PS2's insert reads as the DVD case it is; anything else is Custom.
  */
 const STANDARDS: { name: string; front: [number, number]; spine?: number; back?: [number, number] }[] = [
-  { name: 'DVD Case', front: [129.5, 183], spine: 14 },
-  { name: 'DVD Slim Case', front: [129.5, 183], spine: 7 },
-  { name: 'DVD Slim Case (9 mm)', front: [129.5, 183], spine: 9 },
-  { name: 'Blu-ray Case', front: [128, 149], spine: 11 },
-  { name: 'Blu-ray Slim Case', front: [128, 149], spine: 7 },
-  { name: 'Blu-ray Elite Case', front: [128, 149], spine: 12.5 },
-  { name: 'Blu-ray Case (EU)', front: [128, 149], spine: 14 },
+  { name: 'DVD Case', front: [DVD_INSERT.w, DVD_INSERT.h], spine: DVD_SPINES['std-14'] },
+  { name: 'DVD Slim Case', front: [DVD_INSERT.w, DVD_INSERT.h], spine: DVD_SPINES['slim-7'] },
+  { name: 'DVD Slim Case (9 mm)', front: [DVD_INSERT.w, DVD_INSERT.h], spine: DVD_SPINES['slim-9'] },
+  { name: 'Blu-ray Case', front: [BLURAY_INSERT.w, BLURAY_INSERT.h], spine: BLURAY_SPINES['us-11'] },
+  { name: 'Blu-ray Slim Case', front: [BLURAY_INSERT.w, BLURAY_INSERT.h], spine: BLURAY_SPINES['slim-7'] },
+  { name: 'Blu-ray Elite Case', front: [BLURAY_INSERT.w, BLURAY_INSERT.h], spine: BLURAY_SPINES['us-12.5'] },
+  { name: 'Blu-ray Case (EU)', front: [BLURAY_INSERT.w, BLURAY_INSERT.h], spine: BLURAY_SPINES['eu-14'] },
   // The 14 mm Blu-ray-class case the PS3, PS4 and PS5 came in (case-research.md section 4); their inserts differ in height.
-  { name: 'Blu-ray Case (14 mm)', front: [129.5, 149], spine: 14 },
-  { name: 'Blu-ray Case (14 mm)', front: [129.5, 161], spine: 14 },
-  { name: 'Blu-ray 4-Disc Case', front: [128, 149], spine: 15 },
-  { name: 'CD Jewel Case', front: [120, 120], spine: 6.5, back: [137, 118] },
-  { name: '8 cm Slim Case', front: [82.6, 85.7], spine: 5.2 },
-  { name: 'VHS Sleeve', front: [105, 190], spine: 25 },
-  { name: 'Betamax Sleeve', front: [98, 159], spine: 27 },
-  { name: 'MiniDisc Case', front: [68, 73], spine: 5.5 },
-  { name: 'MiniDisc Album Case', front: [73, 105], spine: 9.3 },
-  { name: 'Poker Deck Box', front: [66, 91], spine: 18 },
-  { name: 'Cassette J-Card', front: [65.1, 101.6], spine: 12.7 },
-  { name: '12" LP Sleeve', front: [314, 314], spine: 3 },
-  { name: '10" Record Sleeve', front: [262, 262], spine: 3 },
-  { name: '7" Single Sleeve', front: [184, 184], spine: 3 },
-  { name: '3.5" Floppy Label', front: [69.85, 69.85] },
-  { name: 'CR80 Card', front: [54, 85.6] },
+  ...(['ps3', 'ps4'] as const).map((id) => ({ name: 'Blu-ray Case (14 mm)', front: [GAME_CASES[id].insert.w, GAME_CASES[id].insert.h] as [number, number], spine: GAME_CASES[id].insert.spine })),
+  { name: 'Blu-ray 4-Disc Case', front: [BLURAY_INSERT.w, BLURAY_INSERT.h], spine: UHD_SPINES['multi4-15'] },
+  { name: 'CD Jewel Case', front: [JEWEL_CASE.booklet.w, JEWEL_CASE.booklet.h], spine: JEWEL_CASE.trayCard.flap, back: [JEWEL_CASE.trayCard.back, JEWEL_CASE.trayCard.h] },
+  { name: '8 cm Slim Case', front: [MINI_CD_SLIM.card.w, MINI_CD_SLIM.card.h], spine: MINI_CD_SLIM.outside.d },
+  { name: 'VHS Sleeve', front: [VHS_SLEEVE.w, VHS_SLEEVE.h], spine: VHS_SLEEVE.d },
+  { name: 'Betamax Sleeve', front: [BETAMAX_SLEEVE.w, BETAMAX_SLEEVE.h], spine: BETAMAX_SLEEVE.d },
+  { name: 'MiniDisc Case', front: [MINIDISC_JCARD.front, MINIDISC_JCARD.h], spine: MINIDISC_JCARD.spine },
+  { name: 'MiniDisc Album Case', front: [MINIDISC_ALBUM.booklet.w, MINIDISC_ALBUM.booklet.h], spine: MINIDISC_ALBUM.tray.spine },
+  { name: 'Poker Deck Box', front: [CARD_BOX.w, CARD_BOX.h], spine: CARD_BOX.d },
+  { name: 'Cassette J-Card', front: [CASSETTE_JCARD.front, CASSETTE_JCARD.h], spine: CASSETTE_JCARD.spine },
+  ...(['12inch', '10inch', '7inch'] as const).map((id, i) => ({ name: ['12" LP Sleeve', '10" Record Sleeve', '7" Single Sleeve'][i], front: [VINYL_SLEEVES[id].size, VINYL_SLEEVES[id].size] as [number, number], spine: VINYL_SLEEVES[id].spine })),
+  { name: '3.5" Floppy Label', front: [FLOPPY.label, FLOPPY.label] },
+  { name: 'CR80 Card', front: [CR80.w, CR80.h] },
 ];
 
 /** The standard a template's print matches, if any (see STANDARDS). */
