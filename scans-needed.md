@@ -26,13 +26,19 @@ Put them in `scans/<platform>/` as now. A scan to leave out, or one with bleed, 
 
 | Platform | Problem | What would help |
 | :--- | :--- | :--- |
-| **Xbox Series X** | All 3 scans are 5 % taller in proportion than the standard (266 × 156 mm against 266 × 149), so none count. | 3+ more full wraps, and ideally a ruler measurement of a real insert. If they're all 156 tall, the standard is wrong. |
 | **PS1** | 2 of 3 scans are 3.2 % off the standard and have a much narrower strip (about 10 % of the front against 15.5 %). Only 1 scan and the template count. | 4+ more, with the year. They are probably two print runs (a narrower strip on later or Greatest Hits releases?) or two layouts of the tray card and booklet. |
 | **PC (DVD case)** | No scans at all. | 5 PC game wraps in DVD cases, with the year: the header's tab may differ between eras. |
 | **3DS** | The front header disagrees completely: band width 11–100 %, height 14–31 %. | 6+, labelled by region. US and EU 3DS covers use different headers. |
 | **GameCube** | Front band height splits 7–9 % against 21–24 %; the spine band is 9 % against 31 %. | 6+, with region and year. Probably two dress styles. |
 | **Game Boy** | Front band height ranges 4–30 %. | 6+ of the boxed DS-size reprints that the app's template targets, not the original cardboard boxes. |
 | **Xbox One** | Front band height 10–33 % and logos disagree. | 6+, with the year: the early green band and the later layout differ. |
+
+## Resolved
+
+- **Xbox Series X** (2026-11-28): the scans were 5 % taller than the standard because the standard was the Xbox One's.
+  The newer Series cases (2022 on) print the header on an insert running almost the case's full height; it is now
+  129.5 × 161 mm, and all three scans fit and count. A ruler on a newer insert would still pin it to 130–133 × 160–163.
+  Scans of the original 2020 case (green case band with the XBOX logo) would be needed to add that style.
 
 ## Priority 2: agreed, but only by two
 
