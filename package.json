@@ -15,6 +15,7 @@
     "measure:covers": "tsx scripts/measure-covers.ts",
     "compare:covers": "tsx scripts/compare-covers.ts",
     "check:previews": "tsx scripts/check-previews.ts",
+    "check:dress": "tsx scripts/check-dress.ts",
     "golden:update": "UPDATE_GOLDEN=1 vitest run src/engine/regression"
   },
   "dependencies": {
