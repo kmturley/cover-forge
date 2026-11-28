@@ -566,7 +566,7 @@ const GAME_CASE: Record<string, { label: string; color: string; jewel?: boolean;
   nes: { label: 'NES', color: '#26262a' },
   snes: { label: 'SNES', color: '#26262a' },
   ds: { label: 'DS', color: '#b9bcc2' },
-  '3ds': { label: '3DS', color: '#1a1a1a' },
+  '3ds': { label: '3DS', color: '#f2f2f0' },
   switch: { label: 'Switch', color: '#e60012' },
   switch2: { label: 'Switch 2', color: '#e60012' },
   'wii-u': { label: 'Wii U', color: '#0096d6' },
