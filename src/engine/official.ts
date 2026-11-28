@@ -228,13 +228,16 @@ function labelBand(text: string, bg: string, fg: string, h: number, cap: number,
 }
 
 export const FORMAT_BRANDING: Record<TemplateKind, Branding> = {
+  // On a Blu-ray or 4K UHD case the band is the case's top (the insert stands below it), so only other cases print it.
   bluray: {
+    headerOnCase: true,
     backBand: true,
     front: { shape: 'band', depth: flat(0.08), fill: '#0a4da2', marks: [{ parts: [{ logo: 'blu-ray' }], color: W, h: 0.06, align: 'center' }] },
     spine: { cap: { length: 0.08, fill: '#0a4da2' }, marks: [{ parts: [{ logo: 'blu-ray' }], color: W, from: 0.008, to: 0.072, across: 0.8, rotate: 0 }] },
   },
   // Blu-ray 4K UHD: the Blu-ray layout with a black band, the grey logo and a grey line under the band (1 px at 96 dpi, 0.265 mm).
   uhd: {
+    headerOnCase: true,
     backBand: true,
     front: { shape: 'band', depth: flat(0.08), fill: K, line: { color: '#979797', size: 0.0018 }, marks: [{ parts: [{ logo: 'blu-ray-ultra-hd-4k' }], color: W, h: 0.0448, align: 'center' }] },
     spine: { cap: { length: 0.08, fill: K, line: { color: '#979797', size: 0.0018 } }, marks: [{ parts: [{ logo: 'blu-ray-ultra-hd' }], color: W, from: 0.88, to: 0.98, across: 0.8, rotate: 90 }], titleFrom: 0.13 },
@@ -619,11 +622,15 @@ const FORMAT_VARIANT_BRANDING: Record<string, Branding> = {
 
 /** What `none` as a dress draws: nothing. */
 /**
- * Whether a template is the platform's own game case's insert, the one its dress was drawn for: not another case marked
- * with it, nor the case's slipcover or box (which go round the outside, so print what the case itself carries).
+ * Whether a template is the insert of the case its dress was drawn for (a platform's own game case, a format's own case):
+ * not another case marked with it, nor the case's slipcover or box (which go round the outside, so print what the case
+ * itself carries).
  */
-export const onOwnCase = (t: { kind: TemplateKind; variantId: string; dress?: string; piece?: string }): boolean =>
-  t.kind === 'game-case' && (!t.dress || t.dress === t.variantId) && (!t.piece || t.piece === 'insert');
+export const onOwnCase = (t: { kind: TemplateKind; variantId: string; dress?: string; piece?: string }): boolean => {
+  if (t.piece && t.piece !== 'insert') return false;
+  if (!t.dress) return true;
+  return t.kind === 'game-case' ? t.dress === t.variantId : t.dress === t.kind || t.dress.startsWith(`${t.kind}/`);
+};
 
 const NO_BRANDING: Branding = { front: { shape: 'none', marks: [] } };
 
@@ -638,24 +645,25 @@ export function brandingFor(kind: TemplateKind, variantId: string, dress?: strin
 
 const onCaseCache = new Map<Branding, Branding>();
 /**
- * A dress on its own case when the case carries its header (`headerOnCase`): no front header, and no spine cap where it
- * joins that header (the case's top runs round the spine too). The spine's marks and title start move up by the cap's
- * length, so they keep their place below it as on the platform's own insert.
+ * A dress on its own case when the case carries its header (`headerOnCase`): no front header and no spine cap (the case's
+ * top runs round the spine too), nor the marks on the cap. The spine's other marks and title start move up by the cap's
+ * length, so they keep their place below it as on the case's own insert.
  */
 function withHeaderOnCase(b: Branding): Branding {
   let out = onCaseCache.get(b);
   if (out) return out;
   const sp = b.spine;
-  const lift = sp?.cap?.joins ? sp.cap.length : 0;
+  const lift = sp?.cap?.length ?? 0;
   out = {
     ...b,
     front: NO_BRANDING.front,
     ...(sp && {
       spine: {
         ...sp,
-        cap: lift ? undefined : sp.cap,
-        marks: sp.marks.map((m) => ({ ...m, from: m.from - lift, to: m.to - lift })),
-        ...(sp.titleFrom !== undefined && { titleFrom: sp.titleFrom - lift }),
+        cap: undefined,
+        // Marks on the cap go with it (they are the case's); the rest move up.
+        marks: sp.marks.filter((m) => m.from >= lift).map((m) => ({ ...m, from: m.from - lift, to: m.to - lift })),
+        ...(sp.titleFrom !== undefined && { titleFrom: Math.max(0, sp.titleFrom - lift) }),
       },
     }),
   };

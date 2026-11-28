@@ -26,13 +26,13 @@ describe('panelUvRange', () => {
 
 describe('createBodyGeometry', () => {
   it('sizes the box from the spec and maps the front face into the front UV range', () => {
-    const t = buildTemplate('bluray', 'us-11');
+    const t = buildTemplate('game-case', 'nes');
     const geo = createBodyGeometry(t, t.preview);
     geo.computeBoundingBox();
     const size = geo.boundingBox!.getSize(geo.boundingBox!.min.clone());
-    expect(size.x).toBeCloseTo(128);
-    expect(size.y).toBeCloseTo(149);
-    expect(size.z).toBeCloseTo(11);
+    expect(size.x).toBeCloseTo(133);
+    expect(size.y).toBeCloseTo(176);
+    expect(size.z).toBeCloseTo(28);
 
     const front = panelUvRange(t, 'front');
     const uv = geo.getAttribute('uv');
@@ -159,7 +159,7 @@ describe('inset faces', () => {
   });
 
   it('leaves every other case, box and card printed straight onto its faces', () => {
-    for (const [kind, id] of [['bluray', 'us-11'], ['vhs', 'std-25'], ['cassette', 'std'], ['nfc-box', 'card'], ['nfc-card', 'cr80-duplex']] as const) {
+    for (const [kind, id] of [['vhs', 'std-25'], ['cassette', 'std'], ['nfc-box', 'card'], ['nfc-card', 'cr80-duplex']] as const) {
       const t = buildTemplate(kind, id);
       expect(insetFaces(t, t.preview), `${kind}/${id}`).toEqual([]);
     }

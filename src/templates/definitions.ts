@@ -1,6 +1,6 @@
 import type { CaseOrigin, PanelId, PanelRect, PlasticPart, PreviewMaterial, PreviewSpec, SpineOrientation, TemplateConfig, TemplateKind, TemplateMark, TemplateVariant } from '../types/template';
 import { XBOX_GREEN } from '../engine/official';
-import { BETAMAX_SLEEVE, BLURAY_INSERT, DVD_SHELL, BLURAY_SPINES, CARD_BOX, CASSETTE_JCARD, CR80, DVD_INSERT, DVD_SPINES, FLOPPY, GAME_CASES, JEWEL_CASE, MINI_CD_SLIM, MINIDISC_ALBUM, MINIDISC_JCARD, NFC_BOXES, NFC_STICKERS, UHD_SPINES, VHS_SLEEVE, VINYL_SLEEVES } from './cases';
+import { BETAMAX_SLEEVE, BLURAY_INSERT, BLURAY_SHELL, DVD_SHELL, BLURAY_SPINES, CARD_BOX, CASSETTE_JCARD, CR80, DVD_INSERT, DVD_SPINES, FLOPPY, GAME_CASES, JEWEL_CASE, MINI_CD_SLIM, MINIDISC_ALBUM, MINIDISC_JCARD, NFC_BOXES, NFC_STICKERS, UHD_SPINES, VHS_SLEEVE, VINYL_SLEEVES } from './cases';
 
 export const PX_PER_MM = 300 / 25.4;
 
@@ -534,7 +534,7 @@ const GAME_CASE_NAME: Record<string, string> = {
 };
 
 /**
- * Cases whose insert is much shorter than the case (PS3: 149 of 171 mm; Xbox One: 149 of 170) stand it on the
+ * Cases whose insert is much shorter than the case (PS3, Blu-ray and 4K UHD: 149 of 171 mm; Xbox One: 149 of 170) stand it on the
  * bottom, leaving a band of the case at the top with a logo on it: the Blu-ray logo moulded at the top right of the clear
  * PS3 case, the Xbox One logo printed on the Xbox One's green top (photos of retail cases; on the Xbox One's own case the
  * insert leaves out its printed header for it, see `headerOnCase` in official.ts). The
@@ -601,7 +601,7 @@ export const TEMPLATE_DEFS: TemplateDef[] = [
       const { w, h } = BLURAY_INSERT;
       const spine = BLURAY_SPINES[variantId];
       return wrap('bluray', BLURAY[variantId].label, variantId, w, h, spine,
-        wrapPreview(w, h, spine, { color: '#0a4da2', transmission: 0.8, roughness: 0.2 }, true, 2.5));
+        keepcasePreview(BLURAY_SHELL, spine, { color: '#0a4da2', transmission: 0.8, roughness: 0.2 }, 2.5, { insertBottomMm: INSERT_BOTTOM_MM, emboss: [{ logo: 'blu-ray', heightMm: 9, topMm: bandMiddle(BLURAY_SHELL.h, h) }] }));
     },
   },
   {
@@ -614,7 +614,7 @@ export const TEMPLATE_DEFS: TemplateDef[] = [
       const { w, h } = BLURAY_INSERT;
       const spine = UHD_SPINES[variantId];
       return wrap('uhd', UHD[variantId].label, variantId, w, h, spine,
-        wrapPreview(w, h, spine, { color: '#111111', roughness: 0.3 }, true, 2.5));
+        keepcasePreview(BLURAY_SHELL, spine, { color: '#111111', roughness: 0.3 }, 2.5, { insertBottomMm: INSERT_BOTTOM_MM, emboss: [{ logo: 'blu-ray-ultra-hd-4k', heightMm: 0.0448 * 149, topMm: bandMiddle(BLURAY_SHELL.h, h), printed: true }] }));
     },
   },
   {

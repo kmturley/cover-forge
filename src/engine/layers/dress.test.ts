@@ -34,8 +34,9 @@ describe('the dress setting', () => {
     expect(brandingFor('game-case', 'pc', 'not-a-platform')).toBe(brandingFor('game-case', 'pc'));
     // A format's, by template: its own variant's where it has one, else the format's.
     expect(brandingFor('game-case', 'pc', 'dvd/slim-7')).toBe(brandingFor('dvd', 'slim-7'));
-    expect(brandingFor('game-case', 'pc', 'bluray/slim-7')).toBe(brandingFor('bluray', 'slim-7'));
-    expect(brandingFor('game-case', 'pc', 'bluray/slim-7')).not.toBe(brandingFor('bluray', 'us-11'));
+    // (Not compared with the Blu-ray case's own: that one's band is the case's, so its insert leaves it out.)
+    expect(brandingFor('game-case', 'pc', 'bluray/slim-7')).toBe(brandingFor('dvd', 'std-14', 'bluray/slim-7'));
+    expect(brandingFor('game-case', 'pc', 'bluray/slim-7')).not.toBe(brandingFor('game-case', 'pc', 'bluray'));
   });
 
   it('puts the SNES dress on a DVD-size case, and takes the dress off', () => {

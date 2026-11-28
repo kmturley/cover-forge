@@ -38,6 +38,8 @@ describe('the dress as layers', () => {
     for (const e of LIBRARY) {
       const t = buildTemplateById(e.id);
       const { layers } = brandedLayers(t);
+      // A case that carries its own header (a Blu-ray case's top) may leave nothing to print on its insert.
+      if (!layers.length && brandingFor(t.kind, t.variantId).headerOnCase) continue;
       const folders = layers.filter((l) => l.type === 'group');
       expect(folders.length, e.id).toBeGreaterThan(0);
       expect(layers.slice(0, folders.length), e.id).toEqual(folders);
