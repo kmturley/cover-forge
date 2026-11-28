@@ -207,12 +207,25 @@ From `scans-report.md` and `branding-spec.md` (89 images over 23 platforms):
      layer reaching into the bleed (−2.5 %) is correct for full-bleed elements, and with the outline now explaining it,
      changing the saved format isn't worth the migration.
 
-5. **3D: model the case, not the paper.** Use the case spec's outside size for the shell, and place the insert inside it
-   at its real size (as the jewel case now does). Keepcases need a clear sleeve over the insert; the DS-style cases need
-   their own shell.
-6. **Tolerance tests.** Turn `compare:covers` into tests with a tolerance for each field, for example: size ±0.5 mm;
-   band ±0.3 mm; logo box ±0.5 mm; colour difference ≤ 10. Add fit tests for each 3D case (the insert inside the case,
-   the booklet inside the lid's window).
+5. **3D: model the case, not the paper.** *(done)*
+   - Every game case with a known outside, and the DVD, Blu-ray and 4K UHD cases, are drawn at the `cases.ts` outside,
+     with the insert inside at its own size: the front and back from the spine edge, the spine centred down its edge,
+     the case's plastic showing round the rest, the glossy print standing in for the clear sleeve.
+   - Inserts much shorter than their case stand 3.5 mm above the bottom under the case's own top: the clear PS3 case
+     with its moulded Blu-ray logo, the blue Blu-ray case likewise, the black UHD case with its 4K Ultra HD logo, the
+     Xbox One's green top with its printed logo. There the band is the case's, so that case's insert leaves out the
+     printed band and spine cap (`headerOnCase`); the dress on any other case, slipcover or box still prints it.
+   - The Xbox Series insert is the newer case's taller one, 129.5 × 161 (case-research.md §5). The 3DS case is white.
+   - The 3D measurements span the insert where it sits. Still open: the jewel case shows none (built from parts), and
+     the NES and SNES boxes have no case size, so they stay at the print's size.
+6. **Tolerance tests.** *(partly done)*
+   - Fit tests (`cases.test.ts`): every case drawn in 3D at its real outside, the insert narrower than it and inside
+     its height, the spine no wider than its depth; and the jewel case's booklet and tray card inside its parts.
+   - `npm run check:dress`: the dress on every case × dress (about 3,000), flagging marks that overlap, run off their
+     panel, cross a spine cap's edge or run into the title; `--against <ref>` lists every combination that changed.
+     It finds 2 today: the Xbox Series plate runs off the 25 and 30 mm NFC stickers.
+   - Not done: tests against the scans' consensus with a tolerance per field. The scans proved too uneven (crops,
+     recreations, case generations) to fail a build on; they stay a report.
 
 The PS1 jewel case is a good pilot for 2–6: its case spec is mostly measured already (section 3), and it has the most
 recent references.
